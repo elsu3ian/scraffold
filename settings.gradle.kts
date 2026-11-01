@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Scaffold"
+rootProject.name = "Scraffold"
 include(":app")

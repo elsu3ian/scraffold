@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Scaffold</string>
-    <string name="shelf_title">Scaffold</string>
+    <string name="app_name">Scraffold</string>
+    <string name="shelf_title">Scraffold</string>
     <string name="search_hint">Search apps or domains...</string>
     <string name="view_icons">Icons</string>
     <string name="view_grid">Grid</string>
@@ -12,16 +12,18 @@
     <string name="cache_clear_confirm">Clear cached data?</string>
     
     <!-- About & Licenses -->
-    <string name="about_title">About Scaffold</string>
+    <string name="about_title">About Scraffold</string>
     <string name="about_tagline">High-Density Multi-PWA Container &amp; Userscript Engine</string>
     <string name="check_for_updates">Check for Updates</string>
     <string name="checking_updates">Checking for updates...</string>
     <string name="up_to_date">You are running the latest version (%s)</string>
     <string name="update_available">New update available (%s)</string>
     <string name="github_repository">GitHub Repository</string>
-    <string name="github_repo_url">https://github.com/elsu3ian/scaffold</string>
+    <string name="github_repo_url">https://github.com/elsu3ian/scraffold</string>
     <string name="report_issue">Report an Issue</string>
-    <string name="report_issue_url">https://github.com/elsu3ian/scaffold/issues</string>
+    <string name="report_issue_url">https://github.com/elsu3ian/scraffold/issues</string>
+    <string name="badge_zero_telemetry">Zero Telemetry</string>
+    <string name="disclaimer_warranty">DISCLAIMER: PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. USE AT YOUR OWN RISK.</string>
     <string name="open_source_licenses">Open Source Licenses</string>
     <string name="license_mit">MIT License</string>
     <string name="license_mpl">Mozilla Public License 2.0</string>
