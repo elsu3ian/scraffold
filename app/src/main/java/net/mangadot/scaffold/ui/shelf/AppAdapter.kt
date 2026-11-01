@@ -4,7 +4,10 @@ import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.ImageButton
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -13,7 +16,7 @@ import net.mangadot.scaffold.data.db.entity.WebAppEntity
 
 class AppAdapter(
     private val onAppClick: (WebAppEntity) -> Unit,
-    private val onAppLongClick: (WebAppEntity) -> Unit
+    private val onAppOptionsClick: (WebAppEntity) -> Unit
 ) : ListAdapter<WebAppEntity, RecyclerView.ViewHolder>(DIFF_CALLBACK) {
 
     enum class LayoutMode { ICONS, GRID, LIST }
@@ -46,7 +49,7 @@ class AppAdapter(
         val app = getItem(position)
         holder.itemView.setOnClickListener { onAppClick(app) }
         holder.itemView.setOnLongClickListener {
-            onAppLongClick(app)
+            onAppOptionsClick(app)
             true
         }
 
@@ -55,6 +58,10 @@ class AppAdapter(
             is GridViewHolder -> holder.bind(app)
             is ListViewHolder -> holder.bind(app)
         }
+    }
+
+    private fun cleanDomain(url: String): String {
+        return Uri.parse(url).host ?: url.removePrefix("https://").removePrefix("http://").substringBefore('/')
     }
 
     private fun extractMonogram(name: String): String {
@@ -67,39 +74,84 @@ class AppAdapter(
         }
     }
 
+    private fun getBranding(name: String): Pair<Int, Int> {
+        val backgrounds = listOf(
+            R.drawable.bg_squircle_emerald to R.color.accent_emerald,
+            R.drawable.bg_squircle_purple to R.color.accent_purple_bright,
+            R.drawable.bg_squircle_orange to R.color.text_primary,
+            R.drawable.bg_squircle_cyan to R.color.accent_emerald_bright,
+            R.drawable.bg_squircle_rose to R.color.accent_rose
+        )
+        val index = Math.abs(name.hashCode()) % backgrounds.size
+        return backgrounds[index]
+    }
+
     inner class IconViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val container: FrameLayout = itemView.findViewById(R.id.icon_container)
         private val tvName: TextView = itemView.findViewById(R.id.tv_app_name)
+        private val tvDomain: TextView = itemView.findViewById(R.id.tv_app_domain)
         private val tvMonogram: TextView = itemView.findViewById(R.id.tv_icon_monogram)
 
         fun bind(app: WebAppEntity) {
             tvName.text = app.name
+            tvDomain.text = cleanDomain(app.url)
             tvMonogram.text = extractMonogram(app.name)
+
+            val (bgRes, textColorRes) = getBranding(app.name)
+            container.setBackgroundResource(bgRes)
+            tvMonogram.setTextColor(ContextCompat.getColor(itemView.context, textColorRes))
         }
     }
 
     inner class GridViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val container: FrameLayout = itemView.findViewById(R.id.grid_icon_container)
         private val tvName: TextView = itemView.findViewById(R.id.grid_tv_app_name)
         private val tvUrl: TextView = itemView.findViewById(R.id.grid_tv_app_url)
         private val tvMonogram: TextView = itemView.findViewById(R.id.grid_tv_icon_monogram)
+        private val tvScripts: TextView = itemView.findViewById(R.id.grid_tv_scripts)
+        private val tvBlocked: TextView = itemView.findViewById(R.id.grid_tv_blocked)
+        private val btnOptions: ImageButton = itemView.findViewById(R.id.grid_btn_options)
 
         fun bind(app: WebAppEntity) {
             tvName.text = app.name
-            tvUrl.text = Uri.parse(app.url).host ?: app.url
+            tvUrl.text = cleanDomain(app.url)
             tvMonogram.text = extractMonogram(app.name)
+
+            val (bgRes, textColorRes) = getBranding(app.name)
+            container.setBackgroundResource(bgRes)
+            tvMonogram.setTextColor(ContextCompat.getColor(itemView.context, textColorRes))
+
+            tvScripts.text = "0 scripts"
+            tvBlocked.text = "0 blocked"
+
+            btnOptions.setOnClickListener {
+                onAppOptionsClick(app)
+            }
         }
     }
 
     inner class ListViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val container: FrameLayout = itemView.findViewById(R.id.list_icon_container)
         private val tvName: TextView = itemView.findViewById(R.id.list_tv_app_name)
         private val tvUrl: TextView = itemView.findViewById(R.id.list_tv_app_url)
         private val tvMonogram: TextView = itemView.findViewById(R.id.list_tv_icon_monogram)
-        private val tvLaunches: TextView = itemView.findViewById(R.id.list_tv_launch_count)
+        private val tvBlocked: TextView = itemView.findViewById(R.id.list_tv_blocked)
+        private val btnOptions: ImageButton = itemView.findViewById(R.id.list_btn_options)
 
         fun bind(app: WebAppEntity) {
             tvName.text = app.name
-            tvUrl.text = app.url
+            tvUrl.text = cleanDomain(app.url)
             tvMonogram.text = extractMonogram(app.name)
-            tvLaunches.text = "${app.launchCount} launches"
+
+            val (bgRes, textColorRes) = getBranding(app.name)
+            container.setBackgroundResource(bgRes)
+            tvMonogram.setTextColor(ContextCompat.getColor(itemView.context, textColorRes))
+
+            tvBlocked.text = "0 blocked"
+
+            btnOptions.setOnClickListener {
+                onAppOptionsClick(app)
+            }
         }
     }
 

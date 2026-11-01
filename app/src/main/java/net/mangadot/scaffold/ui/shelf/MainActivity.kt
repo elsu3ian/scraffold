@@ -1,15 +1,20 @@
 package net.mangadot.scaffold.ui.shelf
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -38,18 +43,40 @@ class MainActivity : AppCompatActivity() {
         val db = AppDatabase.getInstance(this)
         repository = WebAppRepository(db.webAppDao())
 
+        setupWindowInsets()
         setupRecyclerView()
         setupListeners()
         observeWebApps()
     }
 
+    private fun setupWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.mainRootLayout) { _, insets ->
+            val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            val navBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+
+            binding.headerLayout.setPadding(
+                binding.headerLayout.paddingLeft,
+                statusBarHeight + dpToPx(12),
+                binding.headerLayout.paddingRight,
+                dpToPx(12)
+            )
+
+            val fabParams = binding.fabAddApp.layoutParams as ViewGroup.MarginLayoutParams
+            fabParams.bottomMargin = navBarHeight + dpToPx(20)
+            binding.fabAddApp.layoutParams = fabParams
+
+            insets
+        }
+    }
+
     private fun setupRecyclerView() {
         adapter = AppAdapter(
             onAppClick = { app -> launchWebApp(app) },
-            onAppLongClick = { app -> showAppOptionsDialog(app) }
+            onAppOptionsClick = { app -> showAppActionSheet(app) }
         )
 
-        binding.rvShelf.layoutManager = GridLayoutManager(this, 4)
+        // Default to Icons View with 3 columns (matching scriptdeck_prototype.html)
+        binding.rvShelf.layoutManager = GridLayoutManager(this, 3)
         binding.rvShelf.adapter = adapter
     }
 
@@ -62,7 +89,7 @@ class MainActivity : AppCompatActivity() {
                 binding.etSearch.requestFocus()
             } else {
                 binding.etSearch.setText("")
-                adapter.submitList(allApps)
+                filterApps("")
             }
         }
 
@@ -85,7 +112,7 @@ class MainActivity : AppCompatActivity() {
             showAddAppDialog()
         }
 
-        // View Switcher Tabs
+        // View Switcher Tabs (Icons | Grid | List)
         binding.tabIcons.setOnClickListener { setLayoutMode(AppAdapter.LayoutMode.ICONS) }
         binding.tabGrid.setOnClickListener { setLayoutMode(AppAdapter.LayoutMode.GRID) }
         binding.tabList.setOnClickListener { setLayoutMode(AppAdapter.LayoutMode.LIST) }
@@ -95,7 +122,7 @@ class MainActivity : AppCompatActivity() {
         adapter.currentLayoutMode = mode
         when (mode) {
             AppAdapter.LayoutMode.ICONS -> {
-                binding.rvShelf.layoutManager = GridLayoutManager(this, 4)
+                binding.rvShelf.layoutManager = GridLayoutManager(this, 3)
                 highlightTab(binding.tabIcons, listOf(binding.tabGrid, binding.tabList))
             }
             AppAdapter.LayoutMode.GRID -> {
@@ -112,9 +139,12 @@ class MainActivity : AppCompatActivity() {
     private fun highlightTab(active: TextView, inactives: List<TextView>) {
         active.setTextColor(ContextCompat.getColor(this, R.color.text_primary))
         active.setTypeface(null, android.graphics.Typeface.BOLD)
+        active.setBackgroundResource(R.drawable.bg_tab_active)
+
         for (inactive in inactives) {
             inactive.setTextColor(ContextCompat.getColor(this, R.color.text_muted))
             inactive.setTypeface(null, android.graphics.Typeface.NORMAL)
+            inactive.setBackgroundResource(R.drawable.bg_tab_inactive)
         }
     }
 
@@ -122,11 +152,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repository.allWebApps.collectLatest { apps ->
                 allApps = apps
-                if (apps.isEmpty()) {
-                    seedDefaultApps()
-                } else {
-                    filterApps(binding.etSearch.text.toString())
-                }
+                filterApps(binding.etSearch.text.toString())
             }
         }
     }
@@ -140,7 +166,13 @@ class MainActivity : AppCompatActivity() {
                 it.name.lowercase().contains(q) || it.url.lowercase().contains(q)
             }
         }
+
         adapter.submitList(filtered)
+
+        // Empty State Lifecycle
+        val isEmpty = filtered.isEmpty()
+        binding.emptyStateContainer.visibility = if (isEmpty) View.VISIBLE else View.GONE
+        binding.rvShelf.visibility = if (isEmpty) View.GONE else View.VISIBLE
     }
 
     private fun launchWebApp(app: WebAppEntity) {
@@ -161,22 +193,33 @@ class MainActivity : AppCompatActivity() {
             setSingleLine()
             setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             setHintTextColor(ContextCompat.getColor(context, R.color.text_muted))
+            background = ContextCompat.getDrawable(context, R.drawable.bg_card)
+            setPadding(dpToPx(14), dpToPx(12), dpToPx(14), dpToPx(12))
+        }
+
+        val container = android.widget.FrameLayout(this).apply {
+            setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(12))
+            addView(inputUrl)
         }
 
         AlertDialog.Builder(this)
             .setTitle(R.string.add_web_app)
-            .setView(inputUrl)
+            .setView(container)
             .setPositiveButton(R.string.save_to_shelf) { _, _ ->
                 var url = inputUrl.text.toString().trim()
                 if (url.isNotEmpty()) {
                     if (!url.startsWith("http://") && !url.startsWith("https://")) {
                         url = "https://$url"
                     }
-                    val name = android.net.Uri.parse(url).host ?: url
+                    val host = Uri.parse(url).host ?: url
+                    val name = host.removePrefix("www.").substringBefore('.')
+                        .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+
                     lifecycleScope.launch {
                         repository.insertWebApp(
                             WebAppEntity(name = name, url = url)
                         )
+                        Toast.makeText(this@MainActivity, "Added $name to Shelf", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -184,27 +227,26 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showAppOptionsDialog(app: WebAppEntity) {
-        val options = arrayOf("Launch", "Delete from Shelf")
-        AlertDialog.Builder(this)
-            .setTitle(app.name)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> launchWebApp(app)
-                    1 -> lifecycleScope.launch { repository.deleteWebAppById(app.id) }
+    private fun showAppActionSheet(app: WebAppEntity) {
+        val sheet = AppActionBottomSheetDialog(
+            app = app,
+            onLaunch = { launchWebApp(it) },
+            onDelete = { target ->
+                lifecycleScope.launch {
+                    repository.deleteWebAppById(target.id)
+                    Toast.makeText(this@MainActivity, "Removed ${target.name} from Shelf", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onToggleFullscreen = { target, enabled ->
+                lifecycleScope.launch {
+                    repository.updateFullScreenMode(target.id, enabled)
                 }
             }
-            .show()
+        )
+        sheet.show(supportFragmentManager, AppActionBottomSheetDialog.TAG)
     }
 
-    private fun seedDefaultApps() {
-        lifecycleScope.launch {
-            repository.insertWebApp(
-                WebAppEntity(name = "MangaDot", url = "https://mangadot.net")
-            )
-            repository.insertWebApp(
-                WebAppEntity(name = "ComicK", url = "https://comick.io")
-            )
-        }
+    private fun dpToPx(dp: Int): Int {
+        return (dp * resources.displayMetrics.density).toInt()
     }
 }
