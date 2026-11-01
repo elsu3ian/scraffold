@@ -25,6 +25,7 @@ import net.mangadot.scaffold.data.db.AppDatabase
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
 import net.mangadot.scaffold.data.repository.WebAppRepository
 import net.mangadot.scaffold.databinding.ActivityMainBinding
+import net.mangadot.scaffold.engine.AdBlockEngine
 import net.mangadot.scaffold.ui.container.WebContainerActivity
 import net.mangadot.scaffold.ui.settings.SettingsActivity
 
@@ -33,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var repository: WebAppRepository
     private lateinit var adapter: AppAdapter
+    private lateinit var adBlockEngine: AdBlockEngine
     private var allApps: List<WebAppEntity> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,11 +44,18 @@ class MainActivity : AppCompatActivity() {
 
         val db = AppDatabase.getInstance(this)
         repository = WebAppRepository(db.webAppDao())
+        adBlockEngine = AdBlockEngine.getInstance(this)
 
         setupWindowInsets()
         setupRecyclerView()
         setupListeners()
         observeWebApps()
+        updateShieldTelemetry()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateShieldTelemetry()
     }
 
     private fun setupWindowInsets() {
@@ -61,9 +70,12 @@ class MainActivity : AppCompatActivity() {
                 dpToPx(12)
             )
 
-            val fabParams = binding.fabAddApp.layoutParams as ViewGroup.MarginLayoutParams
-            fabParams.bottomMargin = navBarHeight + dpToPx(20)
-            binding.fabAddApp.layoutParams = fabParams
+            binding.shelfBottomBar.setPadding(
+                binding.shelfBottomBar.paddingLeft,
+                dpToPx(10),
+                binding.shelfBottomBar.paddingRight,
+                navBarHeight + dpToPx(10)
+            )
 
             insets
         }
@@ -101,6 +113,11 @@ class MainActivity : AppCompatActivity() {
             }
             override fun afterTextChanged(s: Editable?) {}
         })
+
+        // Cosmic Theme Customizer Button (🎨)
+        binding.btnTheme.setOnClickListener {
+            showCosmicThemeDialog()
+        }
 
         // Settings Button
         binding.btnSettings.setOnClickListener {
@@ -175,6 +192,11 @@ class MainActivity : AppCompatActivity() {
         binding.rvShelf.visibility = if (isEmpty) View.GONE else View.VISIBLE
     }
 
+    private fun updateShieldTelemetry() {
+        val blocked = adBlockEngine.totalBlockedRequests
+        binding.tvShelfShieldCount.text = "Shield: $blocked blocked"
+    }
+
     private fun launchWebApp(app: WebAppEntity) {
         lifecycleScope.launch {
             repository.recordLaunch(app.id)
@@ -224,6 +246,17 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showCosmicThemeDialog() {
+        val presets = arrayOf("Cosmic Nebula (Default)", "Emerald Aurora", "Cyberpunk Violet", "Pure Obsidian")
+        AlertDialog.Builder(this)
+            .setTitle("Cosmic Theme Preset")
+            .setItems(presets) { _, which ->
+                Toast.makeText(this, "Applied ${presets[which]}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
