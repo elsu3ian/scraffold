@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [1.0.2] - 2026-11-02
+
+### Added
+- **Desktop-Grade Script Editor**: Full split architecture matching prototype with `[ Editor ]` / `[ Settings ]` sub-tabs, menu bar (`File`, `Edit`, `Selection`, `Find`, `GoTo`), line numbers gutter, and bottom status bar (`Lines: X • UTF-8 | JavaScript • document-start`).
+- **About Engine Specifications**: Restored Engine Specifications panel (Core Runtime, Adblock Engine, Cosmetic Filtering, Script Execution, Cache Auto-Purge) and expandable Open Source Licenses accordions (Scraffold MIT, adblock-rust MPL-2.0, AndroidX WebKit & Room Apache-2.0).
+- **Settings Prototype Parity**: Added Default Web App Settings row and exact 6 prototype gesture/behavior toggles (two-finger reload, two-finger navigation, three-finger app switcher, software navigation buttons, clear cache on exit, progress bar).
+- **Shelf Tab Underline & Status Bar**: Fixed active tab indicator line rendering (`bg_tab_active.xml`), added Cosmic Theme palette button in header, and added fixed bottom status bar displaying shield counter and option hints.
+
+---
+
 ## [1.0.1] - 2026-11-02
 
 ### Added
