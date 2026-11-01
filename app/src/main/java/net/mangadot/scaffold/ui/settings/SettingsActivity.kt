@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -12,7 +11,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-import net.mangadot.scaffold.R
 import net.mangadot.scaffold.databinding.ActivitySettingsBinding
 import net.mangadot.scaffold.databinding.DialogAdblockSettingsBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
@@ -29,8 +27,10 @@ class SettingsActivity : AppCompatActivity() {
         const val PREFS_NAME = "scraffold_global_prefs"
         const val KEY_CLEAR_CACHE_EXIT = "pref_clear_cache_exit"
         const val KEY_GESTURE_RELOAD = "pref_gesture_reload"
+        const val KEY_GESTURE_NAV = "pref_gesture_nav"
+        const val KEY_GESTURE_APP_SWITCH = "pref_gesture_app_switch"
         const val KEY_PROGRESS_BAR = "pref_progress_bar"
-        const val KEY_DEFAULT_FULLSCREEN = "pref_default_fullscreen"
+        const val KEY_SOFTWARE_NAV = "pref_software_nav"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,8 +63,10 @@ class SettingsActivity : AppCompatActivity() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         binding.settingsSwitchClearCache.isChecked = prefs.getBoolean(KEY_CLEAR_CACHE_EXIT, true)
         binding.settingsSwitchReloadGesture.isChecked = prefs.getBoolean(KEY_GESTURE_RELOAD, true)
+        binding.settingsSwitchNavGesture.isChecked = prefs.getBoolean(KEY_GESTURE_NAV, true)
+        binding.settingsSwitchAppSwitchGesture.isChecked = prefs.getBoolean(KEY_GESTURE_APP_SWITCH, false)
         binding.settingsSwitchProgressBar.isChecked = prefs.getBoolean(KEY_PROGRESS_BAR, true)
-        binding.settingsSwitchDefaultFullscreen.isChecked = prefs.getBoolean(KEY_DEFAULT_FULLSCREEN, true)
+        binding.settingsSwitchSoftwareNav.isChecked = prefs.getBoolean(KEY_SOFTWARE_NAV, false)
     }
 
     private fun setupListeners() {
@@ -79,12 +81,21 @@ class SettingsActivity : AppCompatActivity() {
             showAdblockDialog()
         }
 
-        // Row 2: Userscripts Manager
+        // Row 2: Default Web App Settings
+        binding.settingsRowDefaultApp.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Default Web App Settings")
+                .setMessage("Global Defaults:\n• Hardware Acceleration: ON\n• Desktop User-Agent: Auto\n• AdBlock Shield: Enabled\n• Fullscreen Canvas: Enabled")
+                .setPositiveButton("Close", null)
+                .show()
+        }
+
+        // Row 3: Userscripts Manager
         binding.settingsRowUserscripts.setOnClickListener {
             startActivity(Intent(this, UserscriptsActivity::class.java))
         }
 
-        // Switches
+        // 6 Toggles
         binding.settingsSwitchClearCache.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_CLEAR_CACHE_EXIT, isChecked).apply()
         }
@@ -93,12 +104,20 @@ class SettingsActivity : AppCompatActivity() {
             prefs.edit().putBoolean(KEY_GESTURE_RELOAD, isChecked).apply()
         }
 
+        binding.settingsSwitchNavGesture.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(KEY_GESTURE_NAV, isChecked).apply()
+        }
+
+        binding.settingsSwitchAppSwitchGesture.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(KEY_GESTURE_APP_SWITCH, isChecked).apply()
+        }
+
         binding.settingsSwitchProgressBar.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_PROGRESS_BAR, isChecked).apply()
         }
 
-        binding.settingsSwitchDefaultFullscreen.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean(KEY_DEFAULT_FULLSCREEN, isChecked).apply()
+        binding.settingsSwitchSoftwareNav.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(KEY_SOFTWARE_NAV, isChecked).apply()
         }
 
         // Clear Cache
@@ -119,7 +138,7 @@ class SettingsActivity : AppCompatActivity() {
 
         // Export Settings
         binding.settingsBtnExport.setOnClickListener {
-            Toast.makeText(this, "Settings exported to scraffold-backup.json", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Exported scraffold-backup.json", Toast.LENGTH_SHORT).show()
         }
 
         // Import Settings

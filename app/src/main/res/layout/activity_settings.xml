@@ -27,13 +27,22 @@
             android:contentDescription="Back" />
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:layout_marginStart="12dp"
             android:text="@string/global_settings"
             android:textColor="@color/text_primary"
             android:textSize="16sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="System Defaults"
+            android:textColor="@color/text_muted"
+            android:textSize="10sp"
+            android:fontFamily="monospace" />
     </LinearLayout>
 
     <ScrollView
@@ -47,11 +56,11 @@
             android:orientation="vertical"
             android:paddingBottom="32dp">
 
-            <!-- Section 1: Protection & Engines -->
+            <!-- Section 1: General (Prototype Lines 215-228) -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="PROTECTION &amp; ENGINES"
+                android:text="GENERAL"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -71,57 +80,61 @@
                 android:clickable="true"
                 android:focusable="true">
 
-                <FrameLayout
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:background="@drawable/bg_squircle_emerald">
-
-                    <ImageView
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/ic_shield"
-                        android:contentDescription="Adblock" />
-                </FrameLayout>
-
-                <LinearLayout
+                <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="12dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Adblock Settings"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/settings_tv_adblock_status"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="1dp"
-                        android:text="uBlock Origin Engine • Active"
-                        android:textColor="@color/text_muted"
-                        android:textSize="10sp" />
-                </LinearLayout>
+                    android:text="Adblock Settings"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Active"
                     android:textColor="@color/accent_emerald"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:fontFamily="monospace"
                     android:paddingHorizontal="8dp"
                     android:paddingVertical="3dp"
                     android:background="@drawable/bg_card" />
             </LinearLayout>
 
-            <!-- Row 2: Userscript Engine -->
+            <!-- Row 2: Default Web App Settings -->
+            <LinearLayout
+                android:id="@+id/settings_row_default_app"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_card"
+                android:foreground="?attr/selectableItemBackground"
+                android:padding="12dp"
+                android:layout_marginTop="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Default Web App Settings"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Configure"
+                    android:textColor="@color/text_muted"
+                    android:textSize="10sp"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp" />
+            </LinearLayout>
+
+            <!-- Row 3: Userscript Engine Entrypoint -->
             <LinearLayout
                 android:id="@+id/settings_row_userscripts"
                 android:layout_width="match_parent"
@@ -135,61 +148,33 @@
                 android:clickable="true"
                 android:focusable="true">
 
-                <FrameLayout
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:background="@drawable/bg_squircle_purple">
-
-                    <ImageView
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/ic_code"
-                        android:contentDescription="Scripts" />
-                </FrameLayout>
-
-                <LinearLayout
+                <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="12dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Userscript Engine"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="1dp"
-                        android:text="Pre-DOM document-start scripts"
-                        android:textColor="@color/text_muted"
-                        android:textSize="10sp" />
-                </LinearLayout>
+                    android:text="Userscript Engine"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Manage →"
                     android:textColor="@color/accent_purple_bright"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:fontFamily="monospace"
                     android:paddingHorizontal="8dp"
                     android:paddingVertical="3dp"
                     android:background="@drawable/bg_card" />
             </LinearLayout>
 
-            <!-- Section 2: Behavioral & Gesture Toggles -->
+            <!-- Section 2: Exact Toggles from Prototype (Lines 231-280) -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="BEHAVIOR &amp; GESTURES"
+                android:text="PREFERENCES &amp; GESTURES"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -203,7 +188,7 @@
                 android:padding="12dp"
                 android:layout_marginTop="8dp">
 
-                <!-- Toggle 1: Clear Cache on Exit -->
+                <!-- Toggle 1: Clear cache after usage -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
@@ -214,7 +199,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Clear temporary cache on exit"
+                        android:text="Clear cache after usage"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp" />
 
@@ -231,9 +216,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:background="@color/border_primary"
-                    android:layout_marginVertical="4dp" />
+                    android:layout_marginVertical="3dp" />
 
-                <!-- Toggle 2: 4-Finger Reload Gesture -->
+                <!-- Toggle 2: Use two-finger swipe down to reload page -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
@@ -244,7 +229,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Four-finger swipe down to reload"
+                        android:text="Use two-finger swipe down to reload page"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp" />
 
@@ -261,9 +246,69 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:background="@color/border_primary"
-                    android:layout_marginVertical="4dp" />
+                    android:layout_marginVertical="3dp" />
 
-                <!-- Toggle 3: Show Progress Bar -->
+                <!-- Toggle 3: Use two-finger swipe left/right for browser navigation -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Use two-finger swipe left/right for browser navigation"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/settings_switch_nav_gesture"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        app:thumbTint="@color/text_primary"
+                        app:trackTint="@color/accent_emerald" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/border_primary"
+                    android:layout_marginVertical="3dp" />
+
+                <!-- Toggle 4: Use three-finger swipe left/right to switch Web Apps -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Use three-finger swipe left/right to switch Web Apps"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/settings_switch_app_switch_gesture"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="false"
+                        app:thumbTint="@color/text_primary"
+                        app:trackTint="@color/accent_emerald" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/border_primary"
+                    android:layout_marginVertical="3dp" />
+
+                <!-- Toggle 5: Show progress bar during page load -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
@@ -291,9 +336,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:background="@color/border_primary"
-                    android:layout_marginVertical="4dp" />
+                    android:layout_marginVertical="3dp" />
 
-                <!-- Toggle 4: Default Fullscreen -->
+                <!-- Toggle 6: Always show software navigation buttons -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
@@ -304,15 +349,15 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Hide status bar in WebApps (Fullscreen)"
+                        android:text="Always show software navigation buttons"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/settings_switch_default_fullscreen"
+                        android:id="@+id/settings_switch_software_nav"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:checked="true"
+                        android:checked="false"
                         app:thumbTint="@color/text_primary"
                         app:trackTint="@color/accent_emerald" />
                 </LinearLayout>
@@ -400,9 +445,9 @@
                     android:background="@drawable/bg_card"
                     android:foreground="?attr/selectableItemBackground"
                     android:gravity="center"
-                    android:text="Export Settings"
+                    android:text="Export Settings &amp; Web Apps"
                     android:textColor="@color/text_primary"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
                     android:textStyle="bold"
                     android:clickable="true"
                     android:focusable="true" />
@@ -416,20 +461,20 @@
                     android:background="@drawable/bg_card"
                     android:foreground="?attr/selectableItemBackground"
                     android:gravity="center"
-                    android:text="Import Settings"
+                    android:text="Import Settings &amp; Web Apps"
                     android:textColor="@color/text_primary"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
                     android:textStyle="bold"
                     android:clickable="true"
                     android:focusable="true" />
             </LinearLayout>
 
-            <!-- Section 5: System & About -->
+            <!-- Section 5: About Scraffold Row -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="SYSTEM &amp; ABOUT"
+                android:text="ABOUT &amp; SYSTEM"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -460,7 +505,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="v1.0.0 →"
+                    android:text="v1.0.1 →"
                     android:textColor="@color/accent_emerald"
                     android:textSize="11sp"
                     android:fontFamily="monospace" />
