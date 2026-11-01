@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container_root_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_primary">
@@ -25,7 +26,25 @@
         app:layout_constraintTop_toBottomOf="@id/container_progress_bar"
         app:layout_constraintBottom_toBottomOf="parent" />
 
-    <!-- Quick Edge Tab (Tap to open in-app Action Drawer) -->
+    <!-- Userscript Active Floating HUD Pill -->
+    <TextView
+        android:id="@+id/tv_script_hud"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_card"
+        android:textColor="@color/accent_emerald"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="7dp"
+        android:layout_marginTop="20dp"
+        android:elevation="10dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Quick Edge Tab (Tap to return to Shelf) -->
     <View
         android:id="@+id/btn_edge_drawer"
         android:layout_width="16dp"

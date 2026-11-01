@@ -4,8 +4,11 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.mangadot.scaffold.data.db.AppDatabase
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
@@ -77,12 +80,17 @@ class WebContainerActivity : AppCompatActivity() {
         binding.deckWebview.webViewClient = webViewClient
         binding.deckWebview.webChromeClient = webChromeClient
 
-        // Attach 4-Finger Swipe-Down Reload Gesture
+        // 4-Finger Swipe-Down Gesture for Reload
         binding.deckWebview.setOnTouchListener(
             FourFingerReloadGesture {
                 binding.deckWebview.reload()
             }
         )
+
+        // Edge handle to return to Shelf
+        binding.btnEdgeDrawer.setOnClickListener {
+            finish()
+        }
     }
 
     private fun loadAppData(appId: String, initialUrl: String) {
@@ -92,6 +100,9 @@ class WebContainerActivity : AppCompatActivity() {
             binding.deckWebview.applyWebAppConfig(app)
             webViewClient.updateWebApp(app)
             webChromeClient.updateWebApp(app)
+
+            // Configure True Fullscreen
+            configureFullscreen(app.fullScreenMode)
 
             // Load scripts and attach pre-DOM engine
             val scripts = scriptRepository.getEnabledScriptsList()
@@ -110,8 +121,42 @@ class WebContainerActivity : AppCompatActivity() {
                 scriptlets = scriptlets
             )
 
+            // Show HUD pill if matching userscripts are active
+            val matching = scripts.filter { it.enabled && (it.matchPattern == "https://*/*" || it.matchPattern.contains(host)) }
+            if (matching.isNotEmpty()) {
+                showScriptHud(matching.size)
+            }
+
             // Start navigation
             binding.deckWebview.loadUrl(initialUrl)
+        }
+    }
+
+    private fun configureFullscreen(enabled: Boolean) {
+        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+        if (enabled) {
+            windowInsetsController.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    private fun showScriptHud(count: Int) {
+        binding.tvScriptHud.visibility = View.VISIBLE
+        binding.tvScriptHud.text = "[Scraffold] $count Userscript(s) Active"
+
+        lifecycleScope.launch {
+            delay(2500)
+            binding.tvScriptHud.animate()
+                .alpha(0f)
+                .setDuration(400)
+                .withEndAction {
+                    binding.tvScriptHud.visibility = View.GONE
+                    binding.tvScriptHud.alpha = 1f
+                }
+                .start()
         }
     }
 
