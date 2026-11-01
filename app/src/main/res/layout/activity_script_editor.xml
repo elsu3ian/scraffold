@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/editor_root_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/bg_primary">
 
-    <!-- Top Bar -->
+    <!-- Top Bar: Pure Obsidian Black with Back Arrow & Badge -->
     <LinearLayout
+        android:id="@+id/editor_header_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -24,15 +27,30 @@
             android:contentDescription="Back" />
 
         <TextView
-            android:id="@+id/editor_tv_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:text="Script Editor"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/editor_tv_badge"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="10dp"
-            android:text="@string/script_editor"
-            android:textColor="@color/text_primary"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:text="script.user.js"
+            android:textColor="@color/accent_purple_bright"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:maxLines="1"
+            android:ellipsize="middle"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:background="@drawable/bg_card" />
 
         <TextView
             android:id="@+id/editor_btn_save"
@@ -42,70 +60,344 @@
             android:textColor="@color/accent_emerald"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:paddingHorizontal="8dp"
+            android:paddingHorizontal="10dp"
             android:paddingVertical="4dp" />
     </LinearLayout>
 
-    <!-- Metadata Section -->
+    <!-- Top Tabs: Editor / Settings (Prototype Lines 902-905) -->
     <LinearLayout
+        android:id="@+id/editor_tabs_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="8dp"
-        android:background="@drawable/bg_card"
-        android:layout_margin="8dp">
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="4dp"
+        android:background="#121215">
 
-        <EditText
-            android:id="@+id/editor_et_script_name"
-            android:layout_width="match_parent"
-            android:layout_height="38dp"
-            android:background="@null"
-            android:hint="Script Name"
+        <TextView
+            android:id="@+id/editor_tab_code"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Editor"
             android:textColor="@color/text_primary"
-            android:textColorHint="@color/text_muted"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/border_primary"
-            android:layout_marginVertical="4dp" />
-
-        <EditText
-            android:id="@+id/editor_et_match_pattern"
-            android:layout_width="match_parent"
-            android:layout_height="38dp"
-            android:background="@null"
-            android:hint="Match Pattern (e.g. https://mangadot.net/*)"
-            android:textColor="@color/accent_emerald"
-            android:textColorHint="@color/text_muted"
             android:textSize="12sp"
-            android:fontFamily="monospace" />
+            android:textStyle="bold"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="6dp"
+            android:background="@drawable/bg_subtab_active" />
+
+        <TextView
+            android:id="@+id/editor_tab_settings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:text="Settings"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="6dp"
+            android:background="@drawable/bg_subtab_inactive" />
     </LinearLayout>
 
-    <!-- Monospace Code Editor -->
-    <ScrollView
+    <!-- ================= VIEW 1: CODE EDITOR (DEFAULT) ================= -->
+    <LinearLayout
+        android:id="@+id/editor_view_code"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:fillViewport="true"
-        android:padding="8dp">
+        android:orientation="vertical">
 
-        <EditText
-            android:id="@+id/editor_et_code"
+        <!-- Menu Bar: File, Edit, Selection, Find, GoTo (Prototype Lines 907-960) -->
+        <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_card"
-            android:gravity="top|start"
-            android:padding="12dp"
-            android:fontFamily="monospace"
-            android:textColor="@color/text_primary"
-            android:textColorHint="@color/text_muted"
-            android:textSize="12sp"
-            android:hint="// Write or paste your userscript here..."
-            android:inputType="textMultiLine|textNoSuggestions" />
+            android:scrollbars="none"
+            android:background="#16161A"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/menu_btn_file"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="File"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp" />
+
+                <TextView
+                    android:id="@+id/menu_btn_edit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Edit"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp" />
+
+                <TextView
+                    android:id="@+id/menu_btn_selection"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Selection"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp" />
+
+                <TextView
+                    android:id="@+id/menu_btn_find"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Find"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp" />
+
+                <TextView
+                    android:id="@+id/menu_btn_goto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="GoTo"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp" />
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- Code Canvas: Left Line Numbers Gutter + Right Monospace Textarea -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true"
+            android:background="#09090B">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingVertical="8dp">
+
+                <!-- Line Numbers Column -->
+                <TextView
+                    android:id="@+id/editor_tv_line_numbers"
+                    android:layout_width="36dp"
+                    android:layout_height="wrap_content"
+                    android:paddingEnd="8dp"
+                    android:gravity="end"
+                    android:text="1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15"
+                    android:textColor="#52525B"
+                    android:textSize="11sp"
+                    android:lineSpacingExtra="2.5dp"
+                    android:fontFamily="monospace" />
+
+                <!-- Monospace Code Editor -->
+                <EditText
+                    android:id="@+id/editor_et_code"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:gravity="top|start"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="0dp"
+                    android:textColor="#E4E4E7"
+                    android:textSize="11sp"
+                    android:lineSpacingExtra="2.5dp"
+                    android:fontFamily="monospace"
+                    android:inputType="textMultiLine|textNoSuggestions"
+                    android:scrollbars="none" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Bottom Editor Status Bar (Prototype Lines 1030-1045) -->
+        <LinearLayout
+            android:id="@+id/editor_bottom_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:background="#121215"
+            android:borderTop="1dp">
+
+            <TextView
+                android:id="@+id/editor_tv_status_pos"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Lines: 15 • UTF-8"
+                android:textColor="@color/text_muted"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:id="@+id/editor_tv_status_type"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="JavaScript • document-start"
+                android:textColor="@color/accent_emerald"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ================= VIEW 2: SCRIPT SETTINGS (HIDDEN BY DEFAULT) ================= -->
+    <ScrollView
+        android:id="@+id/editor_view_settings"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SCRIPT METADATA"
+                android:textColor="@color/text_muted"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Script Name -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card"
+                android:padding="12dp"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Script Name"
+                    android:textColor="@color/text_muted"
+                    android:textSize="10sp" />
+
+                <EditText
+                    android:id="@+id/editor_et_script_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@null"
+                    android:layout_marginTop="4dp"
+                    android:text="New Custom Script"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:singleLine="true" />
+            </LinearLayout>
+
+            <!-- Match Pattern -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card"
+                android:padding="12dp"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Match Pattern (@match)"
+                    android:textColor="@color/text_muted"
+                    android:textSize="10sp" />
+
+                <EditText
+                    android:id="@+id/editor_et_match_pattern"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@null"
+                    android:layout_marginTop="4dp"
+                    android:text="https://*/*"
+                    android:textColor="@color/accent_emerald"
+                    android:textSize="12sp"
+                    android:fontFamily="monospace"
+                    android:singleLine="true" />
+            </LinearLayout>
+
+            <!-- Run-At Phase -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card"
+                android:padding="12dp"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Execution Timing (@run-at)"
+                    android:textColor="@color/text_muted"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="document-start (Pre-DOM Injection)"
+                    android:textColor="@color/accent_purple_bright"
+                    android:textSize="12sp"
+                    android:fontFamily="monospace" />
+            </LinearLayout>
+
+            <!-- Grants -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card"
+                android:padding="12dp"
+                android:layout_marginBottom="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Greasemonkey APIs (@grant)"
+                    android:textColor="@color/text_muted"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="GM_addStyle, GM_setValue, GM_getValue, GM_log"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace" />
+            </LinearLayout>
+
+            <!-- Delete Script Button -->
+            <Button
+                android:id="@+id/editor_btn_delete_script"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Delete This Userscript"
+                android:textColor="@color/accent_rose" />
+
+        </LinearLayout>
     </ScrollView>
 
 </LinearLayout>
