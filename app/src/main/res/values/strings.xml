@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Scaffold</string>
+    <string name="shelf_title">Scaffold</string>
+    <string name="search_hint">Search apps or domains...</string>
+    <string name="view_icons">Icons</string>
+    <string name="view_grid">Grid</string>
+    <string name="view_list">List</string>
+    <string name="add_web_app">Add WebApp</string>
+    <string name="save_to_shelf">Save to Shelf</string>
+    <string name="script_editor">Script Editor</string>
+    <string name="global_settings">Global Settings</string>
+    <string name="cache_clear_confirm">Clear cached data?</string>
+    
+    <!-- About & Licenses -->
+    <string name="about_title">About Scaffold</string>
+    <string name="about_tagline">High-Density Multi-PWA Container &amp; Userscript Engine</string>
+    <string name="check_for_updates">Check for Updates</string>
+    <string name="checking_updates">Checking for updates...</string>
+    <string name="up_to_date">You are running the latest version (%s)</string>
+    <string name="update_available">New update available (%s)</string>
+    <string name="github_repository">GitHub Repository</string>
+    <string name="github_repo_url">https://github.com/elsu3ian/scaffold</string>
+    <string name="report_issue">Report an Issue</string>
+    <string name="report_issue_url">https://github.com/elsu3ian/scaffold/issues</string>
+    <string name="open_source_licenses">Open Source Licenses</string>
+    <string name="license_mit">MIT License</string>
+    <string name="license_mpl">Mozilla Public License 2.0</string>
+    <string name="license_apache">Apache License 2.0</string>
+</resources>

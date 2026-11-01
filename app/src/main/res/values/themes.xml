@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme: Pure Obsidian Dark Mode -->
+    <style name="Theme.Scaffold" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Window background and status bar -->
+        <item name="android:windowBackground">@color/bg_primary</item>
+        <item name="android:statusBarColor">@color/bg_primary</item>
+        <item name="android:navigationBarColor">@color/bg_primary</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+
+        <!-- Material3 Color Tokens -->
+        <item name="colorPrimary">@color/accent_emerald</item>
+        <item name="colorOnPrimary">@color/text_on_accent</item>
+        <item name="colorSurface">@color/bg_surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorOutline">@color/border_primary</item>
+    </style>
+
+    <!-- 100% True Fullscreen Theme for WebContainerActivity -->
+    <style name="Theme.Scaffold.Fullscreen" parent="Theme.Scaffold">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+</resources>

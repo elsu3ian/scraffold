@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Elevated Inner Squircle Border -->
+    <path
+        android:pathData="M32,24 L76,24 A12,12 0 0,1 88,36 L88,72 A12,12 0 0,1 76,84 L32,84 A12,12 0 0,1 20,72 L20,36 A12,12 0 0,1 32,24 Z"
+        android:strokeColor="#10B981"
+        android:strokeWidth="2.5"
+        android:fillColor="#121215" />
+    <!-- Sharp Stylized S Monogram -->
+    <path
+        android:pathData="M66,37 L46,37 A4,4 0 0,0 42,41 L42,50 A4,4 0 0,0 46,54 L62,54 A4,4 0 0,1 66,58 L66,67 A4,4 0 0,1 62,71 L42,71"
+        android:strokeColor="#10B981"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
