@@ -3,15 +3,18 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="8dp">
+    android:gravity="center_horizontal"
+    android:padding="8dp"
+    android:background="?attr/selectableItemBackgroundBorderless"
+    android:clickable="true"
+    android:focusable="true">
 
-    <!-- Squircle Icon Container -->
+    <!-- 64dp Squircle Icon Container with Gradient & Border -->
     <FrameLayout
         android:id="@+id/icon_container"
         android:layout_width="64dp"
         android:layout_height="64dp"
-        android:background="@drawable/bg_squircle">
+        android:background="@drawable/bg_squircle_emerald">
 
         <TextView
             android:id="@+id/tv_icon_monogram"
@@ -21,7 +24,8 @@
             android:text="SC"
             android:textColor="@color/accent_emerald"
             android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:letterSpacing="-0.02" />
 
         <ImageView
             android:id="@+id/iv_app_icon"
@@ -38,9 +42,24 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="MangaDot"
+        android:text="Scraffold"
         android:textColor="@color/text_primary"
         android:textSize="12sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:gravity="center" />
+
+    <!-- Domain Subtitle (mangadot.net) -->
+    <TextView
+        android:id="@+id/tv_app_domain"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:text="mangadot.net"
+        android:textColor="@color/text_muted"
+        android:textSize="9sp"
+        android:fontFamily="monospace"
         android:maxLines="1"
         android:ellipsize="end"
         android:gravity="center" />

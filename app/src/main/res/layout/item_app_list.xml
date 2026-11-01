@@ -5,14 +5,18 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:background="@drawable/bg_card"
-    android:padding="10dp"
-    android:layout_marginVertical="3dp">
+    android:foreground="?attr/selectableItemBackground"
+    android:padding="8dp"
+    android:layout_marginVertical="3dp"
+    android:clickable="true"
+    android:focusable="true">
 
+    <!-- 32dp Squircle Icon -->
     <FrameLayout
         android:id="@+id/list_icon_container"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:background="@drawable/bg_squircle">
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="@drawable/bg_squircle_emerald">
 
         <TextView
             android:id="@+id/list_tv_icon_monogram"
@@ -25,11 +29,12 @@
             android:textStyle="bold" />
     </FrameLayout>
 
+    <!-- App Name & Domain -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="10dp"
         android:orientation="vertical">
 
         <TextView
@@ -38,7 +43,7 @@
             android:layout_height="wrap_content"
             android:text="MangaDot"
             android:textColor="@color/text_primary"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:textStyle="bold"
             android:maxLines="1"
             android:ellipsize="end" />
@@ -47,7 +52,8 @@
             android:id="@+id/list_tv_app_url"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="https://mangadot.net"
+            android:layout_marginTop="1dp"
+            android:text="mangadot.net"
             android:textColor="@color/text_muted"
             android:textSize="10sp"
             android:fontFamily="monospace"
@@ -55,13 +61,23 @@
             android:ellipsize="end" />
     </LinearLayout>
 
+    <!-- Telemetry & Action -->
     <TextView
-        android:id="@+id/list_tv_launch_count"
+        android:id="@+id/list_tv_blocked"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="14 launches"
-        android:textColor="@color/text_muted"
+        android:text="0 blocked"
+        android:textColor="@color/accent_emerald"
         android:textSize="10sp"
-        android:fontFamily="monospace" />
+        android:fontFamily="monospace"
+        android:layout_marginEnd="6dp" />
+
+    <ImageButton
+        android:id="@+id/list_btn_options"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_more_vert"
+        android:contentDescription="Options" />
 
 </LinearLayout>
