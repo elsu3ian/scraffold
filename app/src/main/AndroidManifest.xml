@@ -52,6 +52,12 @@
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Userscripts Engine Manager Activity -->
+        <activity
+            android:name=".ui.userscript.UserscriptsActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
         <!-- Global Settings Activity -->
         <activity
             android:name=".ui.settings.SettingsActivity"

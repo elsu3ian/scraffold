@@ -3,6 +3,8 @@ package net.mangadot.scaffold.ui.editor
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -19,6 +21,7 @@ class ScriptEditorActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_SCRIPT_ID = "extra_script_id"
+        const val EXTRA_PREFILL_PATTERN = "extra_prefill_pattern"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,9 +33,47 @@ class ScriptEditorActivity : AppCompatActivity() {
         scriptRepository = ScriptRepository(db.scriptDao(), db.scriptStorageDao())
 
         scriptId = intent.getStringExtra(EXTRA_SCRIPT_ID)
+        val prefillPattern = intent.getStringExtra(EXTRA_PREFILL_PATTERN)
 
+        setupWindowInsets()
         setupListeners()
-        loadScriptData()
+
+        if (scriptId != null) {
+            loadScriptData()
+        } else {
+            // New script template
+            val pattern = prefillPattern ?: "https://*/*"
+            binding.editorEtMatchPattern.setText(pattern)
+            binding.editorEtScriptName.setText("New Custom Script")
+            binding.editorEtCode.setText(
+                """// ==UserScript==
+// @name         New Custom Script
+// @version      1.0.0
+// @match        $pattern
+// @run-at       document-start
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    console.log('[Scraffold] Custom script executed at document-start');
+})();
+"""
+            )
+        }
+    }
+
+    private fun setupWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            binding.root.setPadding(
+                binding.root.paddingLeft,
+                statusBarHeight,
+                binding.root.paddingRight,
+                binding.root.paddingBottom
+            )
+            insets
+        }
     }
 
     private fun setupListeners() {
@@ -76,7 +117,7 @@ class ScriptEditorActivity : AppCompatActivity() {
                 updatedAt = System.currentTimeMillis()
             )
             scriptRepository.insertScript(script)
-            Toast.makeText(this@ScriptEditorActivity, "Script saved", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@ScriptEditorActivity, "Script saved to Scraffold engine", Toast.LENGTH_SHORT).show()
             finish()
         }
     }
