@@ -5,6 +5,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -20,7 +22,21 @@ class AboutActivity : AppCompatActivity() {
         binding = ActivityAboutBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setupWindowInsets()
         setupListeners()
+    }
+
+    private fun setupWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.aboutRootLayout) { _, insets ->
+            val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            binding.aboutHeaderLayout.setPadding(
+                binding.aboutHeaderLayout.paddingLeft,
+                statusBarHeight + dpToPx(12),
+                binding.aboutHeaderLayout.paddingRight,
+                dpToPx(12)
+            )
+            insets
+        }
     }
 
     private fun setupListeners() {
@@ -62,5 +78,9 @@ class AboutActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, "No browser found to open URL", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        return (dp * resources.displayMetrics.density).toInt()
     }
 }
