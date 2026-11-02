@@ -65,28 +65,29 @@ class DeckWebViewClient(
         val uri = request.url
         val scheme = uri.scheme?.lowercase() ?: ""
 
-        // Handle native deep links
-        if (scheme == "tel" || scheme == "mailto" || scheme == "sms" || scheme == "market") {
+        // Handle non-http/https schemes and native deep-links (tg://, discord://, intent://, market://, etc.)
+        if (scheme != "http" && scheme != "https" && scheme.isNotEmpty()) {
             try {
-                val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                val intent = if (scheme == "intent") {
+                    Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME)
+                } else {
+                    Intent(Intent.ACTION_VIEW, uri)
                 }
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
                 return true
             } catch (e: Exception) {
-                return true
-            }
-        }
-
-        // Handle Android intent:// deep-links
-        if (scheme == "intent") {
-            try {
-                val intent = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
-                return true
-            } catch (e: Exception) {
+                // Check for browser fallback URL if the native app is not installed
+                try {
+                    val fallbackUrl = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME).getStringExtra("browser_fallback_url")
+                    if (!fallbackUrl.isNullOrEmpty()) {
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(fallbackUrl)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(browserIntent)
+                        return true
+                    }
+                } catch (ignored: Exception) {}
                 return true
             }
         }
