@@ -27,3 +27,6 @@ google-services.json
 # Operating System Files
 Thumbs.db
 Desktop.ini
+
+# Local tooling
+.kotlin/
