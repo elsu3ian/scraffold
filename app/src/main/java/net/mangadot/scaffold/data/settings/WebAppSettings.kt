@@ -10,6 +10,8 @@ data class WebAppSettings(
     val allowHttp: Boolean = false,
     val allowLocation: Boolean = false,
     val allowDrm: Boolean = false,
+    val allowCamera: Boolean = false,
+    val allowMic: Boolean = false,
     val acceptCookies: Boolean = true,
     val thirdPartyCookies: Boolean = false,
     val adblock: Boolean = true,
@@ -25,6 +27,8 @@ fun WebAppEntity.ownSettings() = WebAppSettings(
     allowHttp = allowHttp,
     allowLocation = allowLocation,
     allowDrm = allowDrm,
+    allowCamera = allowCamera,
+    allowMic = allowMic,
     acceptCookies = acceptCookies,
     thirdPartyCookies = thirdPartyCookies,
     adblock = adblockEnabled,
@@ -40,6 +44,8 @@ fun WebAppEntity.withSettings(settings: WebAppSettings) = copy(
     allowHttp = settings.allowHttp,
     allowLocation = settings.allowLocation,
     allowDrm = settings.allowDrm,
+    allowCamera = settings.allowCamera,
+    allowMic = settings.allowMic,
     acceptCookies = settings.acceptCookies,
     thirdPartyCookies = settings.thirdPartyCookies,
     adblockEnabled = settings.adblock,
@@ -66,6 +72,8 @@ object GlobalWebSettingsStore {
             allowHttp = prefs.getBoolean("allow_http", defaults.allowHttp),
             allowLocation = prefs.getBoolean("allow_location", defaults.allowLocation),
             allowDrm = prefs.getBoolean("allow_drm", defaults.allowDrm),
+            allowCamera = prefs.getBoolean("allow_camera", defaults.allowCamera),
+            allowMic = prefs.getBoolean("allow_mic", defaults.allowMic),
             acceptCookies = prefs.getBoolean("accept_cookies", defaults.acceptCookies),
             thirdPartyCookies = prefs.getBoolean("third_party_cookies", defaults.thirdPartyCookies),
             adblock = prefs.getBoolean("adblock", defaults.adblock),
@@ -83,6 +91,8 @@ object GlobalWebSettingsStore {
             .putBoolean("allow_http", settings.allowHttp)
             .putBoolean("allow_location", settings.allowLocation)
             .putBoolean("allow_drm", settings.allowDrm)
+            .putBoolean("allow_camera", settings.allowCamera)
+            .putBoolean("allow_mic", settings.allowMic)
             .putBoolean("accept_cookies", settings.acceptCookies)
             .putBoolean("third_party_cookies", settings.thirdPartyCookies)
             .putBoolean("adblock", settings.adblock)

@@ -37,7 +37,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="uBlock Origin Engine"
+                android:text="Shield"
                 android:textColor="@color/text_primary"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -79,7 +79,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Real-time URL blocking for ad trackers, telemetry, and popunders (&lt;0.05ms)."
+            android:text="Blocks ads and trackers using EasyList, EasyPrivacy, uBlock filters, Peter Lowe and AdGuard Mobile. Lists update by themselves every few days."
             android:textColor="@color/text_muted"
             android:textSize="10sp" />
     </LinearLayout>
@@ -96,7 +96,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Cosmetic Element Hiding (##)"
+            android:text="Element Hiding"
             android:textColor="@color/text_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -105,7 +105,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Collapses empty ad frames via document-start CSS injection before DOM renders."
+            android:text="Hides ad boxes the lists name for each site."
             android:textColor="@color/text_muted"
             android:textSize="10sp" />
     </LinearLayout>
@@ -122,7 +122,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Scriptlet Defusers (+js)"
+            android:text="Anti-Adblock Checks"
             android:textColor="@color/text_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -131,25 +131,55 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Bypasses anti-adblock detection walls via synthetic canary variables."
+            android:text="Answers a few common checks pages use to detect ad blockers. This is basic, not full uBlock scriptlets."
             android:textColor="@color/text_muted"
             android:textSize="10sp" />
     </LinearLayout>
 
     <TextView
-        android:id="@+id/btn_close_adblock"
-        android:layout_width="wrap_content"
+        android:id="@+id/dialog_tv_filter_status"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="end"
+        android:layout_marginTop="12dp"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:fontFamily="monospace" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
-        android:paddingHorizontal="14dp"
-        android:paddingVertical="6dp"
-        android:text="Close"
-        android:textColor="@color/accent_emerald"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:background="@drawable/bg_card"
-        android:clickable="true"
-        android:focusable="true" />
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/btn_update_filters"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="6dp"
+            android:text="Update lists"
+            android:textColor="@color/accent_emerald"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_card"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/btn_close_adblock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="6dp"
+            android:text="Close"
+            android:textColor="@color/accent_emerald"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_card"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
 
 </LinearLayout>

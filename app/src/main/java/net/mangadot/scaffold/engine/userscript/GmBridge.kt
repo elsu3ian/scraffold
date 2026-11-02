@@ -1,11 +1,9 @@
 package net.mangadot.scaffold.engine.userscript
 
-import android.app.DownloadManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
@@ -26,7 +24,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.mangadot.scaffold.data.db.entity.ScriptEntity
 import net.mangadot.scaffold.data.repository.ScriptRepository
+import net.mangadot.scaffold.engine.WebDownloads
 import net.mangadot.scaffold.ui.browser.ExternalLinks
+import net.mangadot.scaffold.ui.browser.LinkOwner
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -56,6 +56,8 @@ class GmBridge(
     }
 
     var webView: WebView? = null
+    var cookies: CookieManager = CookieManager.getInstance()
+    var linkOwner: LinkOwner? = null
     val menuCommands = CopyOnWriteArrayList<MenuCommand>()
     private val registered = ConcurrentHashMap<String, Registered>()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -159,15 +161,11 @@ class GmBridge(
     }
 
     private fun openExternally(url: String) {
-        ExternalLinks.open(context, Uri.parse(url))
+        ExternalLinks.open(context, Uri.parse(url), linkOwner)
     }
 
     private fun download(url: String, name: String) {
-        val fileName = name.ifEmpty { URLUtil.guessFileName(url, null, null) }
-        val request = DownloadManager.Request(Uri.parse(url))
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-        (context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).enqueue(request)
+        mainHandler.post { WebDownloads.start(context, url, cookies, fileName = name) }
     }
 
     private fun connectAllowed(meta: UserscriptMeta, url: String): Boolean {
@@ -195,7 +193,7 @@ class GmBridge(
                 headers.keys().forEach { builder.header(it, headers.getString(it)) }
                 val anonymous = details.getBoolean("anonymous")
                 if (!anonymous) {
-                    CookieManager.getInstance().getCookie(url)?.let { builder.header("Cookie", it) }
+                    cookies.getCookie(url)?.let { builder.header("Cookie", it) }
                 }
                 val data = if (details.isNull("data")) null else details.getString("data")
                 val body = data?.toRequestBody(headers.optString("Content-Type", "text/plain").toMediaTypeOrNull())
@@ -209,7 +207,7 @@ class GmBridge(
                 }
                 call.newCall(builder.build()).execute().use { response ->
                     if (!anonymous) {
-                        response.headers("Set-Cookie").forEach { CookieManager.getInstance().setCookie(url, it) }
+                        response.headers("Set-Cookie").forEach { cookies.setCookie(url, it) }
                     }
                     result.put("kind", "load")
                         .put("status", response.code)

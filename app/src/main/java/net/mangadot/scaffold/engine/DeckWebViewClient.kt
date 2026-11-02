@@ -2,6 +2,7 @@ package net.mangadot.scaffold.engine
 
 import android.content.Context
 import android.net.Uri
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -9,11 +10,12 @@ import android.webkit.WebViewClient
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
 import net.mangadot.scaffold.data.settings.WebAppSettings
 import net.mangadot.scaffold.ui.browser.ExternalLinks
+import net.mangadot.scaffold.ui.browser.LinkOwner
 import java.io.ByteArrayInputStream
 
 /**
  * High-performance WebViewClient with:
- * - <0.05ms uBlock Origin network ad/telemetry interception
+ * - Ad and tracker blocking from the shield's filter lists
  * - Domain sandboxing (out-of-scope links open in the in-app browser)
  * - Safe intent/deep-link dispatching
  * - Userscript install links
@@ -24,7 +26,8 @@ class DeckWebViewClient(
     private val scriptEngine: ScriptEngine,
     private var webApp: WebAppEntity,
     private val onPageFinishedCallback: ((url: String) -> Unit)? = null,
-    private val onUserscriptLink: ((url: String) -> Unit)? = null
+    private val onUserscriptLink: ((url: String) -> Unit)? = null,
+    private val onRendererGone: (() -> Unit)? = null
 ) : WebViewClient() {
 
     // Hosts the app may navigate within, and whether its first page load is still resolving
@@ -52,10 +55,10 @@ class DeckWebViewClient(
     ): WebResourceResponse? {
         val uri = request.url
 
-        // 1. uBlock Origin Network Request Interception
-        if (settings.adblock && adBlockEngine.shouldBlock(uri)) {
+        // 1. Ad and tracker blocking
+        if (settings.adblock && adBlockEngine.shouldBlock(request, pageHost)) {
             adBlockEngine.recordBlockedForApp(webApp.id)
-            return createEmptyResponse()
+            return adBlockEngine.blockedResponse()
         }
 
         // 2. Third-party requests
@@ -96,7 +99,7 @@ class DeckWebViewClient(
 
         // Handle non-http/https schemes and native deep-links (tg://, discord://, intent://, market://, etc.)
         if (scheme != "http" && scheme != "https" && scheme.isNotEmpty()) {
-            ExternalLinks.openNative(context, uri)
+            ExternalLinks.openNative(context, uri, linkOwner())
             return true
         }
 
@@ -107,12 +110,14 @@ class DeckWebViewClient(
                 redirectedHost = normalizeHost(uri.host)
                 return false
             }
-            ExternalLinks.open(context, uri)
+            ExternalLinks.open(context, uri, linkOwner())
             return true
         }
 
         return false
     }
+
+    fun linkOwner() = LinkOwner(webApp.id, webApp.url, settings.adblock, webApp.userscriptsEnabled)
 
     /** Whether a link belongs inside the container, rather than in the system browser. */
     fun staysInApp(uri: Uri): Boolean {
@@ -129,6 +134,13 @@ class DeckWebViewClient(
         pageHost = normalizeHost(Uri.parse(url).host)
     }
 
+    override fun onPageCommitVisible(view: WebView, url: String) {
+        super.onPageCommitVisible(view, url)
+        if (settings.adblock) {
+            adBlockEngine.siteCosmeticScript(Uri.parse(url).host.orEmpty())?.let { view.evaluateJavascript(it, null) }
+        }
+    }
+
     override fun onPageFinished(view: WebView, url: String) {
         super.onPageFinished(view, url)
         isInitialNavigation = false
@@ -136,6 +148,12 @@ class DeckWebViewClient(
         scriptEngine.onPageFinished(view)
 
         onPageFinishedCallback?.invoke(url)
+    }
+
+    /** Android kills the whole app when a page's renderer dies, unless it's handled here. */
+    override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+        onRendererGone?.invoke()
+        return onRendererGone != null
     }
 
     /** Compares the last two host labels, so a site's own subdomains and CDN hosts on it stay first-party. */

@@ -12,7 +12,6 @@ class ScriptRepository(
 ) {
 
     val allScripts: Flow<List<ScriptEntity>> = scriptDao.getAllScripts()
-    val enabledScripts: Flow<List<ScriptEntity>> = scriptDao.getEnabledScripts()
 
     suspend fun getEnabledScriptsList(): List<ScriptEntity> = scriptDao.getEnabledScriptsList()
 
@@ -20,22 +19,18 @@ class ScriptRepository(
 
     suspend fun insertScript(script: ScriptEntity) = scriptDao.insertScript(script)
 
-    suspend fun updateScript(script: ScriptEntity) = scriptDao.updateScript(script)
-
     suspend fun deleteScriptById(id: String) = scriptDao.deleteScriptById(id)
 
     suspend fun setScriptEnabled(id: String, enabled: Boolean) = scriptDao.setScriptEnabled(id, enabled)
 
-    // GM_getValue / GM_setValue bridge storage, namespaced by script id
-    suspend fun getAllStorageValues(appId: String): List<ScriptStorageEntity> = scriptStorageDao.getAllForApp(appId)
+    // GM_getValue / GM_setValue bridge storage
+    suspend fun getAllStorageValues(scriptId: String): List<ScriptStorageEntity> = scriptStorageDao.getAllForScript(scriptId)
 
-    suspend fun getStorageValue(appId: String, key: String): String? = scriptStorageDao.getValue(appId, key)
-
-    suspend fun setStorageValue(appId: String, key: String, value: String) {
-        scriptStorageDao.setValue(ScriptStorageEntity(appId = appId, key = key, value = value))
+    suspend fun setStorageValue(scriptId: String, key: String, value: String) {
+        scriptStorageDao.setValue(ScriptStorageEntity(scriptId = scriptId, key = key, value = value))
     }
 
-    suspend fun deleteStorageValue(appId: String, key: String) = scriptStorageDao.deleteValue(appId, key)
+    suspend fun deleteStorageValue(scriptId: String, key: String) = scriptStorageDao.deleteValue(scriptId, key)
 
-    suspend fun clearAppStorage(appId: String) = scriptStorageDao.clearAppStorage(appId)
+    suspend fun clearScriptStorage(scriptId: String) = scriptStorageDao.clearScript(scriptId)
 }

@@ -19,6 +19,7 @@ import android.view.WindowManager
 import android.widget.EditText
 import android.widget.SeekBar
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import net.mangadot.scaffold.R
@@ -30,6 +31,7 @@ import net.mangadot.scaffold.ui.theme.CosmicTheme
 import net.mangadot.scaffold.ui.theme.CosmicThemeStore
 import net.mangadot.scaffold.ui.theme.NebulaDrawable
 import net.mangadot.scaffold.ui.theme.applyDialogSurface
+import net.mangadot.scaffold.ui.theme.showCosmic
 
 /**
  * Every edit is saved and applied straight away through [onThemeChanged], as in the
@@ -44,6 +46,7 @@ class CosmicThemeDialog(
     private val binding: LayoutDialogCosmicThemeBinding
     private var theme: CosmicTheme = CosmicThemeStore.load(context)
     private var isRendering = false
+    private var onRadiantPage = false
     private val paletteChips = mutableMapOf<String, TextView>()
     private val accent = CosmicAccent.color
 
@@ -120,6 +123,20 @@ class CosmicThemeDialog(
             dismiss()
         }
 
+        binding.btnCosmicBack.setOnClickListener { showPage(radiantEditor = false) }
+        binding.rowCosmicEditRadiant.setOnClickListener { showPage(radiantEditor = true) }
+
+        binding.rowCosmicStatic.setOnClickListener {
+            CosmicColorPicker(
+                context,
+                title = "Static background color",
+                initial = theme.staticBackground,
+                defaultColor = CosmicTheme.DEFAULT_STATIC_BACKGROUND,
+                onPreview = { color -> updateTheme(theme.copy(staticBackground = color)) },
+                onDone = { color -> updateTheme(theme.copy(staticBackground = color)) }
+            ).show()
+        }
+
         binding.btnCosmicSync.background = GradientDrawable().apply {
             cornerRadius = 8 * context.resources.displayMetrics.density
             setColor(ColorUtils.setAlphaComponent(accent, SELECTED_FILL_ALPHA))
@@ -184,6 +201,15 @@ class CosmicThemeDialog(
             ).show()
         }
 
+        binding.btnCosmicResetTheme.setOnClickListener {
+            AlertDialog.Builder(context)
+                .setTitle("Reset theme?")
+                .setMessage("This goes back to the obsidian black background and emerald accent, and replaces your colors and glows.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Reset") { _, _ -> resetTheme() }
+                .showCosmic()
+        }
+
         bindHexField(binding.etCosmicGlow1, { theme.glow1 }) { color ->
             theme.copy(glow1 = color, autoSync = false)
         }
@@ -193,6 +219,31 @@ class CosmicThemeDialog(
         bindHexField(binding.etCosmicGlow3, { theme.glow3 }) { color ->
             theme.copy(glow3 = color, autoSync = false)
         }
+    }
+
+    private fun resetTheme() {
+        val defaults = CosmicTheme(radiantBackground = false)
+        if (defaults.accent != theme.accent) {
+            CosmicThemeStore.save(context, defaults)
+            CosmicAccent.color = defaults.accent
+            onAccentChanged()
+        } else {
+            updateTheme(defaults)
+        }
+    }
+
+    private fun showPage(radiantEditor: Boolean) {
+        onRadiantPage = radiantEditor
+        binding.pageCosmicMain.visibility = if (radiantEditor) View.GONE else View.VISIBLE
+        binding.pageCosmicRadiant.visibility = if (radiantEditor) View.VISIBLE else View.GONE
+        binding.btnCosmicBack.visibility = if (radiantEditor) View.VISIBLE else View.GONE
+        binding.tvCosmicTitle.text = if (radiantEditor) "COSMIC" else "THEME"
+        binding.root.scrollTo(0, 0)
+    }
+
+    @Deprecated("Dialog has no back dispatcher on this API level")
+    override fun onBackPressed() {
+        if (onRadiantPage) showPage(radiantEditor = false) else super.onBackPressed()
     }
 
     private fun bindSwatch(
@@ -276,6 +327,12 @@ class CosmicThemeDialog(
             cornerRadius = 6 * context.resources.displayMetrics.density
             setColor(theme.accent)
         }
+        binding.tvCosmicStaticHex.text = formatHex(theme.staticBackground)
+        binding.viewCosmicStaticSwatch.background = GradientDrawable().apply {
+            cornerRadius = 6 * context.resources.displayMetrics.density
+            setColor(theme.staticBackground)
+            setStroke((context.resources.displayMetrics.density).toInt().coerceAtLeast(1), SWATCH_RIM)
+        }
 
         applyDot(binding.viewPreviewDot1, theme.glow1)
         applyDot(binding.viewPreviewDot2, theme.glow2)
@@ -343,6 +400,7 @@ class CosmicThemeDialog(
         const val ROTATE_STEP = 45
         const val SELECTED_FILL_ALPHA = 38
         val CHIP_FILL = Color.parseColor("#18181B")
+        val SWATCH_RIM = Color.parseColor("#40FFFFFF")
         val HEX_COLOR = Regex("^#[0-9a-fA-F]{6}$")
     }
 }

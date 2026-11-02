@@ -70,7 +70,7 @@
         android:layout_height="2dp"
         android:max="100" />
 
-    <WebView
+    <net.mangadot.scaffold.engine.DeckWebView
         android:id="@+id/browser_webview"
         android:layout_width="match_parent"
         android:layout_height="0dp"

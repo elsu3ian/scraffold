@@ -20,11 +20,24 @@
             android:gravity="center_vertical"
             android:paddingBottom="8dp">
 
+            <ImageButton
+                android:id="@+id/btn_cosmic_back"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginEnd="6dp"
+                android:padding="4dp"
+                android:scaleType="fitCenter"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_arrow_back"
+                android:visibility="gone"
+                android:contentDescription="Back" />
+
             <TextView
+                android:id="@+id/tv_cosmic_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="COSMIC"
+                android:text="THEME"
                 android:textColor="@color/accent_emerald"
                 android:textSize="13sp"
                 android:textStyle="bold"
@@ -45,6 +58,156 @@
             android:layout_height="1dp"
             android:background="@color/border_primary"
             android:layout_marginBottom="10dp" />
+
+        <!-- Page 1 -->
+        <LinearLayout
+            android:id="@+id/page_cosmic_main"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/row_cosmic_accent"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Accent color"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tv_cosmic_accent_hex"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+
+            <View
+                android:id="@+id/view_cosmic_accent_swatch"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+
+        <LinearLayout
+            android:id="@+id/row_cosmic_static"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Static background color"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tv_cosmic_static_hex"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+
+            <View
+                android:id="@+id/view_cosmic_static_swatch"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Radiant background"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switch_cosmic_radiant"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                app:thumbTint="@color/text_primary"
+                app:trackTint="@color/switch_track" />
+        </LinearLayout>
+
+
+        <LinearLayout
+            android:id="@+id/row_cosmic_edit_radiant"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground">
+
+            <TextView
+                android:id="@+id/tv_cosmic_edit_radiant"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Edit Cosmic Radiant background"
+                android:textColor="@color/accent_emerald"
+                android:textSize="13sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="›"
+                android:textColor="@color/text_muted"
+                android:textSize="18sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/btn_cosmic_reset_theme"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_cosmic_reset"
+            android:gravity="center"
+            android:text="↺ Reset theme to default"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:clickable="true"
+            android:focusable="true" />
+
+        </LinearLayout>
+
+        <!-- Page 2: the radiant background editor -->
+        <LinearLayout
+            android:id="@+id/page_cosmic_radiant"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
 
         <!-- Live Preview Strip -->
         <LinearLayout
@@ -91,29 +254,6 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:orientation="vertical">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Radiant background"
-                    android:textColor="@color/text_primary"
-                    android:textSize="14sp" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switch_cosmic_radiant"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:checked="true"
-                    app:thumbTint="@color/text_primary"
-                    app:trackTint="@color/switch_track" />
-            </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -432,51 +572,6 @@
                 android:layout_marginStart="8dp" />
         </LinearLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="APP ACCENT"
-            android:textColor="@color/accent_emerald"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:fontFamily="monospace"
-            android:letterSpacing="0.08" />
-
-        <LinearLayout
-            android:id="@+id/row_cosmic_accent"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_marginTop="4dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Accent color"
-                android:textColor="@color/text_primary"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/tv_cosmic_accent_hex"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp"
-                android:fontFamily="monospace" />
-
-            <View
-                android:id="@+id/view_cosmic_accent_swatch"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:layout_marginStart="8dp" />
-        </LinearLayout>
-
         <!-- Action Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -512,6 +607,8 @@
                 android:fontFamily="monospace"
                 android:clickable="true"
                 android:focusable="true" />
+        </LinearLayout>
+
         </LinearLayout>
 
         <TextView

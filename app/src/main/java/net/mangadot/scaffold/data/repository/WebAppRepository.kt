@@ -10,8 +10,6 @@ class WebAppRepository(private val webAppDao: WebAppDao) {
 
     fun getWebAppById(id: String): Flow<WebAppEntity?> = webAppDao.getWebAppById(id)
 
-    suspend fun getWebAppByUrl(url: String): WebAppEntity? = webAppDao.getWebAppByUrl(url)
-
     suspend fun insertWebApp(webApp: WebAppEntity) = webAppDao.insertWebApp(webApp)
 
     suspend fun updateWebApp(webApp: WebAppEntity) = webAppDao.updateWebApp(webApp)
@@ -22,16 +20,5 @@ class WebAppRepository(private val webAppDao: WebAppDao) {
 
     suspend fun updateIconUrl(id: String, iconUrl: String) = webAppDao.updateIconUrl(id, iconUrl)
 
-    // Reactive Instant Settings Persistence
-    suspend fun updateDesktopMode(id: String, enabled: Boolean) = webAppDao.updateDesktopMode(id, enabled)
-
-    suspend fun updateDataSaver(id: String, enabled: Boolean) = webAppDao.updateDataSaver(id, enabled)
-
-    suspend fun updateAllowCamera(id: String, enabled: Boolean) = webAppDao.updateAllowCamera(id, enabled)
-
-    suspend fun updateAllowMic(id: String, enabled: Boolean) = webAppDao.updateAllowMic(id, enabled)
-
-    suspend fun updateOpenExternalLinks(id: String, enabled: Boolean) = webAppDao.updateOpenExternalLinks(id, enabled)
-
-    suspend fun updateFullScreenMode(id: String, enabled: Boolean) = webAppDao.updateFullScreenMode(id, enabled)
+    suspend fun saveShelfOrder(ids: List<String>) = webAppDao.saveShelfOrder(ids)
 }

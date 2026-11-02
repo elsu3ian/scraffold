@@ -8,13 +8,38 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import net.mangadot.scaffold.data.db.AppDatabase
+import net.mangadot.scaffold.data.db.entity.WebAppEntity
+import net.mangadot.scaffold.data.repository.WebAppRepository
+import net.mangadot.scaffold.data.settings.effectiveSettings
+import net.mangadot.scaffold.data.settings.withSettings
 import net.mangadot.scaffold.databinding.LayoutBottomSheetAddWebappBinding
 import net.mangadot.scaffold.engine.AppIcons
 import net.mangadot.scaffold.ui.theme.CosmicBottomSheet
 
+/** Asks for an app's details, filled in with [name] and [url] when they're known, and adds it to the shelf. */
+fun FragmentActivity.showAddWebApp(name: String = "", url: String = "") {
+    val repository = WebAppRepository(AppDatabase.getInstance(this).webAppDao())
+    val sheet = AddWebAppBottomSheetDialog(name, url) { chosenName, chosenUrl, userscripts, pinchZoom, customIcon ->
+        lifecycleScope.launch {
+            val blank = WebAppEntity(name = chosenName, url = chosenUrl, userscriptsEnabled = userscripts)
+            val app = if (customIcon == null) blank else blank.copy(iconUrl = AppIcons.save(this@showAddWebApp, blank.id, customIcon, custom = true))
+            repository.insertWebApp(
+                if (pinchZoom) app else app.copy(overrideGlobal = true)
+                    .withSettings(app.effectiveSettings(this@showAddWebApp).copy(pinchZoom = false))
+            )
+            Toast.makeText(this@showAddWebApp, "Added $chosenName to homepage", Toast.LENGTH_SHORT).show()
+        }
+    }
+    sheet.show(supportFragmentManager, "add_webapp")
+}
+
 class AddWebAppBottomSheetDialog(
+    private val initialName: String = "",
+    private val initialUrl: String = "",
     private val onSave: (name: String, url: String, userscripts: Boolean, pinchZoom: Boolean, customIcon: Bitmap?) -> Unit
 ) : CosmicBottomSheet() {
 
@@ -46,6 +71,11 @@ class AddWebAppBottomSheetDialog(
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        if (savedInstanceState == null) {
+            if (initialName.isNotEmpty()) binding.etAddName.setText(initialName)
+            if (initialUrl.isNotEmpty()) binding.etAddUrl.setText(initialUrl)
+        }
 
         binding.btnAddClose.setOnClickListener {
             dismiss()

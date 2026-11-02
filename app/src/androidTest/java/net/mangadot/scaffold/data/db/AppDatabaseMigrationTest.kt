@@ -59,7 +59,7 @@ class AppDatabaseMigrationTest {
         // Throws if the migrated tables differ from the exported current schema
         val db = helper.runMigrationsAndValidate(TEST_DB, CURRENT_VERSION, true, *AppDatabase.MIGRATIONS)
 
-        db.query("SELECT name, url, desktopMode, launchCount, overrideGlobal, allowJavascript, userscriptsEnabled FROM web_apps").use {
+        db.query("SELECT name, url, desktopMode, launchCount, overrideGlobal, allowJavascript, userscriptsEnabled, shelfOrder FROM web_apps").use {
             assertEquals(1, it.count)
             it.moveToFirst()
             assertEquals("GitHub", it.getString(0))
@@ -69,6 +69,7 @@ class AppDatabaseMigrationTest {
             assertEquals(0, it.getInt(4))
             assertEquals(1, it.getInt(5))
             assertEquals(1, it.getInt(6))
+            assertEquals(0, it.getInt(7))
         }
         db.query("SELECT code, enabled, sourceUrl FROM userscripts").use {
             it.moveToFirst()
@@ -76,14 +77,15 @@ class AppDatabaseMigrationTest {
             assertEquals(0, it.getInt(1))
             assertEquals(true, it.isNull(2))
         }
-        db.query("SELECT value FROM script_storage").use {
+        db.query("SELECT scriptId, value FROM script_storage").use {
             it.moveToFirst()
-            assertEquals("\"v\"", it.getString(0))
+            assertEquals("s1", it.getString(0))
+            assertEquals("\"v\"", it.getString(1))
         }
     }
 
     private companion object {
         const val TEST_DB = "migration-test"
-        const val CURRENT_VERSION = 3
+        const val CURRENT_VERSION = 6
     }
 }

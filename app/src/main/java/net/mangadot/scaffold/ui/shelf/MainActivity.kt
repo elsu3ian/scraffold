@@ -1,11 +1,14 @@
 package net.mangadot.scaffold.ui.shelf
 
 import android.content.Intent
+import android.graphics.Canvas
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.HapticFeedbackConstants
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.TextView
@@ -16,21 +19,23 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import net.mangadot.scaffold.R
 import net.mangadot.scaffold.data.db.AppDatabase
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
-import net.mangadot.scaffold.data.settings.effectiveSettings
-import net.mangadot.scaffold.data.settings.withSettings
 import net.mangadot.scaffold.engine.AppIcons
+import net.mangadot.scaffold.engine.AppProfiles
 import net.mangadot.scaffold.data.repository.ScriptRepository
 import net.mangadot.scaffold.data.repository.WebAppRepository
 import net.mangadot.scaffold.databinding.ActivityMainBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
 import net.mangadot.scaffold.engine.cache.CacheManager
-import net.mangadot.scaffold.ui.container.WebContainerActivity
+import net.mangadot.scaffold.ui.container.AppTasks
 import net.mangadot.scaffold.ui.settings.SettingsActivity
 import net.mangadot.scaffold.ui.theme.CosmicTheme
 import net.mangadot.scaffold.ui.theme.CosmicAccent
@@ -49,6 +54,74 @@ class MainActivity : CosmicActivity() {
     private var allApps: List<WebAppEntity> = emptyList()
     private var reopenCosmicDialog = false
     private var cosmicDialog: CosmicThemeDialog? = null
+    private lateinit var sort: ShelfSort
+    private var dragList = mutableListOf<WebAppEntity>()
+
+    /** Holding an app without moving it still opens its options, as in the other sorts. */
+    private val dragHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+        ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT, 0
+    ) {
+        private var heldApp: WebAppEntity? = null
+        private var moved = false
+        private var wandered = false
+
+        override fun isLongPressDragEnabled() = adapter.dragEnabled
+
+        override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+            super.onSelectedChanged(viewHolder, actionState)
+            if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
+                viewHolder.itemView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                dragList = adapter.currentList.toMutableList()
+                heldApp = dragList.getOrNull(viewHolder.adapterPosition)
+                moved = false
+            }
+        }
+
+        override fun onMove(
+            recyclerView: RecyclerView,
+            viewHolder: RecyclerView.ViewHolder,
+            target: RecyclerView.ViewHolder
+        ): Boolean {
+            val from = viewHolder.adapterPosition
+            val to = target.adapterPosition
+            if (from !in dragList.indices || to !in dragList.indices) return false
+            dragList.add(to, dragList.removeAt(from))
+            adapter.submitList(dragList.toList())
+            moved = true
+            return true
+        }
+
+        override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+
+        override fun onChildDraw(
+            c: Canvas,
+            recyclerView: RecyclerView,
+            viewHolder: RecyclerView.ViewHolder,
+            dX: Float,
+            dY: Float,
+            actionState: Int,
+            isCurrentlyActive: Boolean
+        ) {
+            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            // A drag that ended without passing another app still wasn't a request for options
+            if (isCurrentlyActive && maxOf(abs(dX), abs(dY)) > ViewConfiguration.get(this@MainActivity).scaledTouchSlop) {
+                wandered = true
+            }
+        }
+
+        override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+            super.clearView(recyclerView, viewHolder)
+            if (moved) {
+                val ids = dragList.map { it.id }
+                lifecycleScope.launch { repository.saveShelfOrder(ids) }
+            } else if (!wandered) {
+                heldApp?.let(::showAppActionSheet)
+            }
+            heldApp = null
+            moved = false
+            wandered = false
+        }
+    })
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +133,7 @@ class MainActivity : CosmicActivity() {
         repository = WebAppRepository(db.webAppDao())
         scriptRepository = ScriptRepository(db.scriptDao(), db.scriptStorageDao())
         adBlockEngine = AdBlockEngine.getInstance(this)
+        sort = ShelfSort.load(this)
 
         setupWindowInsets()
         setupRecyclerView()
@@ -88,6 +162,8 @@ class MainActivity : CosmicActivity() {
         super.onResume()
         updateShieldTelemetry()
         runAutoPurge()
+        AppProfiles.deletePending(this)
+        adBlockEngine.updateListsIfDue()
     }
 
     private fun runAutoPurge() {
@@ -129,6 +205,7 @@ class MainActivity : CosmicActivity() {
         // Default to Icons View with 3 columns (matching scriptdeck_prototype.html)
         binding.rvShelf.layoutManager = GridLayoutManager(this, 3)
         binding.rvShelf.adapter = adapter
+        dragHelper.attachToRecyclerView(binding.rvShelf)
     }
 
     private fun setupListeners() {
@@ -153,9 +230,16 @@ class MainActivity : CosmicActivity() {
             override fun afterTextChanged(s: Editable?) {}
         })
 
-        // Cosmic Theme Customizer Button (🎨)
-        binding.btnTheme.setOnClickListener {
-            showCosmicThemeDialog()
+        binding.btnBrowser.setOnClickListener { AppTasks.openBrowser(this) }
+
+        // Customize: theme and app order
+        binding.btnCustomize.setOnClickListener {
+            ShelfCustomizeSheet(
+                sort = sort,
+                onOpenTheme = { showCosmicThemeDialog() },
+                onSortChosen = { chosen -> chooseSort(chosen) },
+                onDirectionChanged = { filterApps(binding.etSearch.text.toString()) }
+            ).show(supportFragmentManager, ShelfCustomizeSheet.TAG)
         }
 
         // Settings Button
@@ -226,16 +310,36 @@ class MainActivity : CosmicActivity() {
         }
     }
 
+    private fun chooseSort(chosen: ShelfSort) {
+        val shown = sortedApps()
+        sort = chosen
+        ShelfSort.save(this, chosen)
+        if (chosen == ShelfSort.CUSTOM) {
+            // The first arrangement starts from what is on screen rather than a new order
+            if (allApps.all { it.shelfOrder == 0 }) {
+                allApps = shown.mapIndexed { index, app -> app.copy(shelfOrder = index + 1) }
+                lifecycleScope.launch { repository.saveShelfOrder(shown.map { it.id }) }
+            }
+            Toast.makeText(this, "Hold an app, then drag it into place", Toast.LENGTH_SHORT).show()
+        }
+        filterApps(binding.etSearch.text.toString())
+    }
+
+    private fun sortedApps() = sort.applyTo(allApps, sort.isDescending(this))
+
     private fun filterApps(query: String) {
         val q = query.trim().lowercase()
+        val sorted = sortedApps()
         val filtered = if (q.isEmpty()) {
-            allApps
+            sorted
         } else {
-            allApps.filter {
+            sorted.filter {
                 it.name.lowercase().contains(q) || it.url.lowercase().contains(q)
             }
         }
 
+        // Moving apps around in a filtered list would have no clear meaning
+        adapter.dragEnabled = sort == ShelfSort.CUSTOM && q.isEmpty()
         adapter.submitList(filtered)
 
         // Empty State Lifecycle
@@ -254,28 +358,10 @@ class MainActivity : CosmicActivity() {
         lifecycleScope.launch {
             repository.recordLaunch(app.id)
         }
-        val intent = Intent(this, WebContainerActivity::class.java).apply {
-            putExtra(WebContainerActivity.EXTRA_APP_ID, app.id)
-            putExtra(WebContainerActivity.EXTRA_APP_URL, app.url)
-            putExtra(WebContainerActivity.EXTRA_APP_NAME, app.name)
-        }
-        startActivity(intent)
+        AppTasks.open(this, app)
     }
 
-    private fun showAddAppDialog() {
-        val sheet = AddWebAppBottomSheetDialog { name, url, userscripts, pinchZoom, customIcon ->
-            lifecycleScope.launch {
-                val blank = WebAppEntity(name = name, url = url, userscriptsEnabled = userscripts)
-                val app = if (customIcon == null) blank else blank.copy(iconUrl = AppIcons.save(this@MainActivity, blank.id, customIcon))
-                repository.insertWebApp(
-                    if (pinchZoom) app else app.copy(overrideGlobal = true)
-                        .withSettings(app.effectiveSettings(this@MainActivity).copy(pinchZoom = false))
-                )
-                Toast.makeText(this@MainActivity, "Added $name to Shelf", Toast.LENGTH_SHORT).show()
-            }
-        }
-        sheet.show(supportFragmentManager, "add_webapp")
-    }
+    private fun showAddAppDialog() = showAddWebApp()
 
     private fun showCosmicThemeDialog() {
         CosmicThemeDialog(
@@ -299,8 +385,10 @@ class MainActivity : CosmicActivity() {
             onLaunch = { launchWebApp(it) },
             onDelete = { target ->
                 lifecycleScope.launch {
+                    AppTasks.close(this@MainActivity, target.id)
                     repository.deleteWebAppById(target.id)
                     AppIcons.delete(this@MainActivity, target.id)
+                    AppProfiles.delete(this@MainActivity, target.id)
                     Toast.makeText(this@MainActivity, "Removed ${target.name} from Shelf", Toast.LENGTH_SHORT).show()
                 }
             },

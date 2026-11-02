@@ -31,5 +31,7 @@ data class WebAppEntity(
     val userscriptsEnabled: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),
     val lastLaunchedAt: Long = 0L,
-    val launchCount: Int = 0
+    val launchCount: Int = 0,
+    // Place in the Custom sort, from 1; 0 means not placed yet
+    val shelfOrder: Int = 0
 )

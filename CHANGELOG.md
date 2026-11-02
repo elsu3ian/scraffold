@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 ---
 
-## [1.0.3-pre] - 2026-11-02
+## [1.0.3-beta] - 2026-11-02
 
 ### Added
 - **True Display Cutout Fullscreen**: Eliminated black notification notch letterboxing by enabling `LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES` and `WindowCompat.setDecorFitsSystemWindows(false)`.

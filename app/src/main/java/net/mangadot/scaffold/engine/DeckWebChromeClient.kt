@@ -6,6 +6,7 @@ import android.os.Message
 import android.view.View
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -25,7 +26,9 @@ class DeckWebChromeClient(
     private val onShowFullscreenVideo: ((view: View, callback: CustomViewCallback) -> Unit)? = null,
     private val onHideFullscreenVideo: (() -> Unit)? = null,
     private val onExternalLinkRequested: ((uri: Uri) -> Unit)? = null,
-    private val onLocationRequested: ((origin: String, callback: GeolocationPermissions.Callback) -> Unit)? = null
+    private val onLocationRequested: ((origin: String, callback: GeolocationPermissions.Callback) -> Unit)? = null,
+    private val onMediaRequested: ((request: PermissionRequest, allowed: List<String>) -> Unit)? = null,
+    private val onFileChooser: ((callback: ValueCallback<Array<Uri>>, params: FileChooserParams) -> Boolean)? = null
 ) : WebChromeClient() {
 
     private var settings = WebAppSettings()
@@ -49,10 +52,10 @@ class DeckWebChromeClient(
         for (resource in request.resources) {
             when (resource) {
                 PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
-                    if (webApp.allowCamera) grantedResources.add(resource)
+                    if (settings.allowCamera) grantedResources.add(resource)
                 }
                 PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
-                    if (webApp.allowMic) grantedResources.add(resource)
+                    if (settings.allowMic) grantedResources.add(resource)
                 }
                 PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> {
                     // Widevine DRM streaming
@@ -62,11 +65,23 @@ class DeckWebChromeClient(
         }
 
         if (grantedResources.isNotEmpty()) {
-            request.grant(grantedResources.toTypedArray())
+            if (onMediaRequested != null) {
+                onMediaRequested.invoke(request, grantedResources)
+            } else {
+                request.grant(grantedResources.toTypedArray())
+            }
         } else {
             // Silently reject if per-app permissions are disabled
             request.deny()
         }
+    }
+
+    override fun onShowFileChooser(
+        webView: WebView,
+        filePathCallback: ValueCallback<Array<Uri>>,
+        fileChooserParams: FileChooserParams
+    ): Boolean {
+        return onFileChooser?.invoke(filePathCallback, fileChooserParams) ?: false
     }
 
     override fun onShowCustomView(view: View, callback: CustomViewCallback) {

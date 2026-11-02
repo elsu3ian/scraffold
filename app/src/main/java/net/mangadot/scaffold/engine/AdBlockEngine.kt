@@ -2,30 +2,34 @@ package net.mangadot.scaffold.engine
 
 import android.content.Context
 import android.net.Uri
+import android.os.SystemClock
 import android.util.Log
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.io.File
-import java.io.InputStreamReader
+import org.json.JSONObject
+import java.io.ByteArrayInputStream
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * uBlock Origin Filter Rule Engine (Fast In-Memory Rust/Kotlin Hybrid)
- * Supports:
- * - Network rules (||domain.com^, paths, query filters)
- * - Whitelisting (@@||domain.com^)
- * - Cosmetic Element Hiding (##.ad-banner, ###banner-wrap)
- * - Scriptlet defusers (+js(abort-on-property-read, ...))
+ * The shield: blocks requests using [FilterSet] and the lists from [FilterLists]. Until those have
+ * downloaded, a short built-in list still covers the largest ad networks.
  */
 class AdBlockEngine private constructor(private val context: Context) {
 
-    private val blockedDomains = ConcurrentHashMap.newKeySet<String>()
-    private val whitelistDomains = ConcurrentHashMap.newKeySet<String>()
-    private val cosmeticRules = ConcurrentHashMap<String, MutableSet<String>>()
-    private val genericCosmeticRules = ConcurrentHashMap.newKeySet<String>()
-    
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val firstLoad = CountDownLatch(1)
+
+    @Volatile
+    private var filters: FilterSet = FilterSet.build(listOf { BUILT_IN_RULES.asSequence() })
+
     // Telemetry
     private val statsPrefs = context.getSharedPreferences(STATS_PREFS_NAME, Context.MODE_PRIVATE)
     private val totalBlocked = AtomicLong(statsPrefs.getLong(KEY_TOTAL_BLOCKED, 0L))
@@ -34,164 +38,117 @@ class AdBlockEngine private constructor(private val context: Context) {
     val totalBlockedRequests: Long
         get() = totalBlocked.get()
 
+    val ruleCount: Int
+        get() = filters.ruleCount
+
     init {
-        loadDefaultRules()
         statsPrefs.all.forEach { (key, value) ->
             if (key.startsWith(KEY_APP_BLOCKED_PREFIX) && value is Long) {
                 blockedByApp[key.removePrefix(KEY_APP_BLOCKED_PREFIX)] = AtomicLong(value)
             }
         }
+        scope.launch {
+            loadLists()
+            firstLoad.countDown()
+        }
     }
 
-    /**
-     * High-speed sub-millisecond check for shouldInterceptRequest
-     */
-    fun shouldBlock(uri: Uri): Boolean {
+    private fun loadLists() {
+        val files = FilterLists.files(context)
+        if (files.isEmpty()) return
+        val started = SystemClock.elapsedRealtime()
+        val sources: List<() -> Sequence<String>> = files.map { file ->
+            { sequence { file.useLines { lines -> yieldAll(lines.toList()) } } }
+        } + listOf { BUILT_IN_RULES.asSequence() }
+        filters = FilterSet.build(sources)
+        Log.i(TAG, "Loaded ${filters.ruleCount} rules in ${SystemClock.elapsedRealtime() - started} ms")
+    }
+
+    /** Called when the shelf opens. Quiet and in the background; the app works without it. */
+    fun updateListsIfDue() {
+        if (FilterLists.isDue(context)) scope.launch { updateListsNow() }
+    }
+
+    suspend fun updateListsNow(): Int {
+        val arrived = FilterLists.update(context)
+        if (arrived > 0) withContext(Dispatchers.IO) { loadLists() }
+        return arrived
+    }
+
+    /** Runs on WebView's network threads. A page load started right at launch waits here for the lists. */
+    fun shouldBlock(request: WebResourceRequest, pageHost: String?): Boolean {
+        // A page someone chose to open is theirs to see, and only subresources are ads
+        if (request.isForMainFrame) return false
+        val uri = request.url
+        val scheme = uri.scheme?.lowercase()
+        if (scheme != "http" && scheme != "https") return false
         val host = uri.host?.lowercase() ?: return false
+        if (NEVER_BLOCKED.any { host == it || host.endsWith(".$it") }) return false
 
-        // Check whitelist first
-        if (isWhitelisted(host)) return false
-
-        // Check exact match and root domains
-        var currentHost = host
-        while (currentHost.isNotEmpty()) {
-            if (blockedDomains.contains(currentHost)) {
-                totalBlocked.incrementAndGet()
-                return true
-            }
-            val dotIndex = currentHost.indexOf('.')
-            if (dotIndex == -1) break
-            currentHost = currentHost.substring(dotIndex + 1)
-        }
-
-        // Check common ad-server URL path signatures
-        val path = uri.path?.lowercase() ?: ""
-        if (path.contains("/ad/") || path.contains("/ads/") || path.contains("/banner/") || path.contains("/popunder/")) {
-            totalBlocked.incrementAndGet()
-            return true
-        }
-
-        return false
+        firstLoad.await(FIRST_LOAD_WAIT_MS, TimeUnit.MILLISECONDS)
+        val source = request.requestHeaders["Referer"]?.let { Uri.parse(it).host?.lowercase() } ?: pageHost?.takeIf { it.isNotEmpty() }
+        val blocked = filters.isBlocked(uri.toString(), host, source, guessType(request))
+        if (blocked) totalBlocked.incrementAndGet()
+        return blocked
     }
 
-    private fun isWhitelisted(host: String): Boolean {
-        var currentHost = host
-        while (currentHost.isNotEmpty()) {
-            if (whitelistDomains.contains(currentHost)) return true
-            val dotIndex = currentHost.indexOf('.')
-            if (dotIndex == -1) break
-            currentHost = currentHost.substring(dotIndex + 1)
+    /** WebView doesn't say what a request is for, so this works from its Accept header and file extension. */
+    private fun guessType(request: WebResourceRequest): Int {
+        val accept = request.requestHeaders["Accept"].orEmpty()
+        val path = request.url.path.orEmpty().lowercase()
+        val extension = path.substringAfterLast('.', "")
+        return when {
+            accept.startsWith("text/css") || extension == "css" -> FilterSet.TYPE_STYLESHEET
+            accept.startsWith("image/") || extension in IMAGE_EXTENSIONS -> FilterSet.TYPE_IMAGE
+            accept.startsWith("text/html") -> FilterSet.TYPE_SUBDOCUMENT
+            extension == "js" || extension == "mjs" -> FilterSet.TYPE_SCRIPT
+            extension in FONT_EXTENSIONS -> FilterSet.TYPE_FONT
+            extension in MEDIA_EXTENSIONS -> FilterSet.TYPE_MEDIA
+            else -> FilterSet.TYPE_UNKNOWN
         }
-        return false
+    }
+
+    /** Fails the way a blocked request does: script error events fire, and cross-site fetches reject. */
+    fun blockedResponse(): WebResourceResponse {
+        return WebResourceResponse(
+            "text/plain",
+            "UTF-8",
+            403,
+            "Blocked",
+            mapOf("Cache-Control" to "no-store"),
+            ByteArrayInputStream(ByteArray(0))
+        )
     }
 
     /**
-     * Extracts cosmetic CSS selectors for a specific host to hide empty ad boxes
+     * CSS for the small built-in list, for pages under [host] loading at document start.
      */
     fun getCosmeticCss(host: String): String {
-        val selectors = mutableSetOf<String>()
-        selectors.addAll(genericCosmeticRules)
+        return "${BUILT_IN_SELECTORS.joinToString(", ")} { display: none !important; }"
+    }
 
-        var currentHost = host.lowercase()
-        while (currentHost.isNotEmpty()) {
-            cosmeticRules[currentHost]?.let { selectors.addAll(it) }
-            val dotIndex = currentHost.indexOf('.')
-            if (dotIndex == -1) break
-            currentHost = currentHost.substring(dotIndex + 1)
-        }
-
-        if (selectors.isEmpty()) return ""
-
-        // Generate high-priority collapsed CSS stylesheet
-        val selectorList = selectors.joinToString(", ")
-        return """
-            $selectorList {
-                display: none !important;
-                visibility: hidden !important;
-                height: 0 !important;
-                min-height: 0 !important;
-                max-height: 0 !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
-        """.trimIndent()
+    /** Hides what the lists name for this site. Each selector is its own rule, so one bad one can't sink the rest. */
+    fun siteCosmeticScript(host: String): String? {
+        val selectors = filters.selectorsFor(host.lowercase())
+        if (selectors.isEmpty()) return null
+        val css = selectors.joinToString("") { "$it{display:none!important}" }
+        return "(function(){var s=document.createElement('style');s.textContent=${JSONObject.quote(css)};" +
+            "(document.head||document.documentElement).appendChild(s);})();"
     }
 
     /**
-     * Injects uBlock Origin scriptlet defusers to bypass anti-adblock walls
+     * Quiets the common checks pages use to detect an ad blocker.
      */
     fun getScriptletDefusers(host: String): String {
         return """
             (function() {
-                // uBlock Origin Scriptlet: abort-on-property-read & anti-adblock defusers
                 try {
                     window.canRunAds = true;
                     window.isAdBlockActive = false;
                     window.google_ad_status = 1;
-                    
-                    // Defuse common anti-adblock detection variables
-                    const noop = function() {};
-                    window.ga = window.ga || noop;
-                    window.gtag = window.gtag || noop;
                 } catch(e) {}
             })();
         """.trimIndent()
-    }
-
-    private fun loadDefaultRules() {
-        // High-density default blocklist (Ad networks, popunders, telemetry)
-        val defaults = listOf(
-            "doubleclick.net", "googlesyndication.com", "google-analytics.com",
-            "adservice.google.com", "pagead2.googlesyndication.com",
-            "criteo.com", "adnxs.com", "amazon-adsystem.com", "taboola.com",
-            "outbrain.com", "popads.net", "popcash.net", "exoclick.com",
-            "adsterra.com", "propellerads.com", "mgid.com", "yadro.ru",
-            "scorecardresearch.com", "quantserve.com", "hotjar.com",
-            "branch.io", "appsflyer.com", "adjust.com", "adcolony.com"
-        )
-        blockedDomains.addAll(defaults)
-
-        // Common generic cosmetic hiding selectors
-        val defaultCosmetics = listOf(
-            ".ad-banner", ".ad-box", ".ad-container", ".ad-slot", ".ad_wrapper",
-            "#banner-ad", "#div-gpt-ad", ".sponsored-post", ".adsbygoogle",
-            "[class*='AdSlot']", "[id*='AdSlot']", "[class*='banner_ad']"
-        )
-        genericCosmeticRules.addAll(defaultCosmetics)
-    }
-
-    suspend fun parseRulesFromStream(reader: BufferedReader) = withContext(Dispatchers.IO) {
-        var line: String?
-        while (reader.readLine().also { line = it } != null) {
-            val rule = line?.trim() ?: continue
-            if (rule.isEmpty() || rule.startsWith("!")) continue // Comments
-
-            when {
-                // Whitelist rule
-                rule.startsWith("@@||") -> {
-                    val domain = rule.removePrefix("@@||").substringBefore('^').substringBefore('/')
-                    if (domain.isNotEmpty()) whitelistDomains.add(domain.lowercase())
-                }
-                // Cosmetic element hiding rule
-                rule.contains("##") -> {
-                    val parts = rule.split("##", limit = 2)
-                    val domain = parts[0].trim().lowercase()
-                    val selector = parts[1].trim()
-                    if (selector.isNotEmpty()) {
-                        if (domain.isEmpty()) {
-                            genericCosmeticRules.add(selector)
-                        } else {
-                            cosmeticRules.getOrPut(domain) { ConcurrentHashMap.newKeySet() }.add(selector)
-                        }
-                    }
-                }
-                // Standard domain block rule
-                rule.startsWith("||") -> {
-                    val domain = rule.removePrefix("||").substringBefore('^').substringBefore('/')
-                    if (domain.isNotEmpty()) blockedDomains.add(domain.lowercase())
-                }
-            }
-        }
     }
 
     fun recordBlockedForApp(appId: String) {
@@ -224,6 +181,29 @@ class AdBlockEngine private constructor(private val context: Context) {
         private const val STATS_PREFS_NAME = "scraffold_shield_stats"
         private const val KEY_TOTAL_BLOCKED = "total_blocked"
         private const val KEY_APP_BLOCKED_PREFIX = "app_blocked_"
+        private const val TAG = "Shield"
+        private const val FIRST_LOAD_WAIT_MS = 4000L
+
+        // Human checks and sign-in. Blocking these locks people out, whatever a list says.
+        private val NEVER_BLOCKED = listOf("challenges.cloudflare.com", "accounts.google.com")
+
+        private val IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "gif", "webp", "avif", "svg", "ico", "bmp")
+        private val FONT_EXTENSIONS = setOf("woff", "woff2", "ttf", "otf", "eot")
+        private val MEDIA_EXTENSIONS = setOf("mp4", "webm", "m3u8", "mp3", "m4a", "ogg", "ts", "mpd")
+
+        private val BUILT_IN_RULES = listOf(
+            "doubleclick.net", "googlesyndication.com", "google-analytics.com", "googletagmanager.com",
+            "googleadservices.com", "adservice.google.com", "criteo.com", "adnxs.com", "amazon-adsystem.com",
+            "taboola.com", "outbrain.com", "popads.net", "popcash.net", "exoclick.com", "adsterra.com",
+            "propellerads.com", "mgid.com", "yadro.ru", "scorecardresearch.com", "quantserve.com", "hotjar.com",
+            "branch.io", "appsflyer.com", "adjust.com", "adcolony.com", "mc.yandex.ru", "mc.yandex.com"
+        ).map { "||$it^" }
+
+        private val BUILT_IN_SELECTORS = listOf(
+            ".ad-banner", ".ad-box", ".ad-container", ".ad-slot", ".ad_wrapper",
+            "#banner-ad", "#div-gpt-ad", ".sponsored-post", ".adsbygoogle",
+            "[class*='AdSlot']", "[id*='AdSlot']", "[class*='banner_ad']"
+        )
 
         @Volatile
         private var INSTANCE: AdBlockEngine? = null

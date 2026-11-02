@@ -9,18 +9,18 @@ import net.mangadot.scaffold.data.db.entity.ScriptStorageEntity
 @Dao
 interface ScriptStorageDao {
 
-    @Query("SELECT value FROM script_storage WHERE appId = :appId AND `key` = :key LIMIT 1")
-    suspend fun getValue(appId: String, key: String): String?
+    @Query("SELECT * FROM script_storage")
+    suspend fun getAll(): List<ScriptStorageEntity>
 
-    @Query("SELECT * FROM script_storage WHERE appId = :appId")
-    suspend fun getAllForApp(appId: String): List<ScriptStorageEntity>
+    @Query("SELECT * FROM script_storage WHERE scriptId = :scriptId")
+    suspend fun getAllForScript(scriptId: String): List<ScriptStorageEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setValue(entry: ScriptStorageEntity)
 
-    @Query("DELETE FROM script_storage WHERE appId = :appId AND `key` = :key")
-    suspend fun deleteValue(appId: String, key: String)
+    @Query("DELETE FROM script_storage WHERE scriptId = :scriptId AND `key` = :key")
+    suspend fun deleteValue(scriptId: String, key: String)
 
-    @Query("DELETE FROM script_storage WHERE appId = :appId")
-    suspend fun clearAppStorage(appId: String)
+    @Query("DELETE FROM script_storage WHERE scriptId = :scriptId")
+    suspend fun clearScript(scriptId: String)
 }

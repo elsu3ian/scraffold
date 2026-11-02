@@ -4,31 +4,45 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import android.util.LruCache
 import android.view.View
 import android.webkit.WebSettings
+import android.webkit.WebView
 import android.widget.ImageView
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
 
 /** Finds, stores and shows web app icons. WebAppEntity.iconUrl holds the stored file's path. */
 object AppIcons {
 
-    private const val MAX_ICON_PX = 192
+    private const val MAX_ICON_PX = 512
+    /** An icon at least this wide looks sharp on any shelf layout, so a bigger one isn't sought. */
+    private const val SHARP_ICON_PX = 256
+    private const val MEMORY_CACHE_BYTES = 24 * 1024 * 1024
+    private const val PAGE_ICON_POLLS = 40
+    private const val PAGE_ICON_POLL_MS = 250L
     private const val MAX_PAGE_BYTES = 1024L * 1024
     private const val MAX_IMAGE_BYTES = 4L * 1024 * 1024
     private const val MAX_CANDIDATES = 6
 
     private val client = OkHttpClient.Builder().callTimeout(15, TimeUnit.SECONDS).build()
-    private val memory = LruCache<String, Bitmap>(48)
+    private val memory = object : LruCache<String, Bitmap>(MEMORY_CACHE_BYTES) {
+        override fun sizeOf(key: String, value: Bitmap) = value.byteCount
+    }
     private val linkTag = Regex("""<link\b[^>]*>""", RegexOption.IGNORE_CASE)
 
     private data class Candidate(val url: HttpUrl, val size: Int)
@@ -84,7 +98,9 @@ object AppIcons {
                     ?: return emptyList()
                 (0 until icons.length()).mapNotNull { index ->
                     val icon = icons.getJSONObject(index)
-                    url.resolve(icon.optString("src"))?.let { Candidate(it, parseSize(icon.optString("sizes"), 64)) }
+                    // Maskable icons carry extra padding, so they rank behind a plain icon of the same size
+                    val size = parseSize(icon.optString("sizes"), 64) / if (icon.optString("purpose") == "maskable") 2 else 1
+                    url.resolve(icon.optString("src"))?.let { Candidate(it, size) }
                 }
             }
         } catch (e: Exception) {
@@ -133,20 +149,164 @@ object AppIcons {
         return Bitmap.createScaledBitmap(bitmap, (bitmap.width * ratio).toInt().coerceAtLeast(1), (bitmap.height * ratio).toInt().coerceAtLeast(1), true)
     }
 
-    /** Writes the icon and returns the path to store in WebAppEntity.iconUrl. */
-    suspend fun save(context: Context, appId: String, bitmap: Bitmap): String = withContext(Dispatchers.IO) {
-        val file = file(context, appId)
-        file.parentFile?.mkdirs()
-        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        memory.remove(file.path)
+    /**
+     * Writes the icon and returns the path to store in WebAppEntity.iconUrl. The width is part of the name so
+     * that an upgraded icon changes the path, which is what makes the shelf redraw it.
+     */
+    suspend fun save(context: Context, appId: String, bitmap: Bitmap, custom: Boolean = false): String = withContext(Dispatchers.IO) {
+        val dir = File(context.filesDir, "icons")
+        dir.mkdirs()
+        val file = File(dir, "$appId-${bitmap.width}.png")
+        val partial = File(dir, "$appId.tmp")
+        partial.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        storedFiles(context, appId).forEach { old ->
+            memory.remove(old.path)
+            old.delete()
+        }
+        partial.renameTo(file)
+        if (custom) customMarker(context, appId).createNewFile()
         file.path
     }
 
-    fun delete(context: Context, appId: String) {
-        val file = file(context, appId)
-        memory.remove(file.path)
-        file.delete()
+    /**
+     * Asks the loaded page for its largest icon, since the page already got past whatever blocks a plain
+     * request and can also draw SVG. Null when the app's icon is already sharp, was chosen by the user, or
+     * the page has nothing bigger.
+     */
+    suspend fun betterIconFromPage(context: Context, webView: WebView, app: WebAppEntity): Bitmap? {
+        if (customMarker(context, app.id).exists()) return null
+        val current = withContext(Dispatchers.IO) { storedWidth(app) }
+        if (current >= SHARP_ICON_PX) return null
+        val slot = "__sfIcon" + UUID.randomUUID().toString().replace("-", "")
+        webView.evaluateJavascript(pageIconScript(slot), null)
+        repeat(PAGE_ICON_POLLS) {
+            delay(PAGE_ICON_POLL_MS)
+            val raw = evaluate(webView, "(function(){var v=window.$slot;if(v!==null&&v!==undefined)delete window.$slot;return v})()")
+            if (raw != null && raw != "null") {
+                val icon = withContext(Dispatchers.Default) { decodeDataUrl(raw) } ?: return null
+                return icon.takeIf { it.width > current }
+            }
+        }
+        return null
     }
+
+    private suspend fun evaluate(webView: WebView, script: String): String? = suspendCancellableCoroutine { done ->
+        webView.evaluateJavascript(script) { if (done.isActive) done.resume(it) }
+    }
+
+    private fun decodeDataUrl(raw: String): Bitmap? {
+        return try {
+            val url = JSONArray("[$raw]").getString(0)
+            val bytes = Base64.decode(url.substringAfter("base64,", ""), Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun storedWidth(app: WebAppEntity): Int {
+        val path = app.iconUrl?.takeIf { it.isNotEmpty() } ?: return 0
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        return bounds.outWidth.coerceAtLeast(0)
+    }
+
+    private fun pageIconScript(slot: String) = """
+(function () {
+  var slot = ${JSONObject.quote(slot)};
+  var found = [];
+  var size = function (text, fallback) {
+    var best = 0;
+    (text || '').replace(/(\d+)x\d+/gi, function (_, n) { best = Math.max(best, +n); });
+    return best || fallback;
+  };
+  var add = function (url, score, base) {
+    try { found.push({ url: new URL(url, base || document.baseURI).href, score: score }); } catch (e) {}
+  };
+  var drawn = function (source, width, height) {
+    var longest = Math.max(width, height);
+    var ratio = Math.min(1, $MAX_ICON_PX / longest);
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
+  };
+  var read = async function (blob) {
+    try {
+      var bitmap = await createImageBitmap(blob);
+      return drawn(bitmap, bitmap.width, bitmap.height);
+    } catch (e) {
+      // SVG can't become an ImageBitmap directly, so it goes through an image at the largest size
+      var url = await new Promise(function (ok, no) {
+        var reader = new FileReader();
+        reader.onload = function () { ok(reader.result); };
+        reader.onerror = no;
+        reader.readAsDataURL(blob);
+      });
+      var image = new Image();
+      image.src = url;
+      await image.decode();
+      return drawn(image, image.naturalWidth || $MAX_ICON_PX, image.naturalHeight || $MAX_ICON_PX);
+    }
+  };
+  (async function () {
+    var links = document.querySelectorAll('link[rel~="icon"],link[rel~="apple-touch-icon"],link[rel~="manifest"]');
+    for (var i = 0; i < links.length; i++) {
+      var link = links[i];
+      if (link.rel.indexOf('manifest') >= 0) {
+        try {
+          var manifest = await (await fetch(link.href)).json();
+          (manifest.icons || []).forEach(function (icon) {
+            var score = /svg/.test(icon.type || icon.src) ? $MAX_ICON_PX : size(icon.sizes, 64);
+            add(icon.src, icon.purpose === 'maskable' ? score / 2 : score, link.href);
+          });
+        } catch (e) {}
+      } else {
+        var isTouch = link.rel.indexOf('apple-touch-icon') >= 0;
+        var svg = /svg/.test(link.type) || /\.svg(\?|$)/.test(link.href);
+        add(link.href, svg ? $MAX_ICON_PX : size(link.getAttribute('sizes'), isTouch ? 180 : 32));
+      }
+    }
+    found.sort(function (a, b) { return b.score - a.score; });
+    for (var n = 0; n < Math.min(found.length, $MAX_CANDIDATES); n++) {
+      try {
+        var response = await fetch(found[n].url);
+        if (response.ok) {
+          window[slot] = await read(await response.blob());
+          return;
+        }
+      } catch (e) {}
+    }
+    window[slot] = '';
+  })().catch(function () { window[slot] = ''; });
+})();
+"""
+
+    /** Stores already-encoded icon bytes from a backup, and returns the path for WebAppEntity.iconUrl. */
+    fun saveEncoded(context: Context, appId: String, bytes: ByteArray): String {
+        val file = file(context, appId)
+        file.parentFile?.mkdirs()
+        file.writeBytes(bytes)
+        memory.remove(file.path)
+        return file.path
+    }
+
+    fun delete(context: Context, appId: String) {
+        storedFiles(context, appId).forEach { file ->
+            memory.remove(file.path)
+            file.delete()
+        }
+        customMarker(context, appId).delete()
+    }
+
+    private fun storedFiles(context: Context, appId: String): List<File> {
+        return File(context.filesDir, "icons").listFiles { file ->
+            file.name.endsWith(".png") && (file.name == "$appId.png" || file.name.startsWith("$appId-"))
+        }?.toList().orEmpty()
+    }
+
+    private fun customMarker(context: Context, appId: String) = File(context.filesDir, "icons/$appId.custom")
 
     private fun file(context: Context, appId: String) = File(context.filesDir, "icons/$appId.png")
 

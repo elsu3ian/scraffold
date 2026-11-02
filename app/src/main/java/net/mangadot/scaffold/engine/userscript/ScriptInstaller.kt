@@ -52,7 +52,7 @@ object ScriptInstaller {
         fallbackName: String = "Untitled Script"
     ): ScriptEntity {
         val code = rawCode.replace("\r\n", "\n")
-        if (code.toByteArray().size > MAX_SCRIPT_BYTES) {
+        if (!fitsInDatabase(code)) {
             throw IOException("script is over 1.5 MB; move large libraries to @require")
         }
         val meta = UserscriptMeta.parse(code)
@@ -72,8 +72,21 @@ object ScriptInstaller {
 
     suspend fun delete(context: Context, repository: ScriptRepository, id: String) {
         repository.deleteScriptById(id)
-        repository.clearAppStorage(id)
+        repository.clearScriptStorage(id)
         withContext(Dispatchers.IO) { scriptDir(context, id).deleteRecursively() }
+    }
+
+    fun fitsInDatabase(text: String) = text.toByteArray().size <= MAX_SCRIPT_BYTES
+
+    /** Everything stored beside a script, for backups. */
+    fun scriptFiles(context: Context, id: String): List<File> {
+        return scriptDir(context, id).listFiles { file -> file.isFile }?.toList().orEmpty()
+    }
+
+    fun writeScriptFile(context: Context, id: String, name: String, bytes: ByteArray) {
+        val dir = scriptDir(context, id)
+        dir.mkdirs()
+        File(dir, name).writeBytes(bytes)
     }
 
     /** Saves a GM value, keeping large ones in a file beside the script. */
@@ -106,7 +119,7 @@ object ScriptInstaller {
     }
 
     suspend fun clearValues(context: Context, repository: ScriptRepository, id: String) {
-        repository.clearAppStorage(id)
+        repository.clearScriptStorage(id)
         withContext(Dispatchers.IO) { valueFiles(context, id).forEach { it.delete() } }
     }
 

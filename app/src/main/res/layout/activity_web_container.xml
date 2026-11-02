@@ -57,6 +57,7 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageView
+            android:id="@+id/iv_ball_icon"
             android:layout_width="16dp"
             android:layout_height="16dp"
             android:layout_gravity="center"
@@ -65,67 +66,97 @@
             android:contentDescription="Assistive Dock" />
     </FrameLayout>
 
-    <!-- Quick Action Menu Pill (Revealed on Tap) -->
-    <LinearLayout
+    <!-- Quick actions, placed in an arc around the ball when it is tapped. Tapping the backdrop closes them. -->
+    <FrameLayout
         android:id="@+id/edge_quick_menu"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:background="@drawable/bg_card_solid"
-        android:paddingHorizontal="6dp"
-        android:paddingVertical="4dp"
-        android:elevation="14dp"
-        android:visibility="gone"
-        android:layout_marginStart="8dp"
-        app:layout_constraintStart_toEndOf="@id/edge_dock_ball"
-        app:layout_constraintTop_toTopOf="@id/edge_dock_ball"
-        app:layout_constraintBottom_toBottomOf="@id/edge_dock_ball">
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#66000000"
+        android:clickable="true"
+        android:elevation="11dp"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
         <ImageButton
             android:id="@+id/btn_ball_reload"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:background="@drawable/bg_radial_button"
             android:src="@drawable/ic_refresh"
+            app:tint="@color/text_primary"
             android:contentDescription="Reload" />
 
         <ImageButton
             android:id="@+id/btn_ball_home"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
-            android:layout_marginStart="2dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:background="@drawable/bg_radial_button"
             android:src="@drawable/ic_home"
+            app:tint="@color/text_primary"
             android:contentDescription="Home Shelf" />
 
         <ImageButton
             android:id="@+id/btn_ball_shield"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
-            android:layout_marginStart="2dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:background="@drawable/bg_radial_button"
             android:src="@drawable/ic_shield"
             app:tint="@color/accent_emerald"
             android:contentDescription="Shield" />
 
         <ImageButton
             android:id="@+id/btn_ball_scripts"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
-            android:layout_marginStart="2dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:background="@drawable/bg_radial_button"
             android:src="@drawable/ic_code"
             app:tint="@color/accent_emerald"
             android:contentDescription="Userscripts" />
 
         <ImageButton
-            android:id="@+id/btn_ball_close"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
-            android:layout_marginStart="2dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_close"
-            android:contentDescription="Close Menu" />
-    </LinearLayout>
+            android:id="@+id/btn_ball_text_size"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:background="@drawable/bg_radial_button"
+            android:src="@drawable/ic_text_size"
+            app:tint="@color/text_primary"
+            android:contentDescription="Page and font size" />
+
+        <ImageButton
+            android:id="@+id/btn_ball_desktop"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:background="@drawable/bg_radial_button"
+            android:src="@drawable/ic_desktop"
+            app:tint="@color/text_primary"
+            android:contentDescription="Desktop site" />
+
+        <ImageButton
+            android:id="@+id/btn_ball_copy_link"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:background="@drawable/bg_radial_button"
+            android:src="@drawable/ic_link"
+            app:tint="@color/text_primary"
+            android:contentDescription="Copy link" />
+
+    </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

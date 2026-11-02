@@ -22,6 +22,63 @@ class DeckWebView @JvmOverloads constructor(
         settings.userAgentString
     }
 
+    var media: BackgroundMedia? = null
+
+    /** While on, leaving the app doesn't suspend this page, so what it's playing carries on. */
+    var keepRunningHidden = false
+        set(value) {
+            if (field == value) return
+            field = value
+            setRendererPriorityPolicy(RENDERER_PRIORITY_IMPORTANT, !value)
+            applyVisibility()
+            if (!value) super.onVisibilityChanged(this, visibility)
+        }
+
+    private var windowVisibility = View.GONE
+    private var appliedWindowVisibility = -1
+    private var pausedByActivity = false
+    private var pauseApplied = false
+
+    val isOnScreen: Boolean
+        get() = windowVisibility == View.VISIBLE && visibility == View.VISIBLE
+
+    // Being swapped out for another tab hides a page the same way leaving the app does
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        if (keepRunningHidden && changedView === this && visibility != View.VISIBLE) return
+        super.onVisibilityChanged(changedView, visibility)
+        if (changedView === this) media?.let(MediaPlaybackService::onWindowChanged)
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        windowVisibility = visibility
+        applyVisibility()
+        media?.let(MediaPlaybackService::onWindowChanged)
+    }
+
+    override fun onPause() {
+        pausedByActivity = true
+        applyVisibility()
+    }
+
+    override fun onResume() {
+        pausedByActivity = false
+        applyVisibility()
+    }
+
+    // WebView suspends a page once it believes the page is hidden, so while media plays it isn't told
+    private fun applyVisibility() {
+        val shown = if (keepRunningHidden) View.VISIBLE else windowVisibility
+        if (shown != appliedWindowVisibility) {
+            appliedWindowVisibility = shown
+            super.onWindowVisibilityChanged(shown)
+        }
+        val pause = pausedByActivity && !keepRunningHidden
+        if (pause != pauseApplied) {
+            pauseApplied = pause
+            if (pause) super.onPause() else super.onResume()
+        }
+    }
+
     companion object {
         const val DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
     }
@@ -68,7 +125,7 @@ class DeckWebView @JvmOverloads constructor(
     /**
      * Applies an app's settings. Call before loading a page.
      */
-    fun applySettings(webSettings: WebAppSettings) {
+    fun applySettings(webSettings: WebAppSettings, cookies: CookieManager) {
         settings.apply {
             javaScriptEnabled = webSettings.javascript
             setGeolocationEnabled(webSettings.allowLocation)
@@ -93,12 +150,12 @@ class DeckWebView @JvmOverloads constructor(
             blockNetworkImage = webSettings.dataSaver
         }
 
-        val cookies = CookieManager.getInstance()
         cookies.setAcceptCookie(webSettings.acceptCookies)
         cookies.setAcceptThirdPartyCookies(this, webSettings.thirdPartyCookies)
     }
 
     override fun destroy() {
+        media?.let(MediaPlaybackService::onEnded)
         stopLoading()
         clearHistory()
         loadUrl("about:blank")

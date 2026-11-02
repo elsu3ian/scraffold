@@ -24,6 +24,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="@string/shelf_title"
+            android:contentDescription="@string/app_name"
             android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:textStyle="bold"
@@ -38,15 +39,27 @@
             android:src="@drawable/ic_search"
             android:contentDescription="Search" />
 
-        <!-- Cosmic Theme Customizer Button (🎨) -->
+        <!-- Quick browser -->
         <ImageButton
-            android:id="@+id/btn_theme"
+            android:id="@+id/btn_browser"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
+            android:padding="6dp"
+            android:scaleType="fitCenter"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_globe"
+            android:contentDescription="Browser" />
+
+        <!-- Customize: theme and app order -->
+        <ImageButton
+            android:id="@+id/btn_customize"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:layout_marginStart="4dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_palette"
-            android:contentDescription="Cosmic Theme" />
+            android:src="@drawable/ic_tune"
+            android:contentDescription="Customize" />
 
         <!-- Global Settings Button (⚙️) -->
         <ImageButton

@@ -3,9 +3,7 @@ package net.mangadot.scaffold.ui.theme
 import android.content.Context
 import android.graphics.Color
 import android.view.View
-import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
-import net.mangadot.scaffold.R
 
 /**
  * Preset glow colors, from NEBULA_PRESETS in the MangaDot Cosmic userscript.
@@ -27,7 +25,8 @@ data class CosmicTheme(
     val cosmicStyling: Boolean = true,
     val dimInReader: Boolean = true,
     val autoSync: Boolean = false,
-    val accent: Int = CosmicAccent.DEFAULT
+    val accent: Int = CosmicAccent.DEFAULT,
+    val staticBackground: Int = DEFAULT_STATIC_BACKGROUND
 ) {
 
     fun withPalette(palette: CosmicPalette): CosmicTheme {
@@ -78,12 +77,13 @@ data class CosmicTheme(
                 if (dimmed) setAlpha(DIMMED_ALPHA)
             }
         } else {
-            view.setBackgroundColor(ContextCompat.getColor(view.context, R.color.bg_primary))
+            view.setBackgroundColor(staticBackground)
         }
     }
 
     companion object {
         private const val DIMMED_ALPHA = 31 // the userscript's 0.12 opacity
+        val DEFAULT_STATIC_BACKGROUND: Int = Color.parseColor("#09090B") // @color/bg_primary
 
         val PALETTES = listOf(
             CosmicPalette("Cosmic", Color.parseColor("#9333EA"), Color.parseColor("#6366F1"), Color.parseColor("#A855F7")),
@@ -110,6 +110,7 @@ object CosmicThemeStore {
     private const val KEY_DIM = "dim_in_reader"
     private const val KEY_AUTO_SYNC = "auto_sync"
     private const val KEY_ACCENT = "accent"
+    private const val KEY_STATIC_BACKGROUND = "static_background"
 
     fun load(context: Context): CosmicTheme {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -124,7 +125,8 @@ object CosmicThemeStore {
             cosmicStyling = prefs.getBoolean(KEY_STYLING, defaults.cosmicStyling),
             dimInReader = prefs.getBoolean(KEY_DIM, defaults.dimInReader),
             autoSync = prefs.getBoolean(KEY_AUTO_SYNC, defaults.autoSync),
-            accent = prefs.getInt(KEY_ACCENT, defaults.accent)
+            accent = prefs.getInt(KEY_ACCENT, defaults.accent),
+            staticBackground = prefs.getInt(KEY_STATIC_BACKGROUND, defaults.staticBackground)
         )
     }
 
@@ -140,6 +142,7 @@ object CosmicThemeStore {
             .putBoolean(KEY_DIM, theme.dimInReader)
             .putBoolean(KEY_AUTO_SYNC, theme.autoSync)
             .putInt(KEY_ACCENT, theme.accent)
+            .putInt(KEY_STATIC_BACKGROUND, theme.staticBackground)
             .apply()
     }
 }

@@ -8,7 +8,9 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import net.mangadot.scaffold.data.db.entity.ScriptEntity
 import net.mangadot.scaffold.data.repository.ScriptRepository
 import net.mangadot.scaffold.engine.userscript.GmBridge
@@ -17,6 +19,7 @@ import net.mangadot.scaffold.engine.userscript.UserscriptMeta
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
+import kotlin.coroutines.resume
 
 /**
  * Registers every enabled userscript as its own document-start script. Each one decides at
@@ -37,9 +40,14 @@ class ScriptEngine(
         context.assets.open("gm_runtime.js").bufferedReader().use { it.readText() }
     }
 
+    /** Scripts that can't run, with the error to show for them. */
+    var failedScripts: Map<String, String> = emptyMap()
+        private set
+
     @SuppressLint("JavascriptInterface")
-    fun attach(webView: WebView) {
+    fun attach(webView: WebView, appId: String?) {
         bridge.webView = webView
+        bridge.cookies = AppProfiles.cookies(appId)
         webView.addJavascriptInterface(bridge, GmBridge.INTERFACE_NAME)
     }
 
@@ -54,8 +62,16 @@ class ScriptEngine(
         handlers.clear()
         bridge.reset()
 
+        val failed = mutableMapOf<String, String>()
+        val runnable = scripts.filter { script ->
+            val error = syntaxError(webView, script)
+            if (error != null) failed[script.id] = error
+            error == null
+        }
+        failedScripts = failed
+
         val wrapped = withContext(Dispatchers.IO) {
-            scripts.filter { it.enabled }.mapNotNull { script ->
+            runnable.filter { it.enabled }.mapNotNull { script ->
                 val meta = UserscriptMeta.parse(script.code)
                 if (meta.includeRegexes().isEmpty()) return@mapNotNull null
                 val token = UUID.randomUUID().toString()
@@ -73,6 +89,23 @@ class ScriptEngine(
         } else {
             fallbackScripts = listOf(shield) + wrapped
         }
+    }
+
+    /** Compiles a script without running it. An unsure answer counts as fine, since the page will report a real error. */
+    private suspend fun syntaxError(webView: WebView, script: ScriptEntity): String? {
+        val body = withContext(Dispatchers.IO) { scriptBody(script) }
+        val check = "(function(){try{new Function(${JSONObject.quote(body)});return ''}" +
+            "catch(e){return e instanceof SyntaxError?e.message:''}})()"
+        val result = withTimeoutOrNull(SYNTAX_CHECK_MS) {
+            suspendCancellableCoroutine<String?> { done -> webView.evaluateJavascript(check) { if (done.isActive) done.resume(it) } }
+        }
+        return result?.removeSurrounding("\"")?.takeIf { it.isNotEmpty() && it != "null" }
+    }
+
+    private fun scriptBody(script: ScriptEntity): String {
+        val meta = UserscriptMeta.parse(script.code)
+        val required = ScriptInstaller.readRequires(context, script.id, meta).joinToString("") { "$it\n;\n" }
+        return "$required${script.code}\n"
     }
 
     /** Old WebViews lack document-start scripts, so everything runs once the page has loaded. */
@@ -104,7 +137,6 @@ class ScriptEngine(
                     .put("grant", JSONArray(meta.grants))
                     .put("run-at", meta.runAt)))
 
-        val required = ScriptInstaller.readRequires(context, script.id, meta).joinToString("") { "$it\n;\n" }
         val names = GM_NAMES.joinToString(", ")
         val arguments = GM_NAMES.joinToString(", ") { "__api.$it" }
         return """
@@ -112,7 +144,7 @@ class ScriptEngine(
 $runtime
 __sfboot($config, function (__api) {
   (function ($names) {
-$required${script.code}
+${scriptBody(script)}
   }).call(window, $arguments);
 });
 })();
@@ -141,6 +173,7 @@ $required${script.code}
     }
 
     private companion object {
+        const val SYNTAX_CHECK_MS = 3000L
         val GM_NAMES = listOf(
             "unsafeWindow", "GM", "GM_info", "GM_getValue", "GM_setValue", "GM_deleteValue", "GM_listValues",
             "GM_addValueChangeListener", "GM_removeValueChangeListener", "GM_addStyle", "GM_addElement", "GM_log",

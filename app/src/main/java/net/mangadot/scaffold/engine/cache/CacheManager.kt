@@ -9,7 +9,7 @@ import java.text.DecimalFormat
 
 /**
  * Manages Scraffold storage & cache lifecycle:
- * - 500 MB automatic eviction daemon
+ * - Automatic clearing above 500 MB, checked on returning to the shelf
  * - Preserves persistent cookies, LocalStorage, and IndexedDB logins
  * - 1-tap manual purge
  */
@@ -19,22 +19,8 @@ object CacheManager {
     private const val BYTES_PER_MB = 1024L * 1024L
 
     suspend fun getCacheSizeBytes(context: Context): Long = withContext(Dispatchers.IO) {
-        var totalSize = 0L
-        
-        // Android app cache dir
-        context.cacheDir?.let { totalSize += getFolderSize(it) }
-
-        // WebView internal cache dirs
-        val webViewDir = File(context.applicationInfo.dataDir, "app_webview")
-        if (webViewDir.exists()) {
-            val cacheSubDir = File(webViewDir, "Default/Cache")
-            if (cacheSubDir.exists()) totalSize += getFolderSize(cacheSubDir)
-            
-            val codeCacheDir = File(webViewDir, "Default/Code Cache")
-            if (codeCacheDir.exists()) totalSize += getFolderSize(codeCacheDir)
-        }
-
-        totalSize
+        // WebView keeps every profile's HTTP cache under here, in WebView/<profile>
+        context.cacheDir?.let { getFolderSize(it) } ?: 0L
     }
 
     suspend fun getFormattedCacheSize(context: Context): String {
@@ -65,18 +51,8 @@ object CacheManager {
      * Safely evicts temporary HTTP media & script caches while preserving user logins (Cookies & LocalStorage)
      */
     suspend fun purgeTemporaryHttpCache(context: Context) = withContext(Dispatchers.IO) {
-        // Clear standard cache dir
+        // Includes the HTTP cache of every WebView profile; logins live outside this folder
         context.cacheDir?.let { deleteContents(it) }
-
-        // Clear WebView specific HTTP caches only
-        val webViewDir = File(context.applicationInfo.dataDir, "app_webview")
-        if (webViewDir.exists()) {
-            val cacheSubDir = File(webViewDir, "Default/Cache")
-            if (cacheSubDir.exists()) deleteContents(cacheSubDir)
-
-            val codeCacheDir = File(webViewDir, "Default/Code Cache")
-            if (codeCacheDir.exists()) deleteContents(codeCacheDir)
-        }
     }
 
     private fun getFolderSize(dir: File): Long {

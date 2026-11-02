@@ -14,10 +14,16 @@ Built for speed, user privacy, and zero telemetry.
   - Quick options sheet for per-app fullscreen toggle, adblocker settings, and userscripts.
   - Pure sovereign container: zero hardcoded pre-installed apps.
 
-- **uBlock Origin Hybrid AdBlock Engine**:
-  - Fast in-memory network URL interception (<0.05ms) blocking ad trackers, telemetry, and popunders.
-  - Pre-DOM cosmetic CSS element hiding (`##`) injecting collapsed stylesheets before HTML render.
-  - Anti-adblock scriptlet defusers (`+js`) neutralizing anti-adblock detection walls.
+- **Quick Browser**:
+  - Tabs, history, and logins kept in its own profile on the device, apart from every web app.
+  - One tap to add the current page to the shelf.
+
+- **Background Playback**:
+  - Audio and video keep playing after leaving the app, with a media notification and lock screen controls.
+
+- **Shield Ad Blocker**:
+  - Blocks ads and trackers with public filter lists (EasyList, EasyPrivacy, uBlock Origin's lists, Peter Lowe, AdGuard Mobile), downloaded from their publishers and refreshed every few days. It isn't uBlock Origin, which can't run in a WebView.
+  - Element hiding from the lists' per-site rules, and answers to a few common anti-adblock checks.
   - Background Service Worker request interception via `ServiceWorkerControllerCompat`.
 
 - **Pre-DOM Userscript Engine**:
@@ -27,7 +33,7 @@ Built for speed, user privacy, and zero telemetry.
 
 - **Hardware and Performance**:
   - Hardware-accelerated Chromium runtime (`WebView` on Android SDK 35).
-  - 4-finger swipe-down gesture listener for instant page reload with haptic feedback.
+  - Optional multi-finger gestures for moving through pages and switching apps.
   - Automatic 500 MB cache monitor and 1-tap cache purge daemon.
 
 ---
@@ -60,4 +66,6 @@ Compiled APK artifacts are located at:
 
 ## License
 
-This project is licensed under the MIT License. See [About Scraffold] in-app or repository license files.
+Copyright (c) 2026 elsu3ian. Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+You may use and change Scraffold for personal and other noncommercial purposes. You may not sell it or use it commercially. This is a summary; the [LICENSE](LICENSE) file is what applies.

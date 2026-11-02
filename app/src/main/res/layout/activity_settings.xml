@@ -534,7 +534,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="About Scraffold &amp; Licenses"
+                    android:text="About ֆ𝖈𝖗𝖆𝖋𝖋𝖔𝖑𝖉 &amp; Licenses"
                     android:textColor="@color/text_primary"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -543,7 +543,7 @@
                     android:id="@+id/settings_tv_about_version"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="v1.0.1 →"
+                    android:text="@string/release_stage"
                     android:textColor="@color/accent_emerald"
                     android:textSize="11sp"
                     android:fontFamily="monospace" />

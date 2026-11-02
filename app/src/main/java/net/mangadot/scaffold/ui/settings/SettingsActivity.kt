@@ -2,9 +2,12 @@ package net.mangadot.scaffold.ui.settings
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -12,6 +15,8 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import net.mangadot.scaffold.BuildConfig
 import net.mangadot.scaffold.R
+import net.mangadot.scaffold.data.backup.BackupManager
+import net.mangadot.scaffold.engine.FilterLists
 import net.mangadot.scaffold.databinding.ActivitySettingsBinding
 import net.mangadot.scaffold.databinding.DialogAdblockSettingsBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
@@ -28,6 +33,55 @@ class SettingsActivity : CosmicActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var adBlockEngine: AdBlockEngine
+
+    private val exportBackup = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
+        if (uri != null) {
+            lifecycleScope.launch {
+                val message = try {
+                    val saved = BackupManager(this@SettingsActivity).export(uri)
+                    "Exported ${saved.apps} apps and ${saved.scripts} scripts. Logins aren't included."
+                } catch (e: Exception) {
+                    "Export failed: ${e.message}"
+                }
+                Toast.makeText(this@SettingsActivity, message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private val importBackup = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            lifecycleScope.launch {
+                val manager = BackupManager(this@SettingsActivity)
+                try {
+                    val backup = manager.read(uri)
+                    AlertDialog.Builder(this@SettingsActivity)
+                        .setTitle("Import backup")
+                        .setMessage(
+                            "Add ${backup.webApps.size} apps and ${backup.scripts.size} userscripts, and replace your settings? " +
+                                "Items with the same ID are overwritten. Only import scripts you trust: they run on your sites."
+                        )
+                        .setPositiveButton("Import") { _, _ -> restore(manager, backup) }
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .showCosmic()
+                } catch (e: Exception) {
+                    Toast.makeText(this@SettingsActivity, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun restore(manager: BackupManager, backup: BackupManager.BackupFile) {
+        lifecycleScope.launch {
+            val message = try {
+                val restored = manager.restore(backup)
+                loadPreferences()
+                "Imported ${restored.apps} apps and ${restored.scripts} scripts"
+            } catch (e: Exception) {
+                "Import failed: ${e.message}"
+            }
+            Toast.makeText(this@SettingsActivity, message, Toast.LENGTH_LONG).show()
+        }
+    }
 
     companion object {
         const val PREFS_NAME = "scraffold_global_prefs"
@@ -46,7 +100,7 @@ class SettingsActivity : CosmicActivity() {
         setContentView(binding.root)
         CosmicThemeStore.load(this).let { theme ->
             theme.applyBackground(binding.settingsRootLayout)
-            theme.applyHeader(binding.settingsHeaderLayout, binding.settingsScroll)
+            theme.applyHeader(binding.settingsHeaderLayout, binding.settingsScroll, overlay = true)
         }
 
         adBlockEngine = AdBlockEngine.getInstance(this)
@@ -56,7 +110,7 @@ class SettingsActivity : CosmicActivity() {
         setupListeners()
         updateCacheDisplay()
 
-        binding.settingsTvAboutVersion.text = "v${BuildConfig.VERSION_NAME} →"
+        binding.settingsTvAboutVersion.text = "${getString(R.string.release_stage)} →"
     }
 
     private fun setupWindowInsets() {
@@ -74,7 +128,7 @@ class SettingsActivity : CosmicActivity() {
 
     private fun loadPreferences() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        binding.settingsSwitchClearCache.isChecked = prefs.getBoolean(KEY_CLEAR_CACHE_EXIT, true)
+        binding.settingsSwitchClearCache.isChecked = prefs.getBoolean(KEY_CLEAR_CACHE_EXIT, false)
         binding.settingsSwitchReloadGesture.isChecked = prefs.getBoolean(KEY_GESTURE_RELOAD, true)
         binding.settingsSwitchNavGesture.isChecked = prefs.getBoolean(KEY_GESTURE_NAV, true)
         binding.settingsSwitchAppSwitchGesture.isChecked = prefs.getBoolean(KEY_GESTURE_APP_SWITCH, false)
@@ -153,12 +207,12 @@ class SettingsActivity : CosmicActivity() {
 
         // Export Settings
         binding.settingsBtnExport.setOnClickListener {
-            Toast.makeText(this, "Exported scraffold-backup.json", Toast.LENGTH_SHORT).show()
+            exportBackup.launch("scraffold-backup.json")
         }
 
         // Import Settings
         binding.settingsBtnImport.setOnClickListener {
-            Toast.makeText(this, "Select a valid scraffold-backup.json file", Toast.LENGTH_SHORT).show()
+            importBackup.launch(arrayOf("application/json", "application/octet-stream", "text/*"))
         }
 
         // About Row
@@ -170,6 +224,23 @@ class SettingsActivity : CosmicActivity() {
     private fun showAdblockDialog() {
         val dialogBinding = DialogAdblockSettingsBinding.inflate(LayoutInflater.from(this))
         dialogBinding.dialogTvBlockedCount.text = "Shield: ${adBlockEngine.totalBlockedRequests} requests blocked"
+
+        fun showFilterStatus() {
+            val updated = FilterLists.lastUpdated(this)
+            val date = if (updated == 0L) "not downloaded yet" else "updated ${DateUtils.getRelativeTimeSpanString(updated)}"
+            dialogBinding.dialogTvFilterStatus.text = "${adBlockEngine.ruleCount} rules, $date"
+        }
+        showFilterStatus()
+        dialogBinding.btnUpdateFilters.setOnClickListener {
+            dialogBinding.btnUpdateFilters.isEnabled = false
+            dialogBinding.dialogTvFilterStatus.text = "Downloading lists..."
+            lifecycleScope.launch {
+                val arrived = adBlockEngine.updateListsNow()
+                dialogBinding.btnUpdateFilters.isEnabled = true
+                showFilterStatus()
+                if (arrived == 0) Toast.makeText(this@SettingsActivity, "Couldn't download the lists", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         val dialog = AlertDialog.Builder(this)
             .setView(dialogBinding.root)

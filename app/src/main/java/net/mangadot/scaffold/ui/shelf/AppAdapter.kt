@@ -43,6 +43,9 @@ class AppAdapter(
             notifyDataSetChanged()
         }
 
+    /** While arranging, holding an app starts a drag instead of opening its options. */
+    var dragEnabled = false
+
     override fun getItemViewType(position: Int): Int {
         return when (currentLayoutMode) {
             LayoutMode.ICONS -> R.layout.item_app_icon
@@ -65,6 +68,7 @@ class AppAdapter(
         val app = getItem(position)
         holder.itemView.setOnClickListener { onAppClick(app) }
         holder.itemView.setOnLongClickListener {
+            if (dragEnabled) return@setOnLongClickListener false
             onAppOptionsClick(app)
             true
         }

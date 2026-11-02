@@ -42,7 +42,7 @@ class WebAppSettingsActivity : CosmicActivity() {
         setContentView(binding.root)
         CosmicThemeStore.load(this).let { theme ->
             theme.applyBackground(binding.appSettingsRootLayout)
-            theme.applyHeader(binding.appSettingsHeaderLayout, binding.appSettingsScroll)
+            theme.applyHeader(binding.appSettingsHeaderLayout, binding.appSettingsScroll, overlay = true)
         }
         repository = WebAppRepository(AppDatabase.getInstance(this).webAppDao())
 
@@ -99,6 +99,8 @@ class WebAppSettingsActivity : CosmicActivity() {
         addToggle(binding.appSettingsGroupSecurity, KEY_HTTP, "Allow HTTP", "Off upgrades links to https")
         addToggle(binding.appSettingsGroupSecurity, KEY_LOCATION, "Allow location access")
         addToggle(binding.appSettingsGroupSecurity, KEY_DRM, "Allow DRM content")
+        addToggle(binding.appSettingsGroupSecurity, KEY_CAMERA, "Allow camera", "Android asks for permission the first time")
+        addToggle(binding.appSettingsGroupSecurity, KEY_MIC, "Allow microphone", "Android asks for permission the first time")
         addToggle(binding.appSettingsGroupCookies, KEY_COOKIES, "Accept cookies")
         addToggle(binding.appSettingsGroupCookies, KEY_THIRD_COOKIES, "Accept third-party cookies")
         addToggle(binding.appSettingsGroupCookies, KEY_ADBLOCK, "Enable adblock")
@@ -132,6 +134,8 @@ class WebAppSettingsActivity : CosmicActivity() {
         toggles.getValue(KEY_HTTP).isChecked = settings.allowHttp
         toggles.getValue(KEY_LOCATION).isChecked = settings.allowLocation
         toggles.getValue(KEY_DRM).isChecked = settings.allowDrm
+        toggles.getValue(KEY_CAMERA).isChecked = settings.allowCamera
+        toggles.getValue(KEY_MIC).isChecked = settings.allowMic
         toggles.getValue(KEY_COOKIES).isChecked = settings.acceptCookies
         toggles.getValue(KEY_THIRD_COOKIES).isChecked = settings.thirdPartyCookies
         toggles.getValue(KEY_ADBLOCK).isChecked = settings.adblock
@@ -147,6 +151,8 @@ class WebAppSettingsActivity : CosmicActivity() {
         allowHttp = toggles.getValue(KEY_HTTP).isChecked,
         allowLocation = toggles.getValue(KEY_LOCATION).isChecked,
         allowDrm = toggles.getValue(KEY_DRM).isChecked,
+        allowCamera = toggles.getValue(KEY_CAMERA).isChecked,
+        allowMic = toggles.getValue(KEY_MIC).isChecked,
         acceptCookies = toggles.getValue(KEY_COOKIES).isChecked,
         thirdPartyCookies = toggles.getValue(KEY_THIRD_COOKIES).isChecked,
         adblock = toggles.getValue(KEY_ADBLOCK).isChecked,
@@ -183,6 +189,8 @@ class WebAppSettingsActivity : CosmicActivity() {
         private const val KEY_HTTP = "http"
         private const val KEY_LOCATION = "location"
         private const val KEY_DRM = "drm"
+        private const val KEY_CAMERA = "camera"
+        private const val KEY_MIC = "mic"
         private const val KEY_COOKIES = "cookies"
         private const val KEY_THIRD_COOKIES = "third_cookies"
         private const val KEY_ADBLOCK = "adblock"
