@@ -1,7 +1,14 @@
 package net.mangadot.scaffold.ui.container
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
 import android.view.View
+import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
@@ -9,6 +16,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import net.mangadot.scaffold.data.db.AppDatabase
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
@@ -29,6 +37,7 @@ class WebContainerActivity : AppCompatActivity() {
     private lateinit var webChromeClient: DeckWebChromeClient
 
     private var currentApp: WebAppEntity? = null
+    private var isQuickMenuOpen = false
 
     companion object {
         const val EXTRA_APP_ID = "extra_app_id"
@@ -38,6 +47,14 @@ class WebContainerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // True Edge-to-Edge Display Cutout Fullscreen (zero letterbox notch padding)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+
         binding = ActivityWebContainerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -51,6 +68,7 @@ class WebContainerActivity : AppCompatActivity() {
         val appUrl = intent.getStringExtra(EXTRA_APP_URL) ?: "https://mangadot.net"
 
         setupWebView(appId, appUrl)
+        setupAssistiveEdgeBall()
         setupBackNavigation()
         loadAppData(appId, appUrl)
     }
@@ -74,6 +92,9 @@ class WebContainerActivity : AppCompatActivity() {
                 } else {
                     binding.containerProgressBar.visibility = View.GONE
                 }
+            },
+            onExternalLinkRequested = { uri ->
+                openExternalUrl(uri)
             }
         )
 
@@ -86,10 +107,136 @@ class WebContainerActivity : AppCompatActivity() {
                 binding.deckWebview.reload()
             }
         )
+    }
 
-        // Edge handle to return to Shelf
-        binding.btnEdgeDrawer.setOnClickListener {
+    private fun setupAssistiveEdgeBall() {
+        val ball = binding.edgeDockBall
+        val menu = binding.edgeQuickMenu
+
+        // Initially hide 50% into the left edge
+        ball.post {
+            ball.translationX = -dpToPx(18).toFloat()
+            ball.alpha = 0.5f
+        }
+
+        var dY = 0f
+        var startY = 0f
+        var isDragging = false
+
+        ball.setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    dY = view.y - event.rawY
+                    startY = event.rawY
+                    isDragging = false
+                    ball.animate().alpha(1f).translationX(0f).setDuration(150).start()
+                    false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (Math.abs(event.rawY - startY) > dpToPx(6)) {
+                        isDragging = true
+                        val newY = (event.rawY + dY).coerceIn(
+                            dpToPx(20).toFloat(),
+                            (binding.containerRootLayout.height - view.height - dpToPx(20)).toFloat()
+                        )
+                        view.y = newY
+                        menu.y = newY
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (!isDragging) {
+                        view.performClick()
+                    } else {
+                        // Re-dock half into screen edge
+                        ball.animate().translationX(-dpToPx(18).toFloat()).alpha(0.5f).setDuration(250).start()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+
+        // Tap to toggle quick menu
+        ball.setOnClickListener {
+            toggleQuickMenu()
+        }
+
+        // Press & Hold (Long Press) to open App Switcher
+        ball.setOnLongClickListener {
+            ball.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            openAppSwitcher()
+            true
+        }
+
+        // Quick Menu Actions
+        binding.btnBallReload.setOnClickListener {
+            binding.deckWebview.reload()
+            hideQuickMenu()
+        }
+
+        binding.btnBallHome.setOnClickListener {
             finish()
+        }
+
+        binding.btnBallShield.setOnClickListener {
+            Toast.makeText(this, "Shield: ${adBlockEngine.totalBlockedRequests} requests blocked", Toast.LENGTH_SHORT).show()
+            hideQuickMenu()
+        }
+
+        binding.btnBallClose.setOnClickListener {
+            hideQuickMenu()
+        }
+    }
+
+    private fun toggleQuickMenu() {
+        if (isQuickMenuOpen) {
+            hideQuickMenu()
+        } else {
+            showQuickMenu()
+        }
+    }
+
+    private fun showQuickMenu() {
+        isQuickMenuOpen = true
+        binding.edgeDockBall.animate().translationX(0f).alpha(1f).setDuration(150).start()
+        binding.edgeQuickMenu.visibility = View.VISIBLE
+        binding.edgeQuickMenu.alpha = 0f
+        binding.edgeQuickMenu.animate().alpha(1f).setDuration(150).start()
+    }
+
+    private fun hideQuickMenu() {
+        isQuickMenuOpen = false
+        binding.edgeQuickMenu.visibility = View.GONE
+        binding.edgeDockBall.animate().translationX(-dpToPx(18).toFloat()).alpha(0.5f).setDuration(250).start()
+    }
+
+    private fun openAppSwitcher() {
+        hideQuickMenu()
+        lifecycleScope.launch {
+            val apps = webAppRepository.allWebApps.first()
+            if (apps.isEmpty()) {
+                Toast.makeText(this@WebContainerActivity, "No other apps on shelf", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val sheet = AppSwitcherBottomSheetDialog(
+                apps = apps,
+                onAppSelected = { app ->
+                    loadAppData(app.id, app.url)
+                }
+            )
+            sheet.show(supportFragmentManager, "app_switcher")
+        }
+    }
+
+    private fun openExternalUrl(uri: Uri) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Unable to open link", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -108,7 +255,7 @@ class WebContainerActivity : AppCompatActivity() {
             val scripts = scriptRepository.getEnabledScriptsList()
             webViewClient.updateActiveScripts(scripts)
 
-            val host = android.net.Uri.parse(initialUrl).host ?: ""
+            val host = Uri.parse(initialUrl).host ?: ""
             val cosmeticCss = adBlockEngine.getCosmeticCss(host)
             val scriptlets = adBlockEngine.getScriptletDefusers(host)
 
@@ -163,13 +310,19 @@ class WebContainerActivity : AppCompatActivity() {
     private fun setupBackNavigation() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (binding.deckWebview.canGoBack()) {
+                if (isQuickMenuOpen) {
+                    hideQuickMenu()
+                } else if (binding.deckWebview.canGoBack()) {
                     binding.deckWebview.goBack()
                 } else {
                     finish()
                 }
             }
         })
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        return (dp * resources.displayMetrics.density).toInt()
     }
 
     override fun onDestroy() {
