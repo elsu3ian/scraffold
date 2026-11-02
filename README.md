@@ -4,6 +4,8 @@
 
 **Turn any website into its own Android app, with ad blocking and userscripts built in.**
 
+[![Download APK](https://img.shields.io/badge/Download%20APK-10b981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/elsu3ian/scraffold/releases/download/v1.0.3-beta/Scraffold-app-release-beta.apk)
+
 [![Latest pre-release](https://img.shields.io/github/v/release/elsu3ian/scraffold?include_prereleases&label=pre-release&color=10b981)](https://github.com/elsu3ian/scraffold/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/elsu3ian/scraffold/build-apk.yml?branch=main&label=build)](https://github.com/elsu3ian/scraffold/actions/workflows/build-apk.yml)
 ![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)
@@ -75,7 +77,7 @@ Scraffold uses these public filter lists with its own engine. It is not uBlock O
 
 Requires **Android 8.0 (API 26)** or newer.
 
-1. Download `Scraffold-app-release-beta.apk` from the [latest release](https://github.com/elsu3ian/scraffold/releases).
+1. Download [`Scraffold-app-release-beta.apk`](https://github.com/elsu3ian/scraffold/releases/download/v1.0.3-beta/Scraffold-app-release-beta.apk), or find it on the [releases page](https://github.com/elsu3ian/scraffold/releases).
 2. Open the file and allow installs from that source if Android asks.
 3. Tap **+** on the shelf and add your first site.
 
