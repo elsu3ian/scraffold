@@ -39,7 +39,7 @@ class AppSwitcherBottomSheetDialog(
             },
             onAppOptionsClick = {}
         )
-        adapter.setViewMode(AppAdapter.ViewMode.LIST)
+        adapter.currentLayoutMode = AppAdapter.LayoutMode.LIST
 
         binding.rvSwitcherApps.layoutManager = LinearLayoutManager(requireContext())
         binding.rvSwitcherApps.adapter = adapter
