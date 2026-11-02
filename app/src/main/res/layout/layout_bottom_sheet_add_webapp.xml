@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_bottom_sheet"
+    android:padding="16dp">
+
+    <!-- Top Handle Bar -->
+    <View
+        android:layout_width="36dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:background="#3F3F46"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Header Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="10dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="+ Add New WebApp"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btn_add_close"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_close"
+            android:contentDescription="Close" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/border_primary"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Website URL -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Website URL"
+        android:textColor="@color/text_muted"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/et_add_url"
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_card"
+        android:paddingHorizontal="12dp"
+        android:text="https://"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_muted"
+        android:textSize="13sp"
+        android:fontFamily="monospace"
+        android:inputType="textUri" />
+
+    <!-- App Name -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="App Name"
+        android:textColor="@color/text_muted"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/et_add_name"
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_card"
+        android:paddingHorizontal="12dp"
+        android:hint="Choose a name / Auto-fetch"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_muted"
+        android:textSize="13sp"
+        android:inputType="textCapWords" />
+
+    <!-- App Icon Picker Row -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="App Icon"
+        android:textColor="@color/text_muted"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@drawable/bg_card"
+            android:paddingHorizontal="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:background="@drawable/bg_squircle_emerald" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Auto-fetch from site"
+                android:textColor="@color/accent_emerald"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Favicon"
+                android:textColor="@color/text_muted"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/btn_add_upload_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginStart="8dp"
+            android:paddingHorizontal="16dp"
+            android:gravity="center"
+            android:background="@drawable/bg_card"
+            android:text="Upload"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+    <!-- Switches: Userscript & Zoom -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switch_add_userscript"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                app:thumbTint="@color/text_primary"
+                app:trackTint="@color/accent_emerald" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Userscripts"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switch_add_zoom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                app:thumbTint="@color/text_primary"
+                app:trackTint="@color/accent_emerald" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Pinch-To-Zoom"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/border_primary"
+        android:layout_marginTop="14dp"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Bottom Actions: Cancel & Save to Shelf -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/btn_add_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/btn_add_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save to Shelf"
+            android:textColor="@color/accent_emerald"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:background="@drawable/bg_card"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+</LinearLayout>
