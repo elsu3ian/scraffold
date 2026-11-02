@@ -11,5 +11,6 @@ class ScaffoldApplication : Application() {
         deleteSharedPreferences("scraffold_cosmic_theme")
         // Lets chrome://inspect see pages in debug builds
         if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
+        net.mangadot.scaffold.ui.folder.FolderWidgetProvider.watchApps(this)
     }
 }

@@ -319,6 +319,16 @@ object AppIcons {
         (icon.parent as? View)?.clipToOutline = true
     }
 
+    /** A small copy for the home screen widget, which can't hold full-size icons. Null when the app has no icon. */
+    fun thumbnail(path: String?, sizePx: Int): Bitmap? {
+        if (path.isNullOrEmpty()) return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        var sample = 1
+        while (minOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= sizePx) sample *= 2
+        return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })
+    }
+
     private fun load(path: String): Bitmap? {
         memory.get(path)?.let { return it }
         return BitmapFactory.decodeFile(path)?.also { memory.put(path, it) }

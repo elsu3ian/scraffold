@@ -46,6 +46,9 @@ class AppAdapter(
     /** While arranging, holding an app starts a drag instead of opening its options. */
     var dragEnabled = false
 
+    /** A folder shows names alone, the way a phone's folders do. */
+    var showDomains = true
+
     override fun getItemViewType(position: Int): Int {
         return when (currentLayoutMode) {
             LayoutMode.ICONS -> R.layout.item_app_icon
@@ -125,6 +128,7 @@ class AppAdapter(
         fun bind(app: WebAppEntity) {
             tvName.text = app.name
             tvDomain.text = cleanDomain(app.url)
+            tvDomain.visibility = if (showDomains) View.VISIBLE else View.GONE
             tvMonogram.text = extractMonogram(app.name)
             AppIcons.bind(ivIcon, tvMonogram, app)
 

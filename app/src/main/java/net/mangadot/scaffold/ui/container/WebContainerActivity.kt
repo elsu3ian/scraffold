@@ -139,7 +139,7 @@ class WebContainerActivity : CosmicActivity() {
         adBlockEngine = AdBlockEngine.getInstance(this)
         scriptEngine = ScriptEngine(this, scriptRepository, lifecycleScope)
 
-        val appId = intent.getStringExtra(EXTRA_APP_ID) ?: ""
+        val appId = AppTasks.appId(intent)
         val appUrl = intent.getStringExtra(EXTRA_APP_URL)
             ?: intent.getStringExtra(EXTRA_NAVIGATE_URL)
             ?: "https://mangadot.net"
@@ -554,7 +554,7 @@ class WebContainerActivity : CosmicActivity() {
             userscriptsOn = app.userscriptsEnabled
             val scripts = if (userscriptsOn) scriptRepository.getEnabledScriptsList() else emptyList()
             appliedScripts = scripts.map { it.id to it.updatedAt }
-            val host = Uri.parse(initialUrl).host ?: ""
+            val host = Uri.parse(app.url).host ?: ""
             scriptEngine.register(
                 webView = binding.deckWebview,
                 scripts = scripts,
@@ -563,7 +563,7 @@ class WebContainerActivity : CosmicActivity() {
             )
 
             // Show HUD pill if matching userscripts are active
-            val matching = scripts.count { it.id !in scriptEngine.failedScripts && UserscriptMeta.parse(it.code).appliesTo(initialUrl) }
+            val matching = scripts.count { it.id !in scriptEngine.failedScripts && UserscriptMeta.parse(it.code).appliesTo(app.url) }
             if (matching > 0) {
                 showScriptHud(matching)
             }
@@ -573,7 +573,7 @@ class WebContainerActivity : CosmicActivity() {
 
             // Start navigation
             val keepHttp = settings.allowHttp || app.url.startsWith("http://", ignoreCase = true)
-            val target = intent.getStringExtra(EXTRA_NAVIGATE_URL) ?: AppTasks.lastPage(this@WebContainerActivity, appId) ?: initialUrl
+            val target = intent.getStringExtra(EXTRA_NAVIGATE_URL) ?: AppTasks.lastPage(this@WebContainerActivity, appId) ?: app.url
             val startUrl = if (keepHttp) target else target.replaceFirst("http://", "https://")
             binding.deckWebview.loadUrl(startUrl)
         }

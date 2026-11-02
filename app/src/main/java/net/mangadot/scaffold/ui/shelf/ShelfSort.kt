@@ -2,6 +2,7 @@ package net.mangadot.scaffold.ui.shelf
 
 import android.content.Context
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
+import net.mangadot.scaffold.ui.folder.FolderWidgetProvider
 
 enum class ShelfSort(private val startsDescending: Boolean) {
     RECENT(true), NAME(false), DATE(true), CUSTOM(false);
@@ -34,6 +35,7 @@ enum class ShelfSort(private val startsDescending: Boolean) {
 
     fun setDescending(context: Context, descending: Boolean) {
         prefs(context).edit().putBoolean(KEY_DESCENDING + name, descending).apply()
+        FolderWidgetProvider.refresh(context)
     }
 
     companion object {
@@ -49,6 +51,13 @@ enum class ShelfSort(private val startsDescending: Boolean) {
 
         fun save(context: Context, sort: ShelfSort) {
             prefs(context).edit().putInt(KEY_SORT, sort.ordinal).apply()
+            FolderWidgetProvider.refresh(context)
+        }
+
+        /** The apps in the order the shelf shows them. */
+        fun current(context: Context, apps: List<WebAppEntity>): List<WebAppEntity> {
+            val sort = load(context)
+            return sort.applyTo(apps, sort.isDescending(context))
         }
     }
 }

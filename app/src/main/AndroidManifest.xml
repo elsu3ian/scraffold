@@ -105,6 +105,37 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <!-- The folder on the home screen. It keeps its own task so opening it doesn't bring the shelf forward -->
+        <activity
+            android:name=".ui.folder.FolderActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Scaffold.Folder" />
+
+        <!-- Opens an app from the widget's big icons, without a screen of its own -->
+        <activity
+            android:name=".ui.folder.FolderLaunchActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay" />
+
+        <receiver
+            android:name=".ui.folder.FolderWidgetProvider"
+            android:exported="false"
+            android:label="@string/folder_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/folder_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>

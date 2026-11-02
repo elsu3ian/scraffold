@@ -28,6 +28,13 @@ object AppTasks {
         }
     }
 
+    /** After a restart Android brings a task back with its address but not its extras. */
+    fun appId(intent: Intent): String {
+        return intent.getStringExtra(WebContainerActivity.EXTRA_APP_ID)
+            ?: intent.data?.takeIf { it.scheme == "scraffold" }?.lastPathSegment
+            ?: ""
+    }
+
     /** Opens the shelf and leaves whatever is running behind it. */
     fun goToShelf(context: Context) {
         context.startActivity(Intent(context, MainActivity::class.java).apply {
@@ -49,14 +56,16 @@ object AppTasks {
     }
 
     /** Brings the app back as it was left. Only a task it no longer has gets started afresh. */
-    fun open(activity: Activity, app: WebAppEntity) {
-        val running = find(activity, app.id)
+    fun open(activity: Activity, app: WebAppEntity) = open(activity, app.id, app.url, app.name)
+
+    fun open(activity: Activity, appId: String, url: String, name: String) {
+        val running = find(activity, appId)
         if (running != null) {
             running.moveToFront()
         } else {
-            activity.startActivity(intent(activity, app.id).apply {
-                putExtra(WebContainerActivity.EXTRA_APP_URL, app.url)
-                putExtra(WebContainerActivity.EXTRA_APP_NAME, app.name)
+            activity.startActivity(intent(activity, appId).apply {
+                putExtra(WebContainerActivity.EXTRA_APP_URL, url)
+                putExtra(WebContainerActivity.EXTRA_APP_NAME, name)
             })
         }
     }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme: Pure Obsidian Dark Mode -->
     <style name="Theme.Scaffold" parent="Theme.Material3.Dark.NoActionBar">
         <!-- Window background and status bar -->
@@ -31,5 +31,26 @@
     <style name="Theme.Scaffold.Fullscreen" parent="Theme.Scaffold">
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowContentOverlay">@null</item>
+    </style>
+
+    <style name="WidgetFolderCell">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_margin">6dp</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <!-- The open folder, over a dimmed home screen. Android 12 and up also blur what's behind it -->
+    <style name="Theme.Scaffold.Folder" parent="Theme.Scaffold">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.45</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
+        <item name="android:windowBlurBehindEnabled" tools:targetApi="s">true</item>
+        <item name="android:windowBlurBehindRadius" tools:targetApi="s">24dp</item>
     </style>
 </resources>
