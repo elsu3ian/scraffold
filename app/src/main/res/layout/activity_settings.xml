@@ -209,7 +209,7 @@
                         android:layout_height="wrap_content"
                         android:checked="true"
                         app:thumbTint="@color/text_primary"
-                        app:trackTint="@color/accent_emerald" />
+                        app:trackTint="@color/switch_track" />
                 </LinearLayout>
 
                 <View
@@ -239,7 +239,7 @@
                         android:layout_height="wrap_content"
                         android:checked="true"
                         app:thumbTint="@color/text_primary"
-                        app:trackTint="@color/accent_emerald" />
+                        app:trackTint="@color/switch_track" />
                 </LinearLayout>
 
                 <View
@@ -269,7 +269,7 @@
                         android:layout_height="wrap_content"
                         android:checked="true"
                         app:thumbTint="@color/text_primary"
-                        app:trackTint="@color/accent_emerald" />
+                        app:trackTint="@color/switch_track" />
                 </LinearLayout>
 
                 <View
@@ -299,7 +299,7 @@
                         android:layout_height="wrap_content"
                         android:checked="false"
                         app:thumbTint="@color/text_primary"
-                        app:trackTint="@color/accent_emerald" />
+                        app:trackTint="@color/switch_track" />
                 </LinearLayout>
 
                 <View
@@ -329,7 +329,7 @@
                         android:layout_height="wrap_content"
                         android:checked="true"
                         app:thumbTint="@color/text_primary"
-                        app:trackTint="@color/accent_emerald" />
+                        app:trackTint="@color/switch_track" />
                 </LinearLayout>
 
                 <View
@@ -359,7 +359,7 @@
                         android:layout_height="wrap_content"
                         android:checked="false"
                         app:thumbTint="@color/text_primary"
-                        app:trackTint="@color/accent_emerald" />
+                        app:trackTint="@color/switch_track" />
                 </LinearLayout>
 
             </LinearLayout>
@@ -503,6 +503,7 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/settings_tv_about_version"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="v1.0.1 →"

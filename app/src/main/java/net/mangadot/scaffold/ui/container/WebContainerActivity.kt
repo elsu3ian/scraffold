@@ -7,10 +7,13 @@ import android.os.Bundle
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -38,6 +41,7 @@ class WebContainerActivity : AppCompatActivity() {
 
     private var currentApp: WebAppEntity? = null
     private var isQuickMenuOpen = false
+    private var isFullscreenEnabled = false
 
     companion object {
         const val EXTRA_APP_ID = "extra_app_id"
@@ -67,10 +71,24 @@ class WebContainerActivity : AppCompatActivity() {
         val appId = intent.getStringExtra(EXTRA_APP_ID) ?: ""
         val appUrl = intent.getStringExtra(EXTRA_APP_URL) ?: "https://mangadot.net"
 
+        setupWindowInsets()
         setupWebView(appId, appUrl)
         setupAssistiveEdgeBall()
         setupBackNavigation()
         loadAppData(appId, appUrl)
+    }
+
+    private fun setupWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.containerRootLayout) { view, insets ->
+            val bars = if (isFullscreenEnabled) {
+                Insets.NONE
+            } else {
+                insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            }
+            val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            view.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, imeBottom))
+            insets
+        }
     }
 
     private fun setupWebView(appId: String, initialUrl: String) {
@@ -122,6 +140,13 @@ class WebContainerActivity : AppCompatActivity() {
         var dY = 0f
         var startY = 0f
         var isDragging = false
+        var longPressFired = false
+
+        // The listener consumes the whole gesture, so the framework's own long-press timer never runs
+        val longPress = Runnable {
+            longPressFired = true
+            ball.performLongClick()
+        }
 
         ball.setOnTouchListener { view, event ->
             when (event.action) {
@@ -129,12 +154,17 @@ class WebContainerActivity : AppCompatActivity() {
                     dY = view.y - event.rawY
                     startY = event.rawY
                     isDragging = false
+                    longPressFired = false
                     ball.animate().alpha(1f).translationX(0f).setDuration(150).start()
-                    false
+                    view.postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
+                    true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    if (Math.abs(event.rawY - startY) > dpToPx(6)) {
+                    if (!longPressFired && Math.abs(event.rawY - startY) > dpToPx(6)) {
                         isDragging = true
+                        view.removeCallbacks(longPress)
+                    }
+                    if (isDragging) {
                         val newY = (event.rawY + dY).coerceIn(
                             dpToPx(20).toFloat(),
                             (binding.containerRootLayout.height - view.height - dpToPx(20)).toFloat()
@@ -145,10 +175,20 @@ class WebContainerActivity : AppCompatActivity() {
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!isDragging) {
-                        view.performClick()
-                    } else {
+                    view.removeCallbacks(longPress)
+                    if (isDragging) {
                         // Re-dock half into screen edge
+                        if (!isQuickMenuOpen) {
+                            ball.animate().translationX(-dpToPx(18).toFloat()).alpha(0.5f).setDuration(250).start()
+                        }
+                    } else if (!longPressFired) {
+                        view.performClick()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    view.removeCallbacks(longPress)
+                    if (!isQuickMenuOpen) {
                         ball.animate().translationX(-dpToPx(18).toFloat()).alpha(0.5f).setDuration(250).start()
                     }
                     true
@@ -280,6 +320,8 @@ class WebContainerActivity : AppCompatActivity() {
     }
 
     private fun configureFullscreen(enabled: Boolean) {
+        isFullscreenEnabled = enabled
+        ViewCompat.requestApplyInsets(binding.containerRootLayout)
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         if (enabled) {
             windowInsetsController.systemBarsBehavior =
@@ -323,6 +365,11 @@ class WebContainerActivity : AppCompatActivity() {
 
     private fun dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()
+    }
+
+    override fun onPause() {
+        adBlockEngine.flushStats()
+        super.onPause()
     }
 
     override fun onDestroy() {

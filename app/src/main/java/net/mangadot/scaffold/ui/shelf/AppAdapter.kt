@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import net.mangadot.scaffold.R
+import net.mangadot.scaffold.data.db.entity.ScriptEntity
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
 
 class AppAdapter(
@@ -22,6 +23,18 @@ class AppAdapter(
     enum class LayoutMode { ICONS, GRID, LIST }
 
     var currentLayoutMode: LayoutMode = LayoutMode.ICONS
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
+
+    var scripts: List<ScriptEntity> = emptyList()
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
+
+    var blockedCounts: Map<String, Long> = emptyMap()
         set(value) {
             field = value
             notifyDataSetChanged()
@@ -62,6 +75,16 @@ class AppAdapter(
 
     private fun cleanDomain(url: String): String {
         return Uri.parse(url).host ?: url.removePrefix("https://").removePrefix("http://").substringBefore('/')
+    }
+
+    private fun scriptCountLabel(app: WebAppEntity): String {
+        val host = cleanDomain(app.url)
+        val count = scripts.count { it.matchPattern.contains(host, ignoreCase = true) }
+        return if (count == 1) "1 script" else "$count scripts"
+    }
+
+    private fun blockedLabel(app: WebAppEntity): String {
+        return "${blockedCounts[app.id] ?: 0L} blocked"
     }
 
     private fun extractMonogram(name: String): String {
@@ -121,8 +144,8 @@ class AppAdapter(
             container.setBackgroundResource(bgRes)
             tvMonogram.setTextColor(ContextCompat.getColor(itemView.context, textColorRes))
 
-            tvScripts.text = "0 scripts"
-            tvBlocked.text = "0 blocked"
+            tvScripts.text = scriptCountLabel(app)
+            tvBlocked.text = blockedLabel(app)
 
             btnOptions.setOnClickListener {
                 onAppOptionsClick(app)
@@ -147,7 +170,7 @@ class AppAdapter(
             container.setBackgroundResource(bgRes)
             tvMonogram.setTextColor(ContextCompat.getColor(itemView.context, textColorRes))
 
-            tvBlocked.text = "0 blocked"
+            tvBlocked.text = blockedLabel(app)
 
             btnOptions.setOnClickListener {
                 onAppOptionsClick(app)

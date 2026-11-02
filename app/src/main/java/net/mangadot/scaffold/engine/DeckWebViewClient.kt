@@ -27,8 +27,14 @@ class DeckWebViewClient(
     private val onPageFinishedCallback: ((url: String) -> Unit)? = null
 ) : WebViewClient() {
 
+    // Hosts the app may navigate within, and whether its first page load is still resolving
+    private var redirectedHost: String = ""
+    private var isInitialNavigation = true
+
     fun updateWebApp(updated: WebAppEntity) {
         this.webApp = updated
+        this.redirectedHost = ""
+        this.isInitialNavigation = true
     }
 
     fun updateActiveScripts(scripts: List<ScriptEntity>) {
@@ -43,6 +49,7 @@ class DeckWebViewClient(
 
         // 1. uBlock Origin Network Request Interception
         if (adBlockEngine.shouldBlock(uri)) {
+            adBlockEngine.recordBlockedForApp(webApp.id)
             return createEmptyResponse()
         }
 
@@ -94,12 +101,18 @@ class DeckWebViewClient(
 
         // Domain Sandboxing: Route out-of-scope URLs to system browser
         if (webApp.openExternalLinks && (scheme == "http" || scheme == "https")) {
-            val appBaseHost = Uri.parse(webApp.url).host?.lowercase() ?: ""
-            val requestHost = uri.host?.lowercase() ?: ""
+            val appBaseHost = normalizeHost(Uri.parse(webApp.url).host)
+            val requestHost = normalizeHost(uri.host)
 
             if (appBaseHost.isNotEmpty() && requestHost.isNotEmpty()) {
-                val isInternal = requestHost == appBaseHost || requestHost.endsWith(".$appBaseHost")
+                val isInternal = isSameSite(requestHost, appBaseHost) ||
+                    (redirectedHost.isNotEmpty() && isSameSite(requestHost, redirectedHost))
                 if (!isInternal) {
+                    // The site's own launch redirect moved it to a new domain: keep the app in the container
+                    if (isInitialNavigation && request.isForMainFrame && request.isRedirect) {
+                        redirectedHost = requestHost
+                        return false
+                    }
                     try {
                         val browserIntent = Intent(Intent.ACTION_VIEW, uri).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -118,11 +131,20 @@ class DeckWebViewClient(
 
     override fun onPageFinished(view: WebView, url: String) {
         super.onPageFinished(view, url)
+        isInitialNavigation = false
 
         // Execute // @run-at document-end userscripts
         scriptEngine.executeDocumentEndScripts(view, url, activeScripts)
 
         onPageFinishedCallback?.invoke(url)
+    }
+
+    private fun normalizeHost(host: String?): String {
+        return host?.lowercase()?.removePrefix("www.") ?: ""
+    }
+
+    private fun isSameSite(requestHost: String, baseHost: String): Boolean {
+        return requestHost == baseHost || requestHost.endsWith(".$baseHost")
     }
 
     private fun createEmptyResponse(): WebResourceResponse {

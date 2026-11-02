@@ -14,7 +14,7 @@ import net.mangadot.scaffold.data.db.entity.WebAppEntity
 class DeckWebView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0
+    defStyleAttr: Int = android.R.attr.webViewStyle
 ) : WebView(context, attrs, defStyleAttr) {
 
     private val defaultMobileUserAgent: String by lazy {
@@ -46,7 +46,12 @@ class DeckWebView @JvmOverloads constructor(
             // Layout & Viewport
             useWideViewPort = true
             loadWithOverviewMode = true
-            
+
+            // Pinch-To-Zoom (gestures on, on-screen +/- buttons off)
+            setSupportZoom(true)
+            builtInZoomControls = true
+            displayZoomControls = false
+
             // Caching & Storage
             cacheMode = WebSettings.LOAD_DEFAULT
             allowFileAccess = false

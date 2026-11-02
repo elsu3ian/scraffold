@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import net.mangadot.scaffold.R
 import net.mangadot.scaffold.data.db.AppDatabase
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
+import net.mangadot.scaffold.data.repository.ScriptRepository
 import net.mangadot.scaffold.data.repository.WebAppRepository
 import net.mangadot.scaffold.databinding.ActivityMainBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
@@ -33,6 +34,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var repository: WebAppRepository
+    private lateinit var scriptRepository: ScriptRepository
     private lateinit var adapter: AppAdapter
     private lateinit var adBlockEngine: AdBlockEngine
     private var allApps: List<WebAppEntity> = emptyList()
@@ -44,6 +46,7 @@ class MainActivity : AppCompatActivity() {
 
         val db = AppDatabase.getInstance(this)
         repository = WebAppRepository(db.webAppDao())
+        scriptRepository = ScriptRepository(db.scriptDao(), db.scriptStorageDao())
         adBlockEngine = AdBlockEngine.getInstance(this)
 
         setupWindowInsets()
@@ -172,6 +175,11 @@ class MainActivity : AppCompatActivity() {
                 filterApps(binding.etSearch.text.toString())
             }
         }
+        lifecycleScope.launch {
+            scriptRepository.allScripts.collectLatest { scripts ->
+                adapter.scripts = scripts
+            }
+        }
     }
 
     private fun filterApps(query: String) {
@@ -195,6 +203,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateShieldTelemetry() {
         val blocked = adBlockEngine.totalBlockedRequests
         binding.tvShelfShieldCount.text = "Shield: $blocked blocked"
+        adapter.blockedCounts = adBlockEngine.blockedCountsByApp()
     }
 
     private fun launchWebApp(app: WebAppEntity) {

@@ -12,6 +12,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import net.mangadot.scaffold.BuildConfig
 import net.mangadot.scaffold.R
 import net.mangadot.scaffold.databinding.ActivityAboutBinding
 
@@ -26,6 +27,9 @@ class AboutActivity : AppCompatActivity() {
 
         setupWindowInsets()
         setupListeners()
+
+        binding.aboutTvVersionBadge.text = "v${BuildConfig.VERSION_NAME}"
+        binding.aboutTvUpdateStatus.text = "Installed: v${BuildConfig.VERSION_NAME}"
     }
 
     private fun setupWindowInsets() {
@@ -87,7 +91,7 @@ class AboutActivity : AppCompatActivity() {
         lifecycleScope.launch {
             delay(650)
             binding.aboutBtnCheckUpdates.isEnabled = true
-            binding.aboutTvUpdateStatus.text = getString(R.string.up_to_date, "v1.0.1")
+            binding.aboutTvUpdateStatus.text = getString(R.string.up_to_date, "v${BuildConfig.VERSION_NAME}")
             Toast.makeText(this@AboutActivity, "You are running the latest version of Scraffold", Toast.LENGTH_SHORT).show()
         }
     }

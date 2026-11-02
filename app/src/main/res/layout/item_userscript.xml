@@ -74,6 +74,6 @@
         android:layout_height="wrap_content"
         android:checked="true"
         app:thumbTint="@color/text_primary"
-        app:trackTint="@color/accent_emerald" />
+        app:trackTint="@color/switch_track" />
 
 </LinearLayout>

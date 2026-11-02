@@ -9,6 +9,7 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * uBlock Origin Filter Rule Engine (Fast In-Memory Rust/Kotlin Hybrid)
@@ -26,12 +27,20 @@ class AdBlockEngine private constructor(private val context: Context) {
     private val genericCosmeticRules = ConcurrentHashMap.newKeySet<String>()
     
     // Telemetry
-    @Volatile
-    var totalBlockedRequests: Long = 0L
-        private set
+    private val statsPrefs = context.getSharedPreferences(STATS_PREFS_NAME, Context.MODE_PRIVATE)
+    private val totalBlocked = AtomicLong(statsPrefs.getLong(KEY_TOTAL_BLOCKED, 0L))
+    private val blockedByApp = ConcurrentHashMap<String, AtomicLong>()
+
+    val totalBlockedRequests: Long
+        get() = totalBlocked.get()
 
     init {
         loadDefaultRules()
+        statsPrefs.all.forEach { (key, value) ->
+            if (key.startsWith(KEY_APP_BLOCKED_PREFIX) && value is Long) {
+                blockedByApp[key.removePrefix(KEY_APP_BLOCKED_PREFIX)] = AtomicLong(value)
+            }
+        }
     }
 
     /**
@@ -47,7 +56,7 @@ class AdBlockEngine private constructor(private val context: Context) {
         var currentHost = host
         while (currentHost.isNotEmpty()) {
             if (blockedDomains.contains(currentHost)) {
-                totalBlockedRequests++
+                totalBlocked.incrementAndGet()
                 return true
             }
             val dotIndex = currentHost.indexOf('.')
@@ -58,7 +67,7 @@ class AdBlockEngine private constructor(private val context: Context) {
         // Check common ad-server URL path signatures
         val path = uri.path?.lowercase() ?: ""
         if (path.contains("/ad/") || path.contains("/ads/") || path.contains("/banner/") || path.contains("/popunder/")) {
-            totalBlockedRequests++
+            totalBlocked.incrementAndGet()
             return true
         }
 
@@ -185,11 +194,37 @@ class AdBlockEngine private constructor(private val context: Context) {
         }
     }
 
+    fun recordBlockedForApp(appId: String) {
+        blockedByApp.getOrPut(appId) { AtomicLong(0L) }.incrementAndGet()
+    }
+
+    fun blockedCountsByApp(): Map<String, Long> {
+        return blockedByApp.mapValues { it.value.get() }
+    }
+
+    /**
+     * Counters change on WebView network threads, so they are written out on pause rather than per request
+     */
+    fun flushStats() {
+        statsPrefs.edit().apply {
+            putLong(KEY_TOTAL_BLOCKED, totalBlocked.get())
+            blockedByApp.forEach { (appId, count) ->
+                putLong(KEY_APP_BLOCKED_PREFIX + appId, count.get())
+            }
+        }.apply()
+    }
+
     fun resetStats() {
-        totalBlockedRequests = 0L
+        totalBlocked.set(0L)
+        blockedByApp.clear()
+        statsPrefs.edit().clear().apply()
     }
 
     companion object {
+        private const val STATS_PREFS_NAME = "scraffold_shield_stats"
+        private const val KEY_TOTAL_BLOCKED = "total_blocked"
+        private const val KEY_APP_BLOCKED_PREFIX = "app_blocked_"
+
         @Volatile
         private var INSTANCE: AdBlockEngine? = null
 

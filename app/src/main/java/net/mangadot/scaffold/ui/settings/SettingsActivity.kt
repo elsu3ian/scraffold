@@ -11,6 +11,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import net.mangadot.scaffold.BuildConfig
 import net.mangadot.scaffold.databinding.ActivitySettingsBinding
 import net.mangadot.scaffold.databinding.DialogAdblockSettingsBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
@@ -44,6 +45,8 @@ class SettingsActivity : AppCompatActivity() {
         loadPreferences()
         setupListeners()
         updateCacheDisplay()
+
+        binding.settingsTvAboutVersion.text = "v${BuildConfig.VERSION_NAME} →"
     }
 
     private fun setupWindowInsets() {
