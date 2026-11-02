@@ -12,6 +12,20 @@ All notable changes to this project are documented in this file.
 - **Assistive Edge Dock Ball**: Draggable floating ball that auto-hides half-way into screen edge, with tap quick actions (Reload, Home, Shield) and long-press Running Apps Switcher bottom sheet.
 - **Obsidian Modals Parity**: Built custom Add WebApp bottom sheet (`modal-add`), Cosmic Theme palette customizer (`modal-cosmic`), and Default Web App Settings sheet (`modal-app-settings`).
 - **Pre-Release Distribution**: Configured automated compilation and publishing directly as GitHub Pre-releases.
+- **Home Screen Folder Widget**: A 2x2 folder with three big icons that open apps directly and small icons that open a folder with every app, in the shelf's sort order.
+- **Quick Browser**: Tabs, history with a clear button, a side bubble, its own login profile, and adding any page to the shelf.
+- **Background Playback**: Audio and video keep running after leaving the app, with notification and lock screen controls.
+- **Filter-List Ad Blocker**: EasyList, EasyPrivacy, uBlock Origin's lists, Peter Lowe and AdGuard Mobile, downloaded from their publishers and refreshed every few days.
+- **Shelf Customization**: Sorting including a custom drag order, a Customize sheet, and a theme reset.
+- **Page and Font Size**: Set per web app, and across the browser.
+
+### Changed
+- Web apps resume where they were left, each in its own task and Recents entry.
+- The update check now finds pre-releases, and About shows the Beta stage.
+- The license is now PolyForm Noncommercial 1.0.0.
+
+### Fixed
+- Apps left open across a phone restart could reopen as the wrong site.
 
 ---
 
