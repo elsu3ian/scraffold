@@ -1,15 +1,19 @@
 package net.mangadot.scaffold.engine
 
 import android.graphics.Bitmap
+import android.net.Uri
+import android.os.Message
 import android.view.View
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
 
 /**
  * WebChromeClient enforcing two-tier hardware permissions (Camera & Mic),
- * full-screen HTML5 video playback, and title/favicon reception.
+ * full-screen HTML5 video playback, external popup link routing, and title/favicon reception.
  */
 class DeckWebChromeClient(
     private var webApp: WebAppEntity,
@@ -17,7 +21,8 @@ class DeckWebChromeClient(
     private val onTitleReceived: ((title: String) -> Unit)? = null,
     private val onFaviconReceived: ((icon: Bitmap) -> Unit)? = null,
     private val onShowFullscreenVideo: ((view: View, callback: CustomViewCallback) -> Unit)? = null,
-    private val onHideFullscreenVideo: (() -> Unit)? = null
+    private val onHideFullscreenVideo: (() -> Unit)? = null,
+    private val onExternalLinkRequested: ((uri: Uri) -> Unit)? = null
 ) : WebChromeClient() {
 
     fun updateWebApp(updated: WebAppEntity) {
@@ -71,5 +76,25 @@ class DeckWebChromeClient(
     override fun onReceivedIcon(view: WebView, icon: Bitmap?) {
         super.onReceivedIcon(view, icon)
         icon?.let { onFaviconReceived?.invoke(it) }
+    }
+
+    override fun onCreateWindow(
+        view: WebView?,
+        isDialog: Boolean,
+        isUserGesture: Boolean,
+        resultMsg: Message?
+    ): Boolean {
+        val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
+        val tempWebView = WebView(view?.context ?: return false)
+        tempWebView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val uri = request?.url ?: return false
+                onExternalLinkRequested?.invoke(uri)
+                return true
+            }
+        }
+        transport.webView = tempWebView
+        resultMsg.sendToTarget()
+        return true
     }
 }
