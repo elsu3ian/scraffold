@@ -83,11 +83,7 @@ class SettingsActivity : AppCompatActivity() {
 
         // Row 2: Default Web App Settings
         binding.settingsRowDefaultApp.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle("Default Web App Settings")
-                .setMessage("Global Defaults:\n• Hardware Acceleration: ON\n• Desktop User-Agent: Auto\n• AdBlock Shield: Enabled\n• Fullscreen Canvas: Enabled")
-                .setPositiveButton("Close", null)
-                .show()
+            DefaultAppSettingsBottomSheetDialog().show(supportFragmentManager, "default_app_settings")
         }
 
         // Row 3: Userscripts Manager
@@ -156,10 +152,15 @@ class SettingsActivity : AppCompatActivity() {
         val dialogBinding = DialogAdblockSettingsBinding.inflate(LayoutInflater.from(this))
         dialogBinding.dialogTvBlockedCount.text = "Shield: ${adBlockEngine.totalBlockedRequests} requests blocked"
 
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setView(dialogBinding.root)
-            .setPositiveButton("Close", null)
-            .show()
+            .create()
+
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        dialogBinding.btnCloseAdblock.setOnClickListener {
+            dialog.dismiss()
+        }
+        dialog.show()
     }
 
     private fun updateCacheDisplay() {
