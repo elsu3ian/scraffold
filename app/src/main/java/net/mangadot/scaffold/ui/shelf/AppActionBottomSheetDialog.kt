@@ -6,18 +6,23 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import net.mangadot.scaffold.ui.theme.CosmicBottomSheet
 import net.mangadot.scaffold.R
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
+import net.mangadot.scaffold.data.settings.WebAppSettings
+import net.mangadot.scaffold.data.settings.effectiveSettings
+import net.mangadot.scaffold.data.settings.withSettings
 import net.mangadot.scaffold.databinding.LayoutBottomSheetAppActionsBinding
+import net.mangadot.scaffold.engine.AppIcons
+import net.mangadot.scaffold.ui.settings.WebAppSettingsActivity
 import net.mangadot.scaffold.ui.userscript.UserscriptsActivity
 
 class AppActionBottomSheetDialog(
     private val app: WebAppEntity,
     private val onLaunch: (WebAppEntity) -> Unit,
     private val onDelete: (WebAppEntity) -> Unit,
-    private val onToggleFullscreen: (WebAppEntity, Boolean) -> Unit
-) : BottomSheetDialogFragment() {
+    private val onUpdate: (WebAppEntity) -> Unit
+) : CosmicBottomSheet() {
 
     private var _binding: LayoutBottomSheetAppActionsBinding? = null
     private val binding get() = _binding!!
@@ -37,7 +42,10 @@ class AppActionBottomSheetDialog(
         binding.sheetTvAppName.text = app.name
         binding.sheetTvAppUrl.text = app.url
         binding.sheetTvIconMonogram.text = extractMonogram(app.name)
-        binding.sheetSwitchFullscreen.isChecked = app.fullScreenMode
+        AppIcons.bind(binding.sheetIvAppIcon, binding.sheetTvIconMonogram, app)
+        val settings = app.effectiveSettings(requireContext())
+        binding.sheetSwitchFullscreen.isChecked = settings.fullscreen
+        binding.sheetSwitchAdblock.isChecked = settings.adblock
 
         // Pick gradient based on app hash
         val drawables = listOf(
@@ -58,7 +66,18 @@ class AppActionBottomSheetDialog(
 
         // Action 2: Fullscreen Toggle
         binding.sheetSwitchFullscreen.setOnCheckedChangeListener { _, isChecked ->
-            onToggleFullscreen(app, isChecked)
+            applyOverride { it.copy(fullscreen = isChecked) }
+        }
+
+        binding.sheetSwitchAdblock.setOnCheckedChangeListener { _, isChecked ->
+            applyOverride { it.copy(adblock = isChecked) }
+        }
+
+        binding.sheetBtnSettings.setOnClickListener {
+            dismiss()
+            startActivity(Intent(requireContext(), WebAppSettingsActivity::class.java).apply {
+                putExtra(WebAppSettingsActivity.EXTRA_APP_ID, app.id)
+            })
         }
 
         // Action 3: Userscripts
@@ -75,6 +94,16 @@ class AppActionBottomSheetDialog(
             dismiss()
             onDelete(app)
         }
+    }
+
+    /** A switch flipped here makes this app stop following the global defaults. */
+    private fun applyOverride(change: (WebAppSettings) -> WebAppSettings) {
+        val current = app.effectiveSettings(requireContext())
+        val switches = current.copy(
+            fullscreen = binding.sheetSwitchFullscreen.isChecked,
+            adblock = binding.sheetSwitchAdblock.isChecked
+        )
+        onUpdate(app.copy(overrideGlobal = true).withSettings(change(switches)))
     }
 
     private fun extractMonogram(name: String): String {

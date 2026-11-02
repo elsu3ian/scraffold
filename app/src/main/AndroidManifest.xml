@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <!-- Camera hardware optional to allow installation on devices without back/front camera -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -18,13 +20,15 @@
     <application
         android:name=".ScaffoldApplication"
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.Scaffold"
         android:hardwareAccelerated="true"
-        android:usesCleartextTraffic="false">
+        android:usesCleartextTraffic="true">
 
         <!-- Main Shelf Launcher Activity -->
         <activity
@@ -45,6 +49,13 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- In-App Browser for links that leave a web app -->
+        <activity
+            android:name=".ui.browser.InAppBrowserActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- In-App Userscript Editor Activity -->
         <activity
             android:name=".ui.editor.ScriptEditorActivity"
@@ -61,6 +72,11 @@
         <!-- Global Settings Activity -->
         <activity
             android:name=".ui.settings.SettingsActivity"
+            android:exported="false" />
+
+        <!-- Per-App and Global Web App Settings -->
+        <activity
+            android:name=".ui.settings.WebAppSettingsActivity"
             android:exported="false" />
 
         <!-- About & Open Source Licenses Activity -->

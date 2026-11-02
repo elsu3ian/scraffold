@@ -5,7 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import net.mangadot.scaffold.ui.theme.CosmicBottomSheet
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
 import net.mangadot.scaffold.databinding.LayoutBottomSheetAppSwitcherBinding
 import net.mangadot.scaffold.ui.shelf.AppAdapter
@@ -13,7 +13,7 @@ import net.mangadot.scaffold.ui.shelf.AppAdapter
 class AppSwitcherBottomSheetDialog(
     private val apps: List<WebAppEntity>,
     private val onAppSelected: (WebAppEntity) -> Unit
-) : BottomSheetDialogFragment() {
+) : CosmicBottomSheet() {
 
     private var _binding: LayoutBottomSheetAppSwitcherBinding? = null
     private val binding get() = _binding!!

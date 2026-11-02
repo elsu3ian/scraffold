@@ -27,6 +27,14 @@
             android:textColor="@color/accent_emerald"
             android:textSize="12sp"
             android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/list_iv_app_icon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            android:contentDescription="App Icon" />
     </FrameLayout>
 
     <!-- App Name & Domain -->

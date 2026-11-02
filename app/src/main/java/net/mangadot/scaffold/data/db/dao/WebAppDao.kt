@@ -31,6 +31,9 @@ interface WebAppDao {
     @Query("UPDATE web_apps SET launchCount = launchCount + 1, lastLaunchedAt = :timestamp WHERE id = :id")
     suspend fun recordLaunch(id: String, timestamp: Long = System.currentTimeMillis())
 
+    @Query("UPDATE web_apps SET iconUrl = :iconUrl WHERE id = :id")
+    suspend fun updateIconUrl(id: String, iconUrl: String)
+
     // Instant Settings Updates
     @Query("UPDATE web_apps SET desktopMode = :enabled WHERE id = :id")
     suspend fun updateDesktopMode(id: String, enabled: Boolean)

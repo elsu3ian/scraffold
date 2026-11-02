@@ -4,12 +4,14 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Message
 import android.view.View
+import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
+import net.mangadot.scaffold.data.settings.WebAppSettings
 
 /**
  * WebChromeClient enforcing two-tier hardware permissions (Camera & Mic),
@@ -22,11 +24,23 @@ class DeckWebChromeClient(
     private val onFaviconReceived: ((icon: Bitmap) -> Unit)? = null,
     private val onShowFullscreenVideo: ((view: View, callback: CustomViewCallback) -> Unit)? = null,
     private val onHideFullscreenVideo: (() -> Unit)? = null,
-    private val onExternalLinkRequested: ((uri: Uri) -> Unit)? = null
+    private val onExternalLinkRequested: ((uri: Uri) -> Unit)? = null,
+    private val onLocationRequested: ((origin: String, callback: GeolocationPermissions.Callback) -> Unit)? = null
 ) : WebChromeClient() {
 
-    fun updateWebApp(updated: WebAppEntity) {
+    private var settings = WebAppSettings()
+
+    fun updateWebApp(updated: WebAppEntity, webSettings: WebAppSettings) {
         this.webApp = updated
+        this.settings = webSettings
+    }
+
+    override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
+        if (settings.allowLocation && onLocationRequested != null) {
+            onLocationRequested.invoke(origin, callback)
+        } else {
+            callback.invoke(origin, false, false)
+        }
     }
 
     override fun onPermissionRequest(request: PermissionRequest) {
@@ -42,7 +56,7 @@ class DeckWebChromeClient(
                 }
                 PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> {
                     // Widevine DRM streaming
-                    grantedResources.add(resource)
+                    if (settings.allowDrm) grantedResources.add(resource)
                 }
             }
         }
@@ -84,12 +98,15 @@ class DeckWebChromeClient(
         isUserGesture: Boolean,
         resultMsg: Message?
     ): Boolean {
+        // A window nobody tapped for is a popup
+        if (!isUserGesture) return false
         val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
         val tempWebView = WebView(view?.context ?: return false)
         tempWebView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val uri = request?.url ?: return false
                 onExternalLinkRequested?.invoke(uri)
+                view?.post { view.destroy() }
                 return true
             }
         }

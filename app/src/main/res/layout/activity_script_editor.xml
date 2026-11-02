@@ -49,8 +49,7 @@
             android:maxLines="1"
             android:ellipsize="middle"
             android:paddingHorizontal="6dp"
-            android:paddingVertical="2dp"
-            android:background="@drawable/bg_card" />
+            android:paddingVertical="2dp" />
 
         <TextView
             android:id="@+id/editor_btn_save"
@@ -72,7 +71,7 @@
         android:orientation="horizontal"
         android:paddingHorizontal="12dp"
         android:paddingTop="4dp"
-        android:background="#121215">
+        android:background="#33000000">
 
         <TextView
             android:id="@+id/editor_tab_code"
@@ -112,7 +111,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:scrollbars="none"
-            android:background="#16161A"
+            android:background="#33000000"
             android:paddingHorizontal="8dp"
             android:paddingVertical="4dp">
 
@@ -179,7 +178,7 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             android:fillViewport="true"
-            android:background="#09090B">
+            android:background="#99000000">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -198,25 +197,37 @@
                     android:textColor="#52525B"
                     android:textSize="11sp"
                     android:lineSpacingExtra="2.5dp"
-                    android:fontFamily="monospace" />
+                    android:fontFamily="monospace"
+                    android:includeFontPadding="true" />
 
-                <!-- Monospace Code Editor -->
-                <EditText
-                    android:id="@+id/editor_et_code"
+                <!-- Monospace Code Editor: scrolls sideways so line numbers stay aligned -->
+                <HorizontalScrollView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@null"
-                    android:gravity="top|start"
-                    android:paddingStart="4dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="0dp"
-                    android:textColor="#E4E4E7"
-                    android:textSize="11sp"
-                    android:lineSpacingExtra="2.5dp"
-                    android:fontFamily="monospace"
-                    android:inputType="textMultiLine|textNoSuggestions"
-                    android:scrollbars="none" />
+                    android:fillViewport="true"
+                    android:scrollbars="none">
+
+                    <EditText
+                        android:id="@+id/editor_et_code"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="400dp"
+                        android:background="@null"
+                        android:gravity="top|start"
+                        android:paddingStart="4dp"
+                        android:paddingEnd="12dp"
+                        android:paddingTop="0dp"
+                        android:paddingBottom="0dp"
+                        android:textColor="#E4E4E7"
+                        android:textSize="11sp"
+                        android:lineSpacingExtra="2.5dp"
+                        android:fontFamily="monospace"
+                        android:inputType="textMultiLine|textNoSuggestions"
+                        android:importantForAutofill="no"
+                        android:scrollHorizontally="true"
+                        android:scrollbars="none" />
+                </HorizontalScrollView>
             </LinearLayout>
         </ScrollView>
 
@@ -229,14 +240,14 @@
             android:gravity="center_vertical"
             android:paddingHorizontal="12dp"
             android:paddingVertical="6dp"
-            android:background="#121215">
+            android:background="#33000000">
 
             <TextView
                 android:id="@+id/editor_tv_status_pos"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Lines: 15 • UTF-8"
+                android:text="1 lines, 0 chars"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:fontFamily="monospace" />
@@ -245,7 +256,7 @@
                 android:id="@+id/editor_tv_status_type"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="JavaScript • document-start"
+                android:text="UTF-8 • JavaScript"
                 android:textColor="@color/accent_emerald"
                 android:textSize="10sp"
                 android:fontFamily="monospace" />
@@ -306,7 +317,6 @@
                     android:singleLine="true" />
             </LinearLayout>
 
-            <!-- Match Pattern -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -318,7 +328,63 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Match Pattern (@match)"
+                    android:text="Version (@version)"
+                    android:textColor="@color/text_muted"
+                    android:textSize="10sp" />
+
+                <EditText
+                    android:id="@+id/editor_et_version"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@null"
+                    android:layout_marginTop="4dp"
+                    android:importantForAutofill="no"
+                    android:inputType="text"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:fontFamily="monospace"
+                    android:singleLine="true" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card"
+                android:padding="12dp"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Description (@description)"
+                    android:textColor="@color/text_muted"
+                    android:textSize="10sp" />
+
+                <EditText
+                    android:id="@+id/editor_et_description"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@null"
+                    android:layout_marginTop="4dp"
+                    android:importantForAutofill="no"
+                    android:inputType="text"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card"
+                android:padding="12dp"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Target Match Patterns (@match, one per line)"
                     android:textColor="@color/text_muted"
                     android:textSize="10sp" />
 
@@ -328,14 +394,13 @@
                     android:layout_height="wrap_content"
                     android:background="@null"
                     android:layout_marginTop="4dp"
-                    android:text="https://*/*"
+                    android:importantForAutofill="no"
+                    android:inputType="textMultiLine|textNoSuggestions"
                     android:textColor="@color/accent_emerald"
                     android:textSize="12sp"
-                    android:fontFamily="monospace"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace" />
             </LinearLayout>
 
-            <!-- Run-At Phase -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -347,45 +412,42 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Execution Timing (@run-at)"
+                    android:text="Run At (@run-at). Tap to change"
                     android:textColor="@color/text_muted"
                     android:textSize="10sp" />
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:id="@+id/editor_tv_run_at"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="document-start (Pre-DOM Injection)"
+                    android:paddingVertical="4dp"
                     android:textColor="@color/accent_purple_bright"
                     android:textSize="12sp"
-                    android:fontFamily="monospace" />
+                    android:fontFamily="monospace"
+                    android:clickable="true"
+                    android:focusable="true" />
             </LinearLayout>
 
-            <!-- Grants -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="8dp"
+                android:text="PERMISSIONS &amp; GRANTS"
+                android:textColor="@color/text_muted"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+
             <LinearLayout
+                android:id="@+id/editor_group_grants"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:background="@drawable/bg_card"
-                android:padding="12dp"
-                android:layout_marginBottom="24dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Greasemonkey APIs (@grant)"
-                    android:textColor="@color/text_muted"
-                    android:textSize="10sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="GM_addStyle, GM_setValue, GM_getValue, GM_log"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace" />
-            </LinearLayout>
+                android:padding="8dp"
+                android:layout_marginBottom="24dp" />
 
             <!-- Delete Script Button -->
             <Button

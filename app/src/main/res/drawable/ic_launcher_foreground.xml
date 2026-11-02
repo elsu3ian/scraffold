@@ -1,20 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Elevated Inner Squircle Border -->
+    <!-- Glossy disc, inside the 72dp circle every launcher mask keeps -->
     <path
-        android:pathData="M32,24 L76,24 A12,12 0 0,1 88,36 L88,72 A12,12 0 0,1 76,84 L32,84 A12,12 0 0,1 20,72 L20,36 A12,12 0 0,1 32,24 Z"
-        android:strokeColor="#10B981"
-        android:strokeWidth="2.5"
-        android:fillColor="#121215" />
-    <!-- Sharp Stylized S Monogram -->
-    <path
-        android:pathData="M66,37 L46,37 A4,4 0 0,0 42,41 L42,50 A4,4 0 0,0 46,54 L62,54 A4,4 0 0,1 66,58 L66,67 A4,4 0 0,1 62,71 L42,71"
-        android:strokeColor="#10B981"
-        android:strokeWidth="5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:pathData="M20,54 A34,34 0 1,1 88,54 A34,34 0 1,1 20,54 Z"
+        android:strokeColor="#6610B981"
+        android:strokeWidth="1.5">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="30"
+                android:startY="24"
+                android:endX="78"
+                android:endY="84"
+                android:type="linear">
+                <item android:color="#FF26262C" android:offset="0" />
+                <item android:color="#FF0D0D10" android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Gloss highlight across the top -->
+    <path android:pathData="M22,50 A32,32 0 0,1 86,50 Q54,62 22,50 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54"
+                android:startY="21"
+                android:endX="54"
+                android:endY="56"
+                android:type="linear">
+                <item android:color="#30FFFFFF" android:offset="0" />
+                <item android:color="#00FFFFFF" android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Armenian small letter feh, from Noto Sans Armenian Bold -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.85"
+        android:scaleY="0.85">
+        <path
+            android:pathData="M56.89 45.9Q61.27 46.36 64.02 47.58Q66.77 48.81 68.04 50.79Q69.31 52.78 69.31 55.59Q69.31 58.46 67.8 60.58Q66.3 62.7 63.51 63.95Q60.72 65.2 56.89 65.38V76H50.65V65.38Q48.67 65.2 46.57 64.83Q44.47 64.46 42.43 63.9Q40.4 63.35 38.69 62.7V57.3Q40.86 58.18 43.03 58.89Q45.2 59.61 47.17 60.05Q49.13 60.49 50.65 60.53V50.19Q46.77 49.54 44.21 48.39Q41.65 47.24 40.38 45.44Q39.11 43.63 39.11 41.05Q39.11 38.19 40.8 36.18Q42.48 34.17 45.67 33.08Q48.85 32 53.24 32H56.89ZM45.53 41Q45.53 42.62 46.89 43.75Q48.25 44.88 50.65 45.34V36.85Q48.48 36.85 47.01 37.98Q45.53 39.11 45.53 41ZM56.89 60.53Q59.06 60.49 60.37 59.86Q61.69 59.24 62.29 58.16Q62.89 57.07 62.89 55.64Q62.89 53.7 61.36 52.34Q59.84 50.98 56.89 50.75Z"
+            android:fillColor="#10B981" />
+    </group>
 </vector>

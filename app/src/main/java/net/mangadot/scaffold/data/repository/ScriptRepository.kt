@@ -26,7 +26,9 @@ class ScriptRepository(
 
     suspend fun setScriptEnabled(id: String, enabled: Boolean) = scriptDao.setScriptEnabled(id, enabled)
 
-    // GM_getValue / GM_setValue bridge storage
+    // GM_getValue / GM_setValue bridge storage, namespaced by script id
+    suspend fun getAllStorageValues(appId: String): List<ScriptStorageEntity> = scriptStorageDao.getAllForApp(appId)
+
     suspend fun getStorageValue(appId: String, key: String): String? = scriptStorageDao.getValue(appId, key)
 
     suspend fun setStorageValue(appId: String, key: String, value: String) {

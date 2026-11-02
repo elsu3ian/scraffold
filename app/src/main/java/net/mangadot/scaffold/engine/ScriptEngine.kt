@@ -1,227 +1,151 @@
 package net.mangadot.scaffold.engine
 
-import android.net.Uri
+import android.annotation.SuppressLint
+import android.content.Context
 import android.webkit.WebView
-import androidx.webkit.JavaScriptReplyProxy
-import androidx.webkit.WebMessageCompat
+import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.mangadot.scaffold.data.db.entity.ScriptEntity
 import net.mangadot.scaffold.data.repository.ScriptRepository
+import net.mangadot.scaffold.engine.userscript.GmBridge
+import net.mangadot.scaffold.engine.userscript.ScriptInstaller
+import net.mangadot.scaffold.engine.userscript.UserscriptMeta
+import org.json.JSONArray
 import org.json.JSONObject
-import java.util.regex.Pattern
+import java.util.UUID
 
 /**
- * Modern Userscript Engine using WebViewCompat.addDocumentStartJavaScript()
- * and WebViewCompat.addWebMessageListener() for zero-race-condition pre-DOM execution.
+ * Registers every enabled userscript as its own document-start script. Each one decides at
+ * runtime whether it matches the page, so SPA and cross-host navigation need no re-injection,
+ * and a syntax error in one script can't take the others down.
  */
 class ScriptEngine(
+    private val context: Context,
     private val scriptRepository: ScriptRepository,
-    private val scope: CoroutineScope
+    scope: CoroutineScope
 ) {
 
-    /**
-     * Injects uBlock cosmetic CSS, scriptlets, and document-start userscripts
-     * directly into the C++ RenderFrame before HTML parsing begins.
-     */
-    fun attachPreDomScripts(
+    val bridge = GmBridge(context, scriptRepository, scope)
+    private val handlers = mutableListOf<ScriptHandler>()
+    private var fallbackScripts: List<String> = emptyList()
+
+    private val runtime: String by lazy {
+        context.assets.open("gm_runtime.js").bufferedReader().use { it.readText() }
+    }
+
+    @SuppressLint("JavascriptInterface")
+    fun attach(webView: WebView) {
+        bridge.webView = webView
+        webView.addJavascriptInterface(bridge, GmBridge.INTERFACE_NAME)
+    }
+
+    /** Replaces what is registered on [webView]. Call before loading a page. */
+    suspend fun register(
         webView: WebView,
-        appId: String,
-        currentUrl: String,
-        activeScripts: List<ScriptEntity>,
+        scripts: List<ScriptEntity>,
         cosmeticCss: String,
         scriptlets: String
     ) {
-        if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
-            return
-        }
+        handlers.forEach { it.remove() }
+        handlers.clear()
+        bridge.reset()
 
-        val matchingScripts = activeScripts.filter { script ->
-            script.enabled && matchesPattern(script.matchPattern, currentUrl)
-        }
-
-        val docStartScripts = matchingScripts.filter {
-            it.runAt == ScriptEntity.RUN_AT_DOCUMENT_START
-        }
-
-        val bundleBuilder = StringBuilder()
-
-        // 1. Greasemonkey / Tampermonkey Polyfill Bridge
-        bundleBuilder.append("""
-            (function() {
-                window.__scraffold_app_id = "$appId";
-                
-                // GM_addStyle
-                window.GM_addStyle = function(css) {
-                    const style = document.createElement('style');
-                    style.textContent = css;
-                    (document.head || document.documentElement).appendChild(style);
-                    return style;
-                };
-
-                // GM_log
-                window.GM_log = function(msg) {
-                    console.log('[Scraffold Script]', msg);
-                };
-
-                // GM_setValue / GM_getValue Bridge via WebMessageListener
-                window.GM_setValue = function(key, value) {
-                    try {
-                        if (window.scraffoldBridge) {
-                            window.scraffoldBridge.postMessage(JSON.stringify({
-                                action: "setValue",
-                                appId: window.__scraffold_app_id,
-                                key: key,
-                                value: JSON.stringify(value)
-                            }));
-                        }
-                    } catch(e) { console.error('GM_setValue error', e); }
-                };
-
-                window.GM_getValue = function(key, defaultValue) {
-                    // Synchronous fallback from local cache if present
-                    return defaultValue;
-                };
-            })();
-        """.trimIndent()).append("\n")
-
-        // 2. uBlock Scriptlets (Defusers)
-        if (scriptlets.isNotEmpty()) {
-            bundleBuilder.append(scriptlets).append("\n")
-        }
-
-        // 3. uBlock Cosmetic CSS Injection (Runs immediately as DOM elements appear)
-        if (cosmeticCss.isNotEmpty()) {
-            val escapedCss = JSONObject.quote(cosmeticCss)
-            bundleBuilder.append("""
-                (function() {
-                    const injectStyle = function() {
-                        const target = document.head || document.documentElement;
-                        if (target && !document.getElementById('scraffold-cosmetic-shield')) {
-                            const style = document.createElement('style');
-                            style.id = 'scraffold-cosmetic-shield';
-                            style.textContent = $escapedCss;
-                            target.appendChild(style);
-                        }
-                    };
-                    if (document.documentElement) {
-                        injectStyle();
-                    } else {
-                        document.addEventListener('DOMContentLoaded', injectStyle, { once: true });
-                    }
-                })();
-            """.trimIndent()).append("\n")
-        }
-
-        // 4. User-defined // @run-at document-start Scripts
-        for (script in docStartScripts) {
-            bundleBuilder.append("""
-                // --- Script: ${script.name} ---
-                try {
-                    ${script.code}
-                } catch(err) {
-                    console.error('[Scraffold Script Error in ${script.name}]', err);
-                }
-            """.trimIndent()).append("\n")
-        }
-
-        // Register with native Chromium RenderFrame
-        WebViewCompat.addDocumentStartJavaScript(
-            webView,
-            bundleBuilder.toString(),
-            setOf("*")
-        )
-
-        // Setup Two-Way WebMessageListener for GM_setValue
-        setupWebMessageListener(webView)
-    }
-
-    private fun setupWebMessageListener(webView: WebView) {
-        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
-            return
-        }
-
-        WebViewCompat.addWebMessageListener(
-            webView,
-            "scraffoldBridge",
-            setOf("*"),
-            object : WebViewCompat.WebMessageListener {
-                override fun onPostMessage(
-                    view: WebView,
-                    message: WebMessageCompat,
-                    sourceOrigin: Uri,
-                    isMainFrame: Boolean,
-                    replyProxy: JavaScriptReplyProxy
-                ) {
-                    val rawData = message.data ?: return
-                    try {
-                        val json = JSONObject(rawData)
-                        when (json.optString("action")) {
-                            "setValue" -> {
-                                val appId = json.getString("appId")
-                                val key = json.getString("key")
-                                val value = json.getString("value")
-                                scope.launch(Dispatchers.IO) {
-                                    scriptRepository.setStorageValue(appId, key, value)
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        // Ignore malformed payloads
-                    }
-                }
+        val wrapped = withContext(Dispatchers.IO) {
+            scripts.filter { it.enabled }.mapNotNull { script ->
+                val meta = UserscriptMeta.parse(script.code)
+                if (meta.includeRegexes().isEmpty()) return@mapNotNull null
+                val token = UUID.randomUUID().toString()
+                bridge.prepare(token, script, meta)
+                wrap(script, meta, token)
             }
+        }
+
+        val shield = buildShield(cosmeticCss, scriptlets)
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            fallbackScripts = emptyList()
+            (listOf(shield) + wrapped).filter { it.isNotEmpty() }.forEach { source ->
+                handlers += WebViewCompat.addDocumentStartJavaScript(webView, source, setOf("*"))
+            }
+        } else {
+            fallbackScripts = listOf(shield) + wrapped
+        }
+    }
+
+    /** Old WebViews lack document-start scripts, so everything runs once the page has loaded. */
+    fun onPageFinished(webView: WebView) {
+        fallbackScripts.filter { it.isNotEmpty() }.forEach { webView.evaluateJavascript(it, null) }
+    }
+
+    private fun wrap(script: ScriptEntity, meta: UserscriptMeta, token: String): String {
+        val config = JSONObject()
+            .put("token", token)
+            .put("callback", "__sf" + UUID.randomUUID().toString().replace("-", ""))
+            .put("includes", JSONArray(meta.includeRegexes()))
+            .put("excludes", JSONArray(meta.excludeRegexes()))
+            .put("grants", JSONArray(meta.grants))
+            .put("noframes", meta.noframes)
+            .put("runAt", meta.runAt)
+            .put("info", JSONObject()
+                .put("scriptHandler", "Scraffold")
+                .put("version", "1.0")
+                .put("script", JSONObject()
+                    .put("name", meta.name.ifEmpty { script.name })
+                    .put("namespace", meta.namespace)
+                    .put("version", meta.version)
+                    .put("description", meta.description)
+                    .put("author", meta.author)
+                    .put("matches", JSONArray(meta.matches))
+                    .put("includes", JSONArray(meta.includes))
+                    .put("excludes", JSONArray(meta.excludes))
+                    .put("grant", JSONArray(meta.grants))
+                    .put("run-at", meta.runAt)))
+
+        val required = ScriptInstaller.readRequires(context, script.id, meta).joinToString("") { "$it\n;\n" }
+        val names = GM_NAMES.joinToString(", ")
+        val arguments = GM_NAMES.joinToString(", ") { "__api.$it" }
+        return """
+(function () {
+$runtime
+__sfboot($config, function (__api) {
+  (function ($names) {
+$required${script.code}
+  }).call(window, $arguments);
+});
+})();
+"""
+    }
+
+    private fun buildShield(cosmeticCss: String, scriptlets: String): String {
+        if (cosmeticCss.isEmpty() && scriptlets.isEmpty()) return ""
+        val style = if (cosmeticCss.isEmpty()) "" else """
+(function () {
+  var css = ${JSONObject.quote(cosmeticCss)};
+  var inject = function () {
+    var target = document.head || document.documentElement;
+    if (target && !document.getElementById('scraffold-cosmetic-shield')) {
+      var style = document.createElement('style');
+      style.id = 'scraffold-cosmetic-shield';
+      style.textContent = css;
+      target.appendChild(style);
+    }
+  };
+  if (document.documentElement) inject();
+  else document.addEventListener('DOMContentLoaded', inject, { once: true });
+})();
+"""
+        return scriptlets + "\n" + style
+    }
+
+    private companion object {
+        val GM_NAMES = listOf(
+            "unsafeWindow", "GM", "GM_info", "GM_getValue", "GM_setValue", "GM_deleteValue", "GM_listValues",
+            "GM_addValueChangeListener", "GM_removeValueChangeListener", "GM_addStyle", "GM_addElement", "GM_log",
+            "GM_getResourceText", "GM_getResourceURL", "GM_openInTab", "GM_setClipboard", "GM_notification",
+            "GM_download", "GM_registerMenuCommand", "GM_unregisterMenuCommand", "GM_xmlhttpRequest"
         )
-    }
-
-    /**
-     * Executes // @run-at document-end scripts when DOMContentLoaded fires
-     */
-    fun executeDocumentEndScripts(
-        webView: WebView,
-        currentUrl: String,
-        activeScripts: List<ScriptEntity>
-    ) {
-        val matchingScripts = activeScripts.filter { script ->
-            script.enabled &&
-            script.runAt == ScriptEntity.RUN_AT_DOCUMENT_END &&
-            matchesPattern(script.matchPattern, currentUrl)
-        }
-
-        for (script in matchingScripts) {
-            val wrappedCode = """
-                (function() {
-                    try {
-                        ${script.code}
-                    } catch(e) {
-                        console.error('[Scraffold document-end Script Error]', e);
-                    }
-                })();
-            """.trimIndent()
-            webView.evaluateJavascript(wrappedCode, null)
-        }
-    }
-
-    /**
-     * Match pattern evaluator supporting wildcard * domains and paths
-     */
-    fun matchesPattern(patternStr: String, url: String): Boolean {
-        if (patternStr == "<all_urls>" || patternStr == "*") return true
-        return try {
-            val regex = patternToRegex(patternStr)
-            Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(url).find()
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    private fun patternToRegex(pattern: String): String {
-        return "^" + pattern
-            .replace(".", "\\.")
-            .replace("*", ".*")
-            .replace("?", ".?") + "$"
     }
 }

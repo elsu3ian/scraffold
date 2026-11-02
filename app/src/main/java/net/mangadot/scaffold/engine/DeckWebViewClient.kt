@@ -1,44 +1,49 @@
 package net.mangadot.scaffold.engine
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import net.mangadot.scaffold.data.db.entity.ScriptEntity
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
+import net.mangadot.scaffold.data.settings.WebAppSettings
+import net.mangadot.scaffold.ui.browser.ExternalLinks
 import java.io.ByteArrayInputStream
 
 /**
  * High-performance WebViewClient with:
  * - <0.05ms uBlock Origin network ad/telemetry interception
- * - Domain sandboxing (out-of-scope link routing to system browser)
+ * - Domain sandboxing (out-of-scope links open in the in-app browser)
  * - Safe intent/deep-link dispatching
- * - Post-DOM document-end userscript injection
+ * - Userscript install links
  */
 class DeckWebViewClient(
     private val context: Context,
     private val adBlockEngine: AdBlockEngine,
     private val scriptEngine: ScriptEngine,
     private var webApp: WebAppEntity,
-    private var activeScripts: List<ScriptEntity> = emptyList(),
-    private val onPageFinishedCallback: ((url: String) -> Unit)? = null
+    private val onPageFinishedCallback: ((url: String) -> Unit)? = null,
+    private val onUserscriptLink: ((url: String) -> Unit)? = null
 ) : WebViewClient() {
 
     // Hosts the app may navigate within, and whether its first page load is still resolving
     private var redirectedHost: String = ""
     private var isInitialNavigation = true
 
-    fun updateWebApp(updated: WebAppEntity) {
+    @Volatile
+    private var settings = WebAppSettings()
+
+    // Read on the network thread by the third-party filter
+    @Volatile
+    private var pageHost: String = ""
+
+    fun updateWebApp(updated: WebAppEntity, webSettings: WebAppSettings) {
         this.webApp = updated
+        this.settings = webSettings
+        this.pageHost = normalizeHost(Uri.parse(updated.url).host)
         this.redirectedHost = ""
         this.isInitialNavigation = true
-    }
-
-    fun updateActiveScripts(scripts: List<ScriptEntity>) {
-        this.activeScripts = scripts
     }
 
     override fun shouldInterceptRequest(
@@ -48,13 +53,18 @@ class DeckWebViewClient(
         val uri = request.url
 
         // 1. uBlock Origin Network Request Interception
-        if (adBlockEngine.shouldBlock(uri)) {
+        if (settings.adblock && adBlockEngine.shouldBlock(uri)) {
             adBlockEngine.recordBlockedForApp(webApp.id)
             return createEmptyResponse()
         }
 
-        // 2. Data Saver: Block image media if Data Saver is enabled
-        if (webApp.dataSaver) {
+        // 2. Third-party requests
+        if (settings.blockThirdParty && !request.isForMainFrame && isThirdParty(uri)) {
+            return createEmptyResponse()
+        }
+
+        // 3. Data Saver: Block image media if Data Saver is enabled
+        if (settings.dataSaver) {
             val path = uri.path?.lowercase() ?: ""
             if (path.endsWith(".png") || path.endsWith(".jpg") || path.endsWith(".jpeg") ||
                 path.endsWith(".webp") || path.endsWith(".gif") || path.endsWith(".avif")) {
@@ -72,71 +82,67 @@ class DeckWebViewClient(
         val uri = request.url
         val scheme = uri.scheme?.lowercase() ?: ""
 
-        // Handle non-http/https schemes and native deep-links (tg://, discord://, intent://, market://, etc.)
-        if (scheme != "http" && scheme != "https" && scheme.isNotEmpty()) {
-            try {
-                val intent = if (scheme == "intent") {
-                    Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME)
-                } else {
-                    Intent(Intent.ACTION_VIEW, uri)
-                }
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-                return true
-            } catch (e: Exception) {
-                // Check for browser fallback URL if the native app is not installed
-                try {
-                    val fallbackUrl = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME).getStringExtra("browser_fallback_url")
-                    if (!fallbackUrl.isNullOrEmpty()) {
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(fallbackUrl)).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        context.startActivity(browserIntent)
-                        return true
-                    }
-                } catch (ignored: Exception) {}
-                return true
-            }
+        // Userscript links open the install prompt, as Tampermonkey does
+        if (request.isForMainFrame && uri.path?.endsWith(".user.js", ignoreCase = true) == true && onUserscriptLink != null) {
+            onUserscriptLink.invoke(uri.toString())
+            return true
         }
 
-        // Domain Sandboxing: Route out-of-scope URLs to system browser
-        if (webApp.openExternalLinks && (scheme == "http" || scheme == "https")) {
-            val appBaseHost = normalizeHost(Uri.parse(webApp.url).host)
-            val requestHost = normalizeHost(uri.host)
+        // With Allow HTTP off, plain links are upgraded rather than loaded, unless the app itself was saved as http
+        if (scheme == "http" && !settings.allowHttp && request.isForMainFrame && !webApp.url.startsWith("http://", ignoreCase = true)) {
+            view.loadUrl(uri.buildUpon().scheme("https").build().toString())
+            return true
+        }
 
-            if (appBaseHost.isNotEmpty() && requestHost.isNotEmpty()) {
-                val isInternal = isSameSite(requestHost, appBaseHost) ||
-                    (redirectedHost.isNotEmpty() && isSameSite(requestHost, redirectedHost))
-                if (!isInternal) {
-                    // The site's own launch redirect moved it to a new domain: keep the app in the container
-                    if (isInitialNavigation && request.isForMainFrame && request.isRedirect) {
-                        redirectedHost = requestHost
-                        return false
-                    }
-                    try {
-                        val browserIntent = Intent(Intent.ACTION_VIEW, uri).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        context.startActivity(browserIntent)
-                        return true // Swallowed by external system browser
-                    } catch (e: Exception) {
-                        // Fallback to internal navigation if no browser installed
-                    }
-                }
+        // Handle non-http/https schemes and native deep-links (tg://, discord://, intent://, market://, etc.)
+        if (scheme != "http" && scheme != "https" && scheme.isNotEmpty()) {
+            ExternalLinks.openNative(context, uri)
+            return true
+        }
+
+        // Domain Sandboxing: out-of-scope URLs open in the in-app browser, over the app
+        if ((scheme == "http" || scheme == "https") && !staysInApp(uri)) {
+            // The site's own launch redirect moved it to a new domain: keep the app in the container
+            if (isInitialNavigation && request.isForMainFrame && request.isRedirect) {
+                redirectedHost = normalizeHost(uri.host)
+                return false
             }
+            ExternalLinks.open(context, uri)
+            return true
         }
 
         return false
+    }
+
+    /** Whether a link belongs inside the container, rather than in the system browser. */
+    fun staysInApp(uri: Uri): Boolean {
+        if (!webApp.openExternalLinks) return true
+        val appBaseHost = normalizeHost(Uri.parse(webApp.url).host)
+        val requestHost = normalizeHost(uri.host)
+        if (appBaseHost.isEmpty() || requestHost.isEmpty()) return true
+        return isSameSite(requestHost, appBaseHost) ||
+            (redirectedHost.isNotEmpty() && isSameSite(requestHost, redirectedHost))
+    }
+
+    override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+        super.onPageStarted(view, url, favicon)
+        pageHost = normalizeHost(Uri.parse(url).host)
     }
 
     override fun onPageFinished(view: WebView, url: String) {
         super.onPageFinished(view, url)
         isInitialNavigation = false
 
-        // Execute // @run-at document-end userscripts
-        scriptEngine.executeDocumentEndScripts(view, url, activeScripts)
+        scriptEngine.onPageFinished(view)
 
         onPageFinishedCallback?.invoke(url)
+    }
+
+    /** Compares the last two host labels, so a site's own subdomains and CDN hosts on it stay first-party. */
+    private fun isThirdParty(uri: Uri): Boolean {
+        val host = normalizeHost(uri.host)
+        if (host.isEmpty() || pageHost.isEmpty()) return false
+        return host.split('.').takeLast(2) != pageHost.split('.').takeLast(2)
     }
 
     private fun normalizeHost(host: String?): String {

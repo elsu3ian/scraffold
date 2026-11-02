@@ -11,7 +11,6 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -23,26 +22,39 @@ import kotlinx.coroutines.launch
 import net.mangadot.scaffold.R
 import net.mangadot.scaffold.data.db.AppDatabase
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
+import net.mangadot.scaffold.data.settings.effectiveSettings
+import net.mangadot.scaffold.data.settings.withSettings
+import net.mangadot.scaffold.engine.AppIcons
 import net.mangadot.scaffold.data.repository.ScriptRepository
 import net.mangadot.scaffold.data.repository.WebAppRepository
 import net.mangadot.scaffold.databinding.ActivityMainBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
+import net.mangadot.scaffold.engine.cache.CacheManager
 import net.mangadot.scaffold.ui.container.WebContainerActivity
 import net.mangadot.scaffold.ui.settings.SettingsActivity
+import net.mangadot.scaffold.ui.theme.CosmicTheme
+import net.mangadot.scaffold.ui.theme.CosmicAccent
+import net.mangadot.scaffold.ui.theme.CosmicActivity
+import net.mangadot.scaffold.ui.theme.CosmicThemeStore
+import net.mangadot.scaffold.ui.theme.applyHeader
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : CosmicActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var repository: WebAppRepository
     private lateinit var scriptRepository: ScriptRepository
     private lateinit var adapter: AppAdapter
+    private val iconAttempts = mutableSetOf<String>()
     private lateinit var adBlockEngine: AdBlockEngine
     private var allApps: List<WebAppEntity> = emptyList()
+    private var reopenCosmicDialog = false
+    private var cosmicDialog: CosmicThemeDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyTheme(CosmicThemeStore.load(this))
 
         val db = AppDatabase.getInstance(this)
         repository = WebAppRepository(db.webAppDao())
@@ -54,11 +66,35 @@ class MainActivity : AppCompatActivity() {
         setupListeners()
         observeWebApps()
         updateShieldTelemetry()
+        highlightTab(binding.tabIcons, listOf(binding.tabGrid, binding.tabList))
+
+        // An accent change rebuilds the screen, so bring the dialog straight back
+        if (savedInstanceState?.getBoolean(STATE_REOPEN_COSMIC) == true) {
+            showCosmicThemeDialog()
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(STATE_REOPEN_COSMIC, reopenCosmicDialog)
+    }
+
+    override fun onDestroy() {
+        cosmicDialog?.dismiss()
+        super.onDestroy()
     }
 
     override fun onResume() {
         super.onResume()
         updateShieldTelemetry()
+        runAutoPurge()
+    }
+
+    private fun runAutoPurge() {
+        val prefs = getSharedPreferences(SettingsActivity.PREFS_NAME, MODE_PRIVATE)
+        if (prefs.getBoolean(SettingsActivity.KEY_AUTO_PURGE, true)) {
+            lifecycleScope.launch { CacheManager.checkAndAutoPurge(this@MainActivity) }
+        }
     }
 
     private fun setupWindowInsets() {
@@ -159,7 +195,7 @@ class MainActivity : AppCompatActivity() {
     private fun highlightTab(active: TextView, inactives: List<TextView>) {
         active.setTextColor(ContextCompat.getColor(this, R.color.text_primary))
         active.setTypeface(null, android.graphics.Typeface.BOLD)
-        active.setBackgroundResource(R.drawable.bg_tab_active)
+        active.background = CosmicAccent.tabIndicator(this)
 
         for (inactive in inactives) {
             inactive.setTextColor(ContextCompat.getColor(this, R.color.text_muted))
@@ -173,12 +209,20 @@ class MainActivity : AppCompatActivity() {
             repository.allWebApps.collectLatest { apps ->
                 allApps = apps
                 filterApps(binding.etSearch.text.toString())
+                apps.filter { it.iconUrl == null && iconAttempts.add(it.id) }.forEach(::fetchIcon)
             }
         }
         lifecycleScope.launch {
             scriptRepository.allScripts.collectLatest { scripts ->
                 adapter.scripts = scripts
             }
+        }
+    }
+
+    private fun fetchIcon(app: WebAppEntity) {
+        lifecycleScope.launch {
+            val icon = AppIcons.fetch(this@MainActivity, app.url) ?: return@launch
+            repository.updateIconUrl(app.id, AppIcons.save(this@MainActivity, app.id, icon))
         }
     }
 
@@ -219,10 +263,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAddAppDialog() {
-        val sheet = AddWebAppBottomSheetDialog { name, url ->
+        val sheet = AddWebAppBottomSheetDialog { name, url, userscripts, pinchZoom, customIcon ->
             lifecycleScope.launch {
+                val blank = WebAppEntity(name = name, url = url, userscriptsEnabled = userscripts)
+                val app = if (customIcon == null) blank else blank.copy(iconUrl = AppIcons.save(this@MainActivity, blank.id, customIcon))
                 repository.insertWebApp(
-                    WebAppEntity(name = name, url = url)
+                    if (pinchZoom) app else app.copy(overrideGlobal = true)
+                        .withSettings(app.effectiveSettings(this@MainActivity).copy(pinchZoom = false))
                 )
                 Toast.makeText(this@MainActivity, "Added $name to Shelf", Toast.LENGTH_SHORT).show()
             }
@@ -231,7 +278,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showCosmicThemeDialog() {
-        CosmicThemeDialog(this).show()
+        CosmicThemeDialog(
+            this,
+            onThemeChanged = { theme -> applyTheme(theme) },
+            onAccentChanged = {
+                reopenCosmicDialog = true
+                recreate()
+            }
+        ).also { cosmicDialog = it }.show()
+    }
+
+    private fun applyTheme(theme: CosmicTheme) {
+        theme.applyBackground(binding.mainRootLayout)
+        theme.applyHeader(binding.headerLayout, binding.rvShelf)
     }
 
     private fun showAppActionSheet(app: WebAppEntity) {
@@ -241,13 +300,12 @@ class MainActivity : AppCompatActivity() {
             onDelete = { target ->
                 lifecycleScope.launch {
                     repository.deleteWebAppById(target.id)
+                    AppIcons.delete(this@MainActivity, target.id)
                     Toast.makeText(this@MainActivity, "Removed ${target.name} from Shelf", Toast.LENGTH_SHORT).show()
                 }
             },
-            onToggleFullscreen = { target, enabled ->
-                lifecycleScope.launch {
-                    repository.updateFullScreenMode(target.id, enabled)
-                }
+            onUpdate = { updated ->
+                lifecycleScope.launch { repository.updateWebApp(updated) }
             }
         )
         sheet.show(supportFragmentManager, AppActionBottomSheetDialog.TAG)
@@ -255,5 +313,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()
+    }
+
+    private companion object {
+        const val STATE_REOPEN_COSMIC = "reopen_cosmic"
     }
 }

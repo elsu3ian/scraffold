@@ -46,6 +46,7 @@
     </LinearLayout>
 
     <ScrollView
+        android:id="@+id/settings_scroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:padding="16dp">
@@ -95,10 +96,8 @@
                     android:text="Active"
                     android:textColor="@color/accent_emerald"
                     android:textSize="10sp"
-                    android:fontFamily="monospace"
                     android:paddingHorizontal="8dp"
-                    android:paddingVertical="3dp"
-                    android:background="@drawable/bg_card" />
+                    android:paddingVertical="3dp" />
             </LinearLayout>
 
             <!-- Row 2: Default Web App Settings -->
@@ -160,13 +159,11 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Manage →"
+                    android:text="Manage"
                     android:textColor="@color/accent_purple_bright"
                     android:textSize="10sp"
-                    android:fontFamily="monospace"
                     android:paddingHorizontal="8dp"
-                    android:paddingVertical="3dp"
-                    android:background="@drawable/bg_card" />
+                    android:paddingVertical="3dp" />
             </LinearLayout>
 
             <!-- Section 2: Exact Toggles from Prototype (Lines 231-280) -->
@@ -418,6 +415,46 @@
                     android:textSize="12sp"
                     android:textStyle="bold"
                     android:padding="6dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_card"
+                android:padding="12dp"
+                android:layout_marginTop="8dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Auto-clear at 500 MB"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:text="Logins and cookies are kept"
+                        android:textColor="@color/text_muted"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/settings_switch_auto_purge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:thumbTint="@color/text_primary"
+                    app:trackTint="@color/switch_track" />
             </LinearLayout>
 
             <!-- Section 4: Backup & Portability -->

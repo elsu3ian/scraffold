@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
@@ -14,6 +15,8 @@ import androidx.recyclerview.widget.RecyclerView
 import net.mangadot.scaffold.R
 import net.mangadot.scaffold.data.db.entity.ScriptEntity
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
+import net.mangadot.scaffold.engine.AppIcons
+import net.mangadot.scaffold.engine.userscript.UserscriptMeta
 
 class AppAdapter(
     private val onAppClick: (WebAppEntity) -> Unit,
@@ -78,8 +81,7 @@ class AppAdapter(
     }
 
     private fun scriptCountLabel(app: WebAppEntity): String {
-        val host = cleanDomain(app.url)
-        val count = scripts.count { it.matchPattern.contains(host, ignoreCase = true) }
+        val count = scripts.count { UserscriptMeta.parse(it.code).appliesTo(app.url) }
         return if (count == 1) "1 script" else "$count scripts"
     }
 
@@ -114,11 +116,13 @@ class AppAdapter(
         private val tvName: TextView = itemView.findViewById(R.id.tv_app_name)
         private val tvDomain: TextView = itemView.findViewById(R.id.tv_app_domain)
         private val tvMonogram: TextView = itemView.findViewById(R.id.tv_icon_monogram)
+        private val ivIcon: ImageView = itemView.findViewById(R.id.iv_app_icon)
 
         fun bind(app: WebAppEntity) {
             tvName.text = app.name
             tvDomain.text = cleanDomain(app.url)
             tvMonogram.text = extractMonogram(app.name)
+            AppIcons.bind(ivIcon, tvMonogram, app)
 
             val (bgRes, textColorRes) = getBranding(app.name)
             container.setBackgroundResource(bgRes)
@@ -131,6 +135,7 @@ class AppAdapter(
         private val tvName: TextView = itemView.findViewById(R.id.grid_tv_app_name)
         private val tvUrl: TextView = itemView.findViewById(R.id.grid_tv_app_url)
         private val tvMonogram: TextView = itemView.findViewById(R.id.grid_tv_icon_monogram)
+        private val ivIcon: ImageView = itemView.findViewById(R.id.grid_iv_app_icon)
         private val tvScripts: TextView = itemView.findViewById(R.id.grid_tv_scripts)
         private val tvBlocked: TextView = itemView.findViewById(R.id.grid_tv_blocked)
         private val btnOptions: ImageButton = itemView.findViewById(R.id.grid_btn_options)
@@ -139,6 +144,7 @@ class AppAdapter(
             tvName.text = app.name
             tvUrl.text = cleanDomain(app.url)
             tvMonogram.text = extractMonogram(app.name)
+            AppIcons.bind(ivIcon, tvMonogram, app)
 
             val (bgRes, textColorRes) = getBranding(app.name)
             container.setBackgroundResource(bgRes)
@@ -158,6 +164,7 @@ class AppAdapter(
         private val tvName: TextView = itemView.findViewById(R.id.list_tv_app_name)
         private val tvUrl: TextView = itemView.findViewById(R.id.list_tv_app_url)
         private val tvMonogram: TextView = itemView.findViewById(R.id.list_tv_icon_monogram)
+        private val ivIcon: ImageView = itemView.findViewById(R.id.list_iv_app_icon)
         private val tvBlocked: TextView = itemView.findViewById(R.id.list_tv_blocked)
         private val btnOptions: ImageButton = itemView.findViewById(R.id.list_btn_options)
 
@@ -165,6 +172,7 @@ class AppAdapter(
             tvName.text = app.name
             tvUrl.text = cleanDomain(app.url)
             tvMonogram.text = extractMonogram(app.name)
+            AppIcons.bind(ivIcon, tvMonogram, app)
 
             val (bgRes, textColorRes) = getBranding(app.name)
             container.setBackgroundResource(bgRes)

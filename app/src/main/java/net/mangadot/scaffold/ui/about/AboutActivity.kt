@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
@@ -14,9 +13,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.mangadot.scaffold.BuildConfig
 import net.mangadot.scaffold.R
+import net.mangadot.scaffold.ui.browser.ExternalLinks
 import net.mangadot.scaffold.databinding.ActivityAboutBinding
+import net.mangadot.scaffold.ui.theme.CosmicActivity
+import net.mangadot.scaffold.ui.theme.CosmicThemeStore
+import net.mangadot.scaffold.ui.theme.applyHeader
 
-class AboutActivity : AppCompatActivity() {
+class AboutActivity : CosmicActivity() {
 
     private lateinit var binding: ActivityAboutBinding
 
@@ -24,6 +27,10 @@ class AboutActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityAboutBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        CosmicThemeStore.load(this).let { theme ->
+            theme.applyBackground(binding.aboutRootLayout)
+            theme.applyHeader(binding.aboutHeaderLayout, binding.aboutScroll)
+        }
 
         setupWindowInsets()
         setupListeners()
@@ -97,14 +104,7 @@ class AboutActivity : AppCompatActivity() {
     }
 
     private fun openExternalUrl(url: String) {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(this, "No browser found to open URL", Toast.LENGTH_SHORT).show()
-        }
+        ExternalLinks.open(this, Uri.parse(url))
     }
 
     private fun dpToPx(dp: Int): Int {

@@ -20,6 +20,8 @@ class WebAppRepository(private val webAppDao: WebAppDao) {
 
     suspend fun recordLaunch(id: String) = webAppDao.recordLaunch(id)
 
+    suspend fun updateIconUrl(id: String, iconUrl: String) = webAppDao.updateIconUrl(id, iconUrl)
+
     // Reactive Instant Settings Persistence
     suspend fun updateDesktopMode(id: String, enabled: Boolean) = webAppDao.updateDesktopMode(id, enabled)
 

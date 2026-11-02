@@ -6,20 +6,25 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import net.mangadot.scaffold.BuildConfig
+import net.mangadot.scaffold.R
 import net.mangadot.scaffold.databinding.ActivitySettingsBinding
 import net.mangadot.scaffold.databinding.DialogAdblockSettingsBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
 import net.mangadot.scaffold.engine.cache.CacheManager
 import net.mangadot.scaffold.ui.about.AboutActivity
+import net.mangadot.scaffold.ui.theme.CosmicActivity
+import net.mangadot.scaffold.ui.theme.CosmicThemeStore
+import net.mangadot.scaffold.ui.theme.applyDialogSurface
+import net.mangadot.scaffold.ui.theme.applyHeader
 import net.mangadot.scaffold.ui.userscript.UserscriptsActivity
+import net.mangadot.scaffold.ui.theme.showCosmic
 
-class SettingsActivity : AppCompatActivity() {
+class SettingsActivity : CosmicActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var adBlockEngine: AdBlockEngine
@@ -32,12 +37,17 @@ class SettingsActivity : AppCompatActivity() {
         const val KEY_GESTURE_APP_SWITCH = "pref_gesture_app_switch"
         const val KEY_PROGRESS_BAR = "pref_progress_bar"
         const val KEY_SOFTWARE_NAV = "pref_software_nav"
+        const val KEY_AUTO_PURGE = "pref_auto_purge"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        CosmicThemeStore.load(this).let { theme ->
+            theme.applyBackground(binding.settingsRootLayout)
+            theme.applyHeader(binding.settingsHeaderLayout, binding.settingsScroll)
+        }
 
         adBlockEngine = AdBlockEngine.getInstance(this)
 
@@ -70,6 +80,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.settingsSwitchAppSwitchGesture.isChecked = prefs.getBoolean(KEY_GESTURE_APP_SWITCH, false)
         binding.settingsSwitchProgressBar.isChecked = prefs.getBoolean(KEY_PROGRESS_BAR, true)
         binding.settingsSwitchSoftwareNav.isChecked = prefs.getBoolean(KEY_SOFTWARE_NAV, false)
+        binding.settingsSwitchAutoPurge.isChecked = prefs.getBoolean(KEY_AUTO_PURGE, true)
     }
 
     private fun setupListeners() {
@@ -86,7 +97,7 @@ class SettingsActivity : AppCompatActivity() {
 
         // Row 2: Default Web App Settings
         binding.settingsRowDefaultApp.setOnClickListener {
-            DefaultAppSettingsBottomSheetDialog().show(supportFragmentManager, "default_app_settings")
+            startActivity(Intent(this, WebAppSettingsActivity::class.java))
         }
 
         // Row 3: Userscripts Manager
@@ -119,6 +130,11 @@ class SettingsActivity : AppCompatActivity() {
             prefs.edit().putBoolean(KEY_SOFTWARE_NAV, isChecked).apply()
         }
 
+        binding.settingsSwitchAutoPurge.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(KEY_AUTO_PURGE, isChecked).apply()
+            updateCacheDisplay()
+        }
+
         // Clear Cache
         binding.settingsBtnClearCache.setOnClickListener {
             AlertDialog.Builder(this)
@@ -132,7 +148,7 @@ class SettingsActivity : AppCompatActivity() {
                     }
                 }
                 .setNegativeButton(android.R.string.cancel, null)
-                .show()
+                .showCosmic()
         }
 
         // Export Settings
@@ -160,6 +176,7 @@ class SettingsActivity : AppCompatActivity() {
             .create()
 
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        CosmicThemeStore.load(this).applyDialogSurface(dialog.window, dialogBinding.root, R.drawable.bg_card_solid)
         dialogBinding.btnCloseAdblock.setOnClickListener {
             dialog.dismiss()
         }
@@ -169,7 +186,8 @@ class SettingsActivity : AppCompatActivity() {
     private fun updateCacheDisplay() {
         lifecycleScope.launch {
             val formatted = CacheManager.getFormattedCacheSize(this@SettingsActivity)
-            binding.settingsTvCacheSize.text = "$formatted (500 MB auto-purge threshold)"
+            val auto = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_PURGE, true)
+            binding.settingsTvCacheSize.text = if (auto) "$formatted (500 MB auto-purge threshold)" else "$formatted (auto-purge off)"
         }
     }
 

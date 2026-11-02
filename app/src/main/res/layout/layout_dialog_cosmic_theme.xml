@@ -1,259 +1,527 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
     android:background="@drawable/bg_dialog_cosmic"
-    android:padding="16dp">
+    android:scrollbars="none">
 
-    <!-- Top Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingBottom="8dp">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <TextView
-            android:layout_width="0dp"
+        <!-- Top Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="COSMIC"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="COSMIC"
+                android:textColor="@color/accent_emerald"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.1" />
+
+            <ImageButton
+                android:id="@+id/btn_cosmic_close"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_close"
+                android:contentDescription="Close" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/border_primary"
+            android:layout_marginBottom="10dp" />
+
+        <!-- Live Preview Strip -->
+        <LinearLayout
+            android:id="@+id/layout_cosmic_preview"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:foreground="@drawable/bg_cosmic_preview"
+            android:paddingHorizontal="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_cosmic_preview_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="PREVIEW · 160° · 100%"
+                android:textColor="@color/text_primary"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:maxLines="1" />
+
+            <View
+                android:id="@+id/view_preview_dot_1"
+                android:layout_width="8dp"
+                android:layout_height="8dp" />
+
+            <View
+                android:id="@+id/view_preview_dot_2"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_marginStart="6dp" />
+
+            <View
+                android:id="@+id/view_preview_dot_3"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_marginStart="6dp" />
+        </LinearLayout>
+
+        <!-- Master Toggles -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Radiant background"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_cosmic_radiant"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    app:thumbTint="@color/text_primary"
+                    app:trackTint="@color/switch_track" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Cosmic styling"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_cosmic_styling"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    app:thumbTint="@color/text_primary"
+                    app:trackTint="@color/switch_track" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Dim nebula in chapter reader"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_cosmic_dim"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    app:thumbTint="@color/text_primary"
+                    app:trackTint="@color/switch_track" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Auto-sync with theme accent"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_cosmic_auto_sync"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:thumbTint="@color/text_primary"
+                    app:trackTint="@color/switch_track" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Preset Palettes -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="PRESET PALETTES"
             android:textColor="@color/accent_emerald"
-            android:textSize="13sp"
+            android:textSize="10sp"
             android:textStyle="bold"
             android:fontFamily="monospace"
-            android:letterSpacing="0.1" />
+            android:letterSpacing="0.08" />
 
-        <ImageButton
-            android:id="@+id/btn_cosmic_close"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_close"
-            android:contentDescription="Close" />
-    </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#2E1065"
-        android:layout_marginBottom="10dp" />
-
-    <!-- Live Preview Strip -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="36dp"
-        android:background="#06020C"
-        android:paddingHorizontal="12dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/tv_cosmic_preview_label"
-            android:layout_width="0dp"
+        <!-- ChipGroup is used as a wrapping row; the pills are plain TextViews -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/group_cosmic_palettes"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="PREVIEW • 190° • 100%"
-            android:textColor="@color/text_muted"
-            android:textSize="10sp"
-            android:fontFamily="monospace" />
+            android:layout_marginTop="8dp"
+            app:chipSpacingHorizontal="6dp"
+            app:chipSpacingVertical="6dp" />
 
-        <View
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:background="@drawable/bg_squircle_purple" />
 
-        <View
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:layout_marginStart="4dp"
-            android:background="@drawable/bg_squircle_emerald" />
-
-        <View
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:layout_marginStart="4dp"
-            android:background="@drawable/bg_squircle_cyan" />
-    </LinearLayout>
-
-    <!-- Master Toggles -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="vertical">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="38dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Radiant background"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp" />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switch_cosmic_radiant"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                app:thumbTint="@color/text_primary"
-                app:trackTint="@color/switch_track" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="38dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Cosmic styling"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp" />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switch_cosmic_styling"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                app:thumbTint="@color/text_primary"
-                app:trackTint="@color/switch_track" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="38dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Dim nebula in reader"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp" />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switch_cosmic_dim"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                app:thumbTint="@color/text_primary"
-                app:trackTint="@color/switch_track" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#2E1065"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="10dp" />
-
-    <!-- Preset Palettes Header -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="PRESET PALETTES"
-        android:textColor="@color/accent_emerald"
-        android:textSize="10sp"
-        android:textStyle="bold"
-        android:fontFamily="monospace"
-        android:letterSpacing="0.08" />
-
-    <!-- 5 Palette Pills -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="8dp">
-
+        <!-- Nebula Glows & Geometry -->
         <TextView
-            android:id="@+id/chip_palette_cosmic"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_card"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="5dp"
-            android:text="Cosmic"
-            android:textColor="@color/accent_purple_bright"
-            android:textSize="11sp"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <TextView
-            android:id="@+id/chip_palette_mint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:background="@drawable/bg_card"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="5dp"
-            android:text="Mint Void"
+            android:layout_marginTop="14dp"
+            android:text="NEBULA GLOWS &amp; GEOMETRY"
             android:textColor="@color/accent_emerald"
-            android:textSize="11sp"
-            android:clickable="true"
-            android:focusable="true" />
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.08" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Glow intensity"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tv_cosmic_intensity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="100%"
+                android:textColor="@color/accent_emerald"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <SeekBar
+            android:id="@+id/seek_cosmic_intensity"
+            android:layout_width="match_parent"
+            android:layout_height="28dp"
+            android:paddingHorizontal="8dp"
+            android:max="200"
+            android:progressTint="@color/accent_emerald"
+            android:progressBackgroundTint="@color/border_primary"
+            android:thumbTint="@color/accent_emerald" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Gradient rotation"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tv_cosmic_rotation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="160°"
+                android:textColor="@color/accent_emerald"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <SeekBar
+                android:id="@+id/seek_cosmic_rotation"
+                android:layout_width="0dp"
+                android:layout_height="28dp"
+                android:layout_weight="1"
+                android:paddingHorizontal="8dp"
+                android:max="360"
+                android:progressTint="@color/accent_emerald"
+                android:progressBackgroundTint="@color/border_primary"
+                android:thumbTint="@color/accent_emerald" />
+
+            <TextView
+                android:id="@+id/btn_cosmic_rotate"
+                android:layout_width="44dp"
+                android:layout_height="26dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_cosmic_hex"
+                android:gravity="center"
+                android:text="+45°"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
+        <!-- Glow 1 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Glow 1 (Top-Left)"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <EditText
+                android:id="@+id/et_cosmic_glow_1"
+                android:layout_width="76dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_cosmic_hex"
+                android:gravity="center"
+                android:padding="0dp"
+                android:maxLength="7"
+                android:inputType="textNoSuggestions"
+                android:imeOptions="actionDone"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:importantForAutofill="no"
+                android:hint="#000000"
+                android:textColorHint="@color/text_muted" />
+
+            <View
+                android:id="@+id/view_cosmic_swatch_1"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- Glow 2 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Glow 2 (Top-Right)"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <EditText
+                android:id="@+id/et_cosmic_glow_2"
+                android:layout_width="76dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_cosmic_hex"
+                android:gravity="center"
+                android:padding="0dp"
+                android:maxLength="7"
+                android:inputType="textNoSuggestions"
+                android:imeOptions="actionDone"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:importantForAutofill="no"
+                android:hint="#000000"
+                android:textColorHint="@color/text_muted" />
+
+            <View
+                android:id="@+id/view_cosmic_swatch_2"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- Glow 3 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Glow 3 (Bottom)"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <EditText
+                android:id="@+id/et_cosmic_glow_3"
+                android:layout_width="76dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_cosmic_hex"
+                android:gravity="center"
+                android:padding="0dp"
+                android:maxLength="7"
+                android:inputType="textNoSuggestions"
+                android:imeOptions="actionDone"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:importantForAutofill="no"
+                android:hint="#000000"
+                android:textColorHint="@color/text_muted" />
+
+            <View
+                android:id="@+id/view_cosmic_swatch_3"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/chip_palette_abyssal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:background="@drawable/bg_card"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="5dp"
-            android:text="Abyssal"
-            android:textColor="@color/accent_cyan"
-            android:textSize="11sp"
+            android:layout_marginTop="14dp"
+            android:text="APP ACCENT"
+            android:textColor="@color/accent_emerald"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.08" />
+
+        <LinearLayout
+            android:id="@+id/row_cosmic_accent"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:clickable="true"
-            android:focusable="true" />
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Accent color"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tv_cosmic_accent_hex"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+
+            <View
+                android:id="@+id/view_cosmic_accent_swatch"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- Action Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btn_cosmic_sync"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_cosmic_sync"
+                android:gravity="center"
+                android:text="↻ Sync theme now"
+                android:textColor="@color/accent_emerald_bright"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/btn_cosmic_reset"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_cosmic_reset"
+                android:gravity="center"
+                android:text="↺ Reset default"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:text="Changes apply live and are saved on this device."
+            android:textColor="@color/text_muted"
+            android:textSize="10sp" />
+
     </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="6dp">
-
-        <TextView
-            android:id="@+id/chip_palette_crimson"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_card"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="5dp"
-            android:text="Crimson"
-            android:textColor="@color/accent_rose"
-            android:textSize="11sp"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <TextView
-            android:id="@+id/chip_palette_sunset"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:background="@drawable/bg_card"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="5dp"
-            android:text="Sunset"
-            android:textColor="@color/accent_orange"
-            android:textSize="11sp"
-            android:clickable="true"
-            android:focusable="true" />
-    </LinearLayout>
-
-</LinearLayout>
+</ScrollView>

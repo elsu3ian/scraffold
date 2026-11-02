@@ -31,7 +31,7 @@
         android:id="@+id/tv_script_hud"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_card"
+        android:background="@drawable/bg_card_solid"
         android:textColor="@color/accent_emerald"
         android:textSize="11sp"
         android:fontFamily="monospace"
@@ -71,7 +71,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="@drawable/bg_card"
+        android:background="@drawable/bg_card_solid"
         android:paddingHorizontal="6dp"
         android:paddingVertical="4dp"
         android:elevation="14dp"
@@ -107,6 +107,16 @@
             android:src="@drawable/ic_shield"
             app:tint="@color/accent_emerald"
             android:contentDescription="Shield" />
+
+        <ImageButton
+            android:id="@+id/btn_ball_scripts"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginStart="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_code"
+            app:tint="@color/accent_emerald"
+            android:contentDescription="Userscripts" />
 
         <ImageButton
             android:id="@+id/btn_ball_close"

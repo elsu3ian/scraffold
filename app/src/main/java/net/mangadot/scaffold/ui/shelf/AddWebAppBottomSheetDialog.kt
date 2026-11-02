@@ -1,19 +1,39 @@
 package net.mangadot.scaffold.ui.shelf
 
+import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import net.mangadot.scaffold.databinding.LayoutBottomSheetAddWebappBinding
+import net.mangadot.scaffold.engine.AppIcons
+import net.mangadot.scaffold.ui.theme.CosmicBottomSheet
 
 class AddWebAppBottomSheetDialog(
-    private val onSave: (name: String, url: String) -> Unit
-) : BottomSheetDialogFragment() {
+    private val onSave: (name: String, url: String, userscripts: Boolean, pinchZoom: Boolean, customIcon: Bitmap?) -> Unit
+) : CosmicBottomSheet() {
 
     private var _binding: LayoutBottomSheetAddWebappBinding? = null
     private val binding get() = _binding!!
+    private var customIcon: Bitmap? = null
+
+    private val pickIcon = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            viewLifecycleOwner.lifecycleScope.launch {
+                customIcon = AppIcons.decode(requireContext(), uri)
+                if (customIcon == null) {
+                    Toast.makeText(requireContext(), "Couldn't read that image", Toast.LENGTH_SHORT).show()
+                } else {
+                    binding.btnAddUploadIcon.text = "Selected"
+                }
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -36,7 +56,7 @@ class AddWebAppBottomSheetDialog(
         }
 
         binding.btnAddUploadIcon.setOnClickListener {
-            Toast.makeText(requireContext(), "Upload custom icon from storage", Toast.LENGTH_SHORT).show()
+            pickIcon.launch("image/*")
         }
 
         binding.btnAddSave.setOnClickListener {
@@ -59,7 +79,7 @@ class AddWebAppBottomSheetDialog(
             }
 
             dismiss()
-            onSave(name, url)
+            onSave(name, url, binding.switchAddUserscript.isChecked, binding.switchAddZoom.isChecked, customIcon)
         }
     }
 

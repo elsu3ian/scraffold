@@ -38,6 +38,14 @@
                 android:textColor="@color/accent_emerald"
                 android:textSize="15sp"
                 android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/sheet_iv_app_icon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                android:contentDescription="App Icon" />
         </FrameLayout>
 
         <LinearLayout
@@ -102,10 +110,38 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Open →"
+            android:text="Open"
             android:textColor="@color/accent_emerald"
             android:textSize="12sp"
             android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/sheet_btn_settings"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="8dp"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Web App Settings"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Configure"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp" />
     </LinearLayout>
 
     <!-- Action 2: AdBlock Shield Toggle -->
@@ -218,7 +254,7 @@
             android:id="@+id/sheet_tv_script_count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Manage →"
+            android:text="Manage"
             android:textColor="@color/accent_purple_bright"
             android:textSize="12sp"
             android:textStyle="bold" />

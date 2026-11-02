@@ -13,6 +13,7 @@ data class ScriptEntity(
     val matchPattern: String,
     val runAt: String = RUN_AT_DOCUMENT_START,
     val enabled: Boolean = true,
+    val sourceUrl: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 ) {

@@ -1,6 +1,9 @@
 package net.mangadot.scaffold.ui.container
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -9,9 +12,12 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.webkit.GeolocationPermissions
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -25,11 +31,21 @@ import net.mangadot.scaffold.data.db.AppDatabase
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
 import net.mangadot.scaffold.data.repository.ScriptRepository
 import net.mangadot.scaffold.data.repository.WebAppRepository
+import net.mangadot.scaffold.data.settings.effectiveSettings
 import net.mangadot.scaffold.databinding.ActivityWebContainerBinding
+import net.mangadot.scaffold.ui.theme.CosmicActivity
+import net.mangadot.scaffold.ui.theme.CosmicThemeStore
 import net.mangadot.scaffold.engine.*
 import net.mangadot.scaffold.engine.gesture.FourFingerReloadGesture
+import net.mangadot.scaffold.engine.AppIcons
+import net.mangadot.scaffold.engine.userscript.UserscriptMeta
+import net.mangadot.scaffold.ui.browser.ExternalLinks
+import net.mangadot.scaffold.ui.settings.SettingsActivity
+import net.mangadot.scaffold.ui.userscript.UserscriptInstallPrompt
+import net.mangadot.scaffold.ui.userscript.UserscriptsActivity
+import net.mangadot.scaffold.ui.theme.showCosmic
 
-class WebContainerActivity : AppCompatActivity() {
+class WebContainerActivity : CosmicActivity() {
 
     private lateinit var binding: ActivityWebContainerBinding
     private lateinit var webAppRepository: WebAppRepository
@@ -42,6 +58,15 @@ class WebContainerActivity : AppCompatActivity() {
     private var currentApp: WebAppEntity? = null
     private var isQuickMenuOpen = false
     private var isFullscreenEnabled = false
+    private var showProgressBar = true
+    private var userscriptsOn = true
+    private var clearCacheOnExit = false
+    private var pendingLocation: Pair<String, GeolocationPermissions.Callback>? = null
+
+    private val locationPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+        pendingLocation?.let { (origin, callback) -> callback.invoke(origin, results.values.any { it }, false) }
+        pendingLocation = null
+    }
 
     companion object {
         const val EXTRA_APP_ID = "extra_app_id"
@@ -61,12 +86,15 @@ class WebContainerActivity : AppCompatActivity() {
 
         binding = ActivityWebContainerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        CosmicThemeStore.load(this).let { theme ->
+            theme.applyBackground(binding.containerRootLayout, dimmed = theme.dimInReader)
+        }
 
         val db = AppDatabase.getInstance(this)
         webAppRepository = WebAppRepository(db.webAppDao())
         scriptRepository = ScriptRepository(db.scriptDao(), db.scriptStorageDao())
         adBlockEngine = AdBlockEngine.getInstance(this)
-        scriptEngine = ScriptEngine(scriptRepository, lifecycleScope)
+        scriptEngine = ScriptEngine(this, scriptRepository, lifecycleScope)
 
         val appId = intent.getStringExtra(EXTRA_APP_ID) ?: ""
         val appUrl = intent.getStringExtra(EXTRA_APP_URL) ?: "https://mangadot.net"
@@ -98,13 +126,14 @@ class WebContainerActivity : AppCompatActivity() {
             context = this,
             adBlockEngine = adBlockEngine,
             scriptEngine = scriptEngine,
-            webApp = dummyApp
+            webApp = dummyApp,
+            onUserscriptLink = { url -> UserscriptInstallPrompt.fromUrl(this, scriptRepository, url) }
         )
 
         webChromeClient = DeckWebChromeClient(
             webApp = dummyApp,
             onProgressUpdate = { progress ->
-                if (progress < 100) {
+                if (progress < 100 && showProgressBar) {
                     binding.containerProgressBar.visibility = View.VISIBLE
                     binding.containerProgressBar.progress = progress
                 } else {
@@ -112,12 +141,15 @@ class WebContainerActivity : AppCompatActivity() {
                 }
             },
             onExternalLinkRequested = { uri ->
-                openExternalUrl(uri)
-            }
+                if (webViewClient.staysInApp(uri)) binding.deckWebview.loadUrl(uri.toString()) else openExternalUrl(uri)
+            },
+            onLocationRequested = { origin, callback -> requestLocation(origin, callback) },
+            onFaviconReceived = { icon -> storeFavicon(icon) }
         )
 
         binding.deckWebview.webViewClient = webViewClient
         binding.deckWebview.webChromeClient = webChromeClient
+        scriptEngine.attach(binding.deckWebview)
 
         // 4-Finger Swipe-Down Gesture for Reload
         binding.deckWebview.setOnTouchListener(
@@ -224,6 +256,11 @@ class WebContainerActivity : AppCompatActivity() {
             hideQuickMenu()
         }
 
+        binding.btnBallScripts.setOnClickListener {
+            hideQuickMenu()
+            showScriptMenu()
+        }
+
         binding.btnBallClose.setOnClickListener {
             hideQuickMenu()
         }
@@ -270,52 +307,94 @@ class WebContainerActivity : AppCompatActivity() {
     }
 
     private fun openExternalUrl(uri: Uri) {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(this, "Unable to open link", Toast.LENGTH_SHORT).show()
+        ExternalLinks.open(this, uri)
+    }
+
+    /** The running page's scripts and any commands they registered with GM_registerMenuCommand. */
+    private fun showScriptMenu() {
+        val url = binding.deckWebview.url.orEmpty()
+        lifecycleScope.launch {
+            val running = scriptRepository.getEnabledScriptsList()
+                .filter { userscriptsOn && UserscriptMeta.parse(it.code).appliesTo(url) }
+            val commands = scriptEngine.bridge.menuCommands.toList()
+            val labels = running.map { "● ${it.name}" } + commands.map { "${it.scriptName}: ${it.caption}" } + "Manage userscripts"
+            AlertDialog.Builder(this@WebContainerActivity)
+                .setTitle(if (running.isEmpty()) "No scripts on this page" else "${running.size} running on this page")
+                .setItems(labels.toTypedArray()) { _, which ->
+                    val commandIndex = which - running.size
+                    when {
+                        which < running.size -> openScriptManager()
+                        commandIndex < commands.size -> scriptEngine.bridge.runMenuCommand(commands[commandIndex])
+                        else -> openScriptManager()
+                    }
+                }
+                .showCosmic()
+        }
+    }
+
+    private fun openScriptManager() {
+        startActivity(Intent(this, UserscriptsActivity::class.java).apply {
+            putExtra(UserscriptsActivity.EXTRA_FILTER_DOMAIN, Uri.parse(binding.deckWebview.url.orEmpty()).host.orEmpty())
+        })
+    }
+
+    /** Sites that refuse the shelf's own icon fetch still hand their favicon to the page they load. */
+    private fun storeFavicon(icon: Bitmap) {
+        val app = currentApp?.takeIf { it.iconUrl == null && it.name.isNotEmpty() } ?: return
+        currentApp = app.copy(iconUrl = "")
+        lifecycleScope.launch {
+            webAppRepository.updateIconUrl(app.id, AppIcons.save(this@WebContainerActivity, app.id, icon))
+        }
+    }
+
+    private fun requestLocation(origin: String, callback: GeolocationPermissions.Callback) {
+        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            callback.invoke(origin, true, false)
+        } else {
+            pendingLocation = origin to callback
+            locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
     }
 
     private fun loadAppData(appId: String, initialUrl: String) {
         lifecycleScope.launch {
-            val app = webAppRepository.getWebAppByUrl(initialUrl) ?: WebAppEntity(id = appId, name = "", url = initialUrl)
+            val app = webAppRepository.getWebAppById(appId).first() ?: WebAppEntity(id = appId, name = "", url = initialUrl)
             currentApp = app
-            binding.deckWebview.applyWebAppConfig(app)
-            webViewClient.updateWebApp(app)
-            webChromeClient.updateWebApp(app)
+            val settings = app.effectiveSettings(this@WebContainerActivity)
+            binding.deckWebview.applySettings(settings)
+            webViewClient.updateWebApp(app, settings)
+            webChromeClient.updateWebApp(app, settings)
 
             // Configure True Fullscreen
-            configureFullscreen(app.fullScreenMode)
+            configureFullscreen(settings.fullscreen)
+
+            val prefs = getSharedPreferences(SettingsActivity.PREFS_NAME, MODE_PRIVATE)
+            showProgressBar = prefs.getBoolean(SettingsActivity.KEY_PROGRESS_BAR, true)
+            clearCacheOnExit = prefs.getBoolean(SettingsActivity.KEY_CLEAR_CACHE_EXIT, true)
 
             // Load scripts and attach pre-DOM engine
-            val scripts = scriptRepository.getEnabledScriptsList()
-            webViewClient.updateActiveScripts(scripts)
-
+            userscriptsOn = app.userscriptsEnabled
+            val scripts = if (userscriptsOn) scriptRepository.getEnabledScriptsList() else emptyList()
             val host = Uri.parse(initialUrl).host ?: ""
-            val cosmeticCss = adBlockEngine.getCosmeticCss(host)
-            val scriptlets = adBlockEngine.getScriptletDefusers(host)
-
-            scriptEngine.attachPreDomScripts(
+            scriptEngine.register(
                 webView = binding.deckWebview,
-                appId = app.id,
-                currentUrl = initialUrl,
-                activeScripts = scripts,
-                cosmeticCss = cosmeticCss,
-                scriptlets = scriptlets
+                scripts = scripts,
+                cosmeticCss = if (settings.adblock) adBlockEngine.getCosmeticCss(host) else "",
+                scriptlets = if (settings.adblock) adBlockEngine.getScriptletDefusers(host) else ""
             )
 
             // Show HUD pill if matching userscripts are active
-            val matching = scripts.filter { it.enabled && (it.matchPattern == "https://*/*" || it.matchPattern.contains(host)) }
-            if (matching.isNotEmpty()) {
-                showScriptHud(matching.size)
+            val matching = scripts.count { UserscriptMeta.parse(it.code).appliesTo(initialUrl) }
+            if (matching > 0) {
+                showScriptHud(matching)
             }
 
             // Start navigation
-            binding.deckWebview.loadUrl(initialUrl)
+            val keepHttp = settings.allowHttp || app.url.startsWith("http://", ignoreCase = true)
+            val startUrl = if (keepHttp) initialUrl else initialUrl.replaceFirst("http://", "https://")
+            binding.deckWebview.loadUrl(startUrl)
         }
     }
 
@@ -373,6 +452,7 @@ class WebContainerActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        if (clearCacheOnExit) binding.deckWebview.clearCache(true)
         binding.deckWebview.destroy()
         super.onDestroy()
     }

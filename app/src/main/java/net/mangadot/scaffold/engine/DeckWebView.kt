@@ -4,9 +4,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
 import android.view.View
+import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
-import net.mangadot.scaffold.data.db.entity.WebAppEntity
+import net.mangadot.scaffold.data.settings.WebAppSettings
 
 /**
  * Custom hardware-accelerated Chromium WebView tailored for high-density PWA execution.
@@ -65,12 +66,22 @@ class DeckWebView @JvmOverloads constructor(
     }
 
     /**
-     * Reconfigures runtime flags (Desktop UA, Data Saver, etc.) when settings change
+     * Applies an app's settings. Call before loading a page.
      */
-    fun applyWebAppConfig(webApp: WebAppEntity) {
+    fun applySettings(webSettings: WebAppSettings) {
         settings.apply {
-            // Desktop User-Agent Mode
-            if (webApp.desktopMode) {
+            javaScriptEnabled = webSettings.javascript
+            setGeolocationEnabled(webSettings.allowLocation)
+            mixedContentMode = if (webSettings.allowHttp) {
+                WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            } else {
+                WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            }
+
+            setSupportZoom(webSettings.pinchZoom)
+            builtInZoomControls = webSettings.pinchZoom
+
+            if (webSettings.desktop) {
                 userAgentString = DESKTOP_USER_AGENT
                 useWideViewPort = true
                 loadWithOverviewMode = true
@@ -78,9 +89,13 @@ class DeckWebView @JvmOverloads constructor(
                 userAgentString = defaultMobileUserAgent
             }
 
-            // Data Saver: Block image payloads on metered connections
-            blockNetworkImage = webApp.dataSaver
+            // Data Saver: Block image payloads
+            blockNetworkImage = webSettings.dataSaver
         }
+
+        val cookies = CookieManager.getInstance()
+        cookies.setAcceptCookie(webSettings.acceptCookies)
+        cookies.setAcceptThirdPartyCookies(this, webSettings.thirdPartyCookies)
     }
 
     override fun destroy() {

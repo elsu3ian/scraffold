@@ -49,6 +49,7 @@
     </LinearLayout>
 
     <ScrollView
+        android:id="@+id/about_scroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:paddingHorizontal="16dp">
@@ -69,13 +70,13 @@
                 <FrameLayout
                     android:layout_width="64dp"
                     android:layout_height="64dp"
-                    android:background="@drawable/bg_squircle_emerald">
+                    android:background="@drawable/bg_logo_glossy">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
-                        android:text="S"
+                        android:text="ֆ"
                         android:textColor="@color/accent_emerald"
                         android:textSize="26sp"
                         android:textStyle="bold" />
