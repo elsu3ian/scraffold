@@ -17,6 +17,8 @@
     <color name="accent_purple">#9333EA</color>
     <color name="accent_purple_bright">#A855F7</color>
     <color name="accent_rose">#F43F5E</color>
+    <color name="accent_cyan">#06B6D4</color>
+    <color name="accent_orange">#F59E0B</color>
     
     <!-- Typography -->
     <color name="text_primary">#F4F4F5</color>
