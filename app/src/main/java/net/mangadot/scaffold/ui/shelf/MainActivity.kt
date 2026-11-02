@@ -210,54 +210,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAddAppDialog() {
-        val inputUrl = EditText(this).apply {
-            hint = "https://mangadot.net"
-            setSingleLine()
-            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
-            setHintTextColor(ContextCompat.getColor(context, R.color.text_muted))
-            background = ContextCompat.getDrawable(context, R.drawable.bg_card)
-            setPadding(dpToPx(14), dpToPx(12), dpToPx(14), dpToPx(12))
-        }
-
-        val container = android.widget.FrameLayout(this).apply {
-            setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(12))
-            addView(inputUrl)
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle(R.string.add_web_app)
-            .setView(container)
-            .setPositiveButton(R.string.save_to_shelf) { _, _ ->
-                var url = inputUrl.text.toString().trim()
-                if (url.isNotEmpty()) {
-                    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                        url = "https://$url"
-                    }
-                    val host = Uri.parse(url).host ?: url
-                    val name = host.removePrefix("www.").substringBefore('.')
-                        .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
-
-                    lifecycleScope.launch {
-                        repository.insertWebApp(
-                            WebAppEntity(name = name, url = url)
-                        )
-                        Toast.makeText(this@MainActivity, "Added $name to Shelf", Toast.LENGTH_SHORT).show()
-                    }
-                }
+        val sheet = AddWebAppBottomSheetDialog { name, url ->
+            lifecycleScope.launch {
+                repository.insertWebApp(
+                    WebAppEntity(name = name, url = url)
+                )
+                Toast.makeText(this@MainActivity, "Added $name to Shelf", Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        }
+        sheet.show(supportFragmentManager, "add_webapp")
     }
 
     private fun showCosmicThemeDialog() {
-        val presets = arrayOf("Cosmic Nebula (Default)", "Emerald Aurora", "Cyberpunk Violet", "Pure Obsidian")
-        AlertDialog.Builder(this)
-            .setTitle("Cosmic Theme Preset")
-            .setItems(presets) { _, which ->
-                Toast.makeText(this, "Applied ${presets[which]}", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        CosmicThemeDialog(this).show()
     }
 
     private fun showAppActionSheet(app: WebAppEntity) {
