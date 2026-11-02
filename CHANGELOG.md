@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [1.0.3-pre] - 2026-11-02
+
+### Added
+- **True Display Cutout Fullscreen**: Eliminated black notification notch letterboxing by enabling `LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES` and `WindowCompat.setDecorFitsSystemWindows(false)`.
+- **Universal External Links**: Implemented `onCreateWindow` and multi-window popup routing for external URLs, donate links, Discord, Telegram, and deep links.
+- **Assistive Edge Dock Ball**: Draggable floating ball that auto-hides half-way into screen edge, with tap quick actions (Reload, Home, Shield) and long-press Running Apps Switcher bottom sheet.
+- **Obsidian Modals Parity**: Built custom Add WebApp bottom sheet (`modal-add`), Cosmic Theme palette customizer (`modal-cosmic`), and Default Web App Settings sheet (`modal-app-settings`).
+- **Pre-Release Distribution**: Configured automated compilation and publishing directly as GitHub Pre-releases.
+
+---
+
 ## [1.0.2] - 2026-11-02
 
 ### Added
