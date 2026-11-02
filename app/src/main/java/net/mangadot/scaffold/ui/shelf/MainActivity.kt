@@ -202,7 +202,7 @@ class MainActivity : CosmicActivity() {
             onAppOptionsClick = { app -> showAppActionSheet(app) }
         )
 
-        // Default to Icons View with 3 columns (matching scriptdeck_prototype.html)
+        // Default to Icons View with 3 columns
         binding.rvShelf.layoutManager = GridLayoutManager(this, 3)
         binding.rvShelf.adapter = adapter
         dragHelper.attachToRecyclerView(binding.rvShelf)
