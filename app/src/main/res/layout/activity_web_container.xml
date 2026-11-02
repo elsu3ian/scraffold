@@ -44,14 +44,78 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Quick Edge Tab (Tap to return to Shelf) -->
-    <View
-        android:id="@+id/btn_edge_drawer"
-        android:layout_width="16dp"
-        android:layout_height="80dp"
-        android:background="#20FFFFFF"
+    <!-- Assistive Floating Dock Ball (Draggable, Half-Hides to Edge) -->
+    <FrameLayout
+        android:id="@+id/edge_dock_ball"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_edge_ball"
+        android:elevation="12dp"
+        android:alpha="0.55"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_more_vert"
+            app:tint="@color/accent_emerald"
+            android:contentDescription="Assistive Dock" />
+    </FrameLayout>
+
+    <!-- Quick Action Menu Pill (Revealed on Tap) -->
+    <LinearLayout
+        android:id="@+id/edge_quick_menu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/bg_card"
+        android:paddingHorizontal="6dp"
+        android:paddingVertical="4dp"
+        android:elevation="14dp"
+        android:visibility="gone"
+        android:layout_marginStart="8dp"
+        app:layout_constraintStart_toEndOf="@id/edge_dock_ball"
+        app:layout_constraintTop_toTopOf="@id/edge_dock_ball"
+        app:layout_constraintBottom_toBottomOf="@id/edge_dock_ball">
+
+        <ImageButton
+            android:id="@+id/btn_ball_reload"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_refresh"
+            android:contentDescription="Reload" />
+
+        <ImageButton
+            android:id="@+id/btn_ball_home"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginStart="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_home"
+            android:contentDescription="Home Shelf" />
+
+        <ImageButton
+            android:id="@+id/btn_ball_shield"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginStart="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_shield"
+            app:tint="@color/accent_emerald"
+            android:contentDescription="Shield" />
+
+        <ImageButton
+            android:id="@+id/btn_ball_close"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginStart="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_close"
+            android:contentDescription="Close Menu" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
