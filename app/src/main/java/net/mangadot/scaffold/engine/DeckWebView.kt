@@ -53,9 +53,9 @@ class DeckWebView @JvmOverloads constructor(
             allowContentAccess = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             
-            // Security
-            setSupportMultipleWindows(false)
-            javaScriptCanOpenWindowsAutomatically = false
+            // Multi-window & External Popups
+            setSupportMultipleWindows(true)
+            javaScriptCanOpenWindowsAutomatically = true
         }
     }
 
