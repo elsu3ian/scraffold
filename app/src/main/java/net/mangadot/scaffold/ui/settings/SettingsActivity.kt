@@ -231,6 +231,8 @@ class SettingsActivity : CosmicActivity() {
             dialogBinding.dialogTvFilterStatus.text = "${adBlockEngine.ruleCount} rules, $date"
         }
         showFilterStatus()
+        dialogBinding.dialogSwitchGenericStandIns.isChecked = adBlockEngine.genericStandIns
+        dialogBinding.dialogSwitchGenericStandIns.setOnCheckedChangeListener { _, checked -> adBlockEngine.genericStandIns = checked }
         dialogBinding.btnUpdateFilters.setOnClickListener {
             dialogBinding.btnUpdateFilters.isEnabled = false
             dialogBinding.dialogTvFilterStatus.text = "Downloading lists..."

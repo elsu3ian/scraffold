@@ -56,9 +56,11 @@ class DeckWebViewClient(
         val uri = request.url
 
         // 1. Ad and tracker blocking
-        if (settings.adblock && adBlockEngine.shouldBlock(request, pageHost, (view as? DeckWebView)?.shieldStats)) {
-            adBlockEngine.recordBlockedForApp(webApp.id)
-            return adBlockEngine.blockedResponse()
+        if (settings.adblock) {
+            adBlockEngine.intercept(request, pageHost, (view as? DeckWebView)?.shieldStats)?.let {
+                adBlockEngine.recordBlockedForApp(webApp.id)
+                return it
+            }
         }
 
         // 2. Third-party requests

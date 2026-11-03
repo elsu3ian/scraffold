@@ -136,6 +136,47 @@
             android:textSize="10sp" />
     </LinearLayout>
 
+    <!-- Feature 4: Stand-ins for blocked scripts -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="8dp"
+        android:layout_marginTop="8dp"
+        android:background="#15121215">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Stand-ins on every site"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/dialog_switch_generic_stand_ins"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:thumbTint="@color/text_primary"
+                app:trackTint="@color/switch_track" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Some blocked analytics and ad scripts get a harmless stand-in, so pages that call them keep working, as in uBlock Origin. Sites the lists name always get theirs; this adds the ones meant for every site. Off, those are just blocked, which ad-blocker tests score higher."
+            android:textColor="@color/text_muted"
+            android:textSize="10sp" />
+    </LinearLayout>
+
     <TextView
         android:id="@+id/dialog_tv_filter_status"
         android:layout_width="match_parent"

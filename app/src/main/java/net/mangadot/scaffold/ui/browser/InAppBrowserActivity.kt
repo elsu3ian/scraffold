@@ -150,9 +150,11 @@ class InAppBrowserActivity : CosmicActivity() {
         }
         binding.browserWebview.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                if (adblock && adBlockEngine.shouldBlock(request, pageHost, (view as? DeckWebView)?.shieldStats)) {
-                    appId?.let { adBlockEngine.recordBlockedForApp(it) }
-                    return adBlockEngine.blockedResponse()
+                if (adblock) {
+                    adBlockEngine.intercept(request, pageHost, (view as? DeckWebView)?.shieldStats)?.let { answer ->
+                        appId?.let { adBlockEngine.recordBlockedForApp(it) }
+                        return answer
+                    }
                 }
                 return super.shouldInterceptRequest(view, request)
             }

@@ -13,6 +13,8 @@ object AdblockNative {
     const val BLOCK = 1
     const val THIRD_PARTY = 2
     const val TRACKER = 4
+    const val REDIRECT = 8
+    const val GENERIC_REDIRECT = 16
 
     /**
      * Builds from list files plus [extraRules], keeping a copy in [cacheDir]. Returns the rule count,
@@ -33,9 +35,16 @@ object AdblockNative {
     @JvmStatic
     external fun restore(cacheDir: String, resourcePaths: Array<String>): Int
 
-    /** [BLOCK], [THIRD_PARTY] and [TRACKER] flags for one request. [popupRules] checks the lists' $popup rules instead. */
+    /** [BLOCK], [THIRD_PARTY], [TRACKER], [REDIRECT] and [GENERIC_REDIRECT] flags for one request. [popupRules] checks the lists' $popup rules instead. */
     @JvmStatic
     external fun check(url: String, sourceUrl: String, requestType: String, popupRules: Boolean): Int
+
+    /**
+     * The stand-in, as a data URL, for a request [check] flagged [REDIRECT]. With [generic], one from
+     * a rule naming no site, flagged [GENERIC_REDIRECT], will do too.
+     */
+    @JvmStatic
+    external fun redirect(url: String, sourceUrl: String, requestType: String, generic: Boolean): String?
 
     /** JSON with `css` and `script` for a page at [url], and `generic`, whether common ad classes count there. */
     @JvmStatic

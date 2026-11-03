@@ -3,6 +3,7 @@ package net.mangadot.scaffold.engine
 import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
+import android.util.Base64
 import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -43,6 +44,20 @@ class AdBlockEngine private constructor(private val context: Context) {
     var ruleCount: Int = 0
         private set
 
+    private val settingsPrefs = context.getSharedPreferences(SETTINGS_PREFS_NAME, Context.MODE_PRIVATE)
+
+    /**
+     * Whether $redirect rules that name no site answer with their stand-in, as uBlock Origin does, so
+     * pages calling a blocked analytics or ad script don't break. Off, they only block, which ad-block
+     * tests score higher. Rules written for a particular site always get their stand-in.
+     */
+    @Volatile
+    var genericStandIns: Boolean = settingsPrefs.getBoolean(KEY_GENERIC_STAND_INS, false)
+        set(value) {
+            field = value
+            settingsPrefs.edit().putBoolean(KEY_GENERIC_STAND_INS, value).apply()
+        }
+
     init {
         statsPrefs.all.forEach { (key, value) ->
             if (key.startsWith(KEY_APP_BLOCKED_PREFIX) && value is Long) {
@@ -78,35 +93,44 @@ class AdBlockEngine private constructor(private val context: Context) {
 
     suspend fun updateListsNow(): Int {
         val arrived = FilterLists.update(context)
-        // Without them, +js rules still find Brave's scriptlets
-        val scriptlets = ScriptletImport.run(context, FilterLists.SCRIPTLETS_SOURCE)
-        if (scriptlets != null) FilterLists.saveScriptlets(context, scriptlets)
-        Log.i(TAG, if (scriptlets != null) "Scriptlets imported" else "Scriptlets unavailable, keeping what there was")
-        if (arrived > 0 || scriptlets != null) withContext(Dispatchers.IO) { loadLists(rebuild = true) }
+        // Without them, +js rules still find Brave's scriptlets, and $redirect rules just block
+        val imported = ScriptletImport.run(context, FilterLists.SCRIPTLETS_SOURCE, FilterLists.REDIRECTS_SOURCE)
+        FilterLists.saveImport(context, imported)
+        Log.i(TAG, "Scriptlets ${if (imported.scriptlets != null) "imported" else "unavailable"}, " +
+            "redirect resources ${if (imported.redirects != null) "imported" else "unavailable"}")
+        if (arrived > 0 || imported.scriptlets != null || imported.redirects != null) {
+            withContext(Dispatchers.IO) { loadLists(rebuild = true) }
+        }
         return arrived
     }
 
     /**
-     * Runs on WebView's network threads. A page load started right at launch waits here for the lists.
-     * What it stops is counted in [stats], as an ad or a tracker.
+     * For shouldInterceptRequest, on WebView's network threads: null to let [request] through, or what
+     * to answer in its place, the harmless stand-in a $redirect rule names or else a refusal. A page
+     * load started right at launch waits here for the lists. What it stops is counted in [stats], as
+     * an ad or a tracker.
      */
-    fun shouldBlock(request: WebResourceRequest, pageHost: String?, stats: ShieldStats? = null): Boolean {
+    fun intercept(request: WebResourceRequest, pageHost: String?, stats: ShieldStats? = null): WebResourceResponse? {
         // A page someone chose to open is theirs to see, and only subresources are ads
-        if (request.isForMainFrame) return false
+        if (request.isForMainFrame) return null
         val uri = request.url
         val scheme = uri.scheme?.lowercase()
-        if (scheme != "http" && scheme != "https") return false
-        val host = uri.host?.lowercase() ?: return false
-        if (NEVER_BLOCKED.any { host == it || host.endsWith(".$it") }) return false
+        if (scheme != "http" && scheme != "https") return null
+        val host = uri.host?.lowercase() ?: return null
+        if (NEVER_BLOCKED.any { host == it || host.endsWith(".$it") }) return null
 
         firstLoad.await(FIRST_LOAD_WAIT_MS, TimeUnit.MILLISECONDS)
         val source = request.requestHeaders["Referer"] ?: siteUrl(pageHost)
         val url = uri.toString()
-        val flags = requestTypes(request).map { type -> AdblockNative.check(url, source, type, false) }
-            .firstOrNull { it and AdblockNative.BLOCK != 0 } ?: return false
+        val (type, flags) = requestTypes(request).map { kind -> kind to AdblockNative.check(url, source, kind, false) }
+            .firstOrNull { it.second and AdblockNative.BLOCK != 0 } ?: return null
         totalBlocked.incrementAndGet()
         if (flags and AdblockNative.TRACKER != 0) stats?.trackers?.incrementAndGet() else stats?.ads?.incrementAndGet()
-        return true
+        val generic = genericStandIns && flags and AdblockNative.GENERIC_REDIRECT != 0
+        if (flags and AdblockNative.REDIRECT != 0 || generic) {
+            AdblockNative.redirect(url, source, type, genericStandIns)?.let { standIn(it, request) }?.let { return it }
+        }
+        return blockedResponse()
     }
 
     /**
@@ -211,8 +235,24 @@ class AdBlockEngine private constructor(private val context: Context) {
 
     private fun siteUrl(host: String?): String = host?.takeIf { it.isNotEmpty() }?.let { "https://$it/" }.orEmpty()
 
+    /**
+     * A stand-in from its data URL, readable from whichever site asked: answers to cross-site fetches
+     * have to name the asking origin to reach a page sending credentials.
+     */
+    private fun standIn(dataUrl: String, request: WebResourceRequest): WebResourceResponse? {
+        val comma = dataUrl.indexOf(',')
+        if (!dataUrl.startsWith("data:") || comma < 0) return null
+        val mime = dataUrl.substring(5, comma).removeSuffix(";base64")
+        val body = runCatching { Base64.decode(dataUrl.substring(comma + 1), Base64.DEFAULT) }.getOrNull() ?: return null
+        val origin = request.requestHeaders.entries.firstOrNull { it.key.equals("Origin", ignoreCase = true) }?.value
+        val headers = mutableMapOf("Cache-Control" to "no-store", "Access-Control-Allow-Origin" to (origin ?: "*"))
+        if (origin != null) headers["Access-Control-Allow-Credentials"] = "true"
+        val text = mime.startsWith("text/") || mime.endsWith("javascript") || mime.endsWith("json")
+        return WebResourceResponse(mime, if (text) "UTF-8" else null, 200, "OK", headers, ByteArrayInputStream(body))
+    }
+
     /** Fails the way a blocked request does: script error events fire, and cross-site fetches reject. */
-    fun blockedResponse(): WebResourceResponse {
+    private fun blockedResponse(): WebResourceResponse {
         return WebResourceResponse(
             "text/plain",
             "UTF-8",
@@ -251,6 +291,8 @@ class AdBlockEngine private constructor(private val context: Context) {
 
     companion object {
         private const val STATS_PREFS_NAME = "scraffold_shield_stats"
+        private const val SETTINGS_PREFS_NAME = "scraffold_shield_settings"
+        private const val KEY_GENERIC_STAND_INS = "generic_stand_ins"
         private const val KEY_TOTAL_BLOCKED = "total_blocked"
         private const val KEY_APP_BLOCKED_PREFIX = "app_blocked_"
         private const val TAG = "Shield"

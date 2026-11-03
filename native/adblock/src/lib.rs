@@ -22,6 +22,8 @@ struct Engines {
     popups: Engine,
     // The privacy lists alone, which tell a blocked tracker from a blocked ad
     trackers: Engine,
+    // $redirect rules naming no site, which only answer with a stand-in when that's turned on; main just blocks for them
+    redirects: Engine,
 }
 
 static ENGINES: RwLock<Option<Arc<Engines>>> = RwLock::new(None);
@@ -29,10 +31,13 @@ static ENGINES: RwLock<Option<Arc<Engines>>> = RwLock::new(None);
 const BLOCK: jint = 1;
 const THIRD_PARTY: jint = 2;
 const TRACKER: jint = 4;
+const REDIRECT: jint = 8;
+const GENERIC_REDIRECT: jint = 16;
 
 const MAIN_FILE: &str = "main.dat";
 const POPUP_FILE: &str = "popup.dat";
 const TRACKER_FILE: &str = "tracker.dat";
+const REDIRECT_FILE: &str = "redirect.dat";
 const COUNT_FILE: &str = "count.txt";
 
 // Lets a list run scriptlets marked as needing trust, the way uBlock Origin trusts its own lists
@@ -97,6 +102,33 @@ fn as_popup_rule(rule: &str) -> Option<String> {
     found.then(|| format!("{}${}", pattern, kept.join(",")))
 }
 
+fn is_redirect_option(option: &str) -> bool {
+    option.starts_with("redirect=") || option.starts_with("redirect-rule")
+}
+
+/// For a `$redirect` or `$redirect-rule` rule that names no site, the plain blocking rule main keeps
+/// in its place (none for `$redirect-rule`, which never blocked by itself). None for any other rule.
+fn generic_redirect(rule: &str) -> Option<Option<String>> {
+    if rule.starts_with("@@") {
+        return None;
+    }
+    let (pattern, options) = split_options(rule)?;
+    let options: Vec<&str> = options.split(',').collect();
+    let site = options.iter().any(|option| option.starts_with("domain=") || option.starts_with("from="));
+    if site || !options.iter().any(|option| is_redirect_option(option)) {
+        return None;
+    }
+    let blocks = options.iter().any(|option| option.starts_with("redirect="));
+    let kept: Vec<&str> = options.into_iter().filter(|option| !is_redirect_option(option)).collect();
+    Some(blocks.then(|| if kept.is_empty() { pattern.to_string() } else { format!("{}${}", pattern, kept.join(",")) }))
+}
+
+/// An exception to a redirect, which the generic redirects have to honour too.
+fn is_redirect_exception(rule: &str) -> bool {
+    rule.starts_with("@@")
+        && split_options(rule).is_some_and(|(_, options)| options.split(',').any(is_redirect_option))
+}
+
 fn is_rule(line: &str) -> bool {
     !line.is_empty() && !line.starts_with('!') && !line.starts_with('[')
 }
@@ -105,6 +137,7 @@ fn is_rule(line: &str) -> bool {
 fn build_engines(lists: &[(String, bool)], tracker_lists: &[String], resources: &[Resource]) -> (Engines, usize) {
     let mut main = FilterSet::new(false);
     let mut popup_rules = Vec::new();
+    let mut redirect_rules = Vec::new();
     let mut count = 0;
     for (list, trusted) in lists {
         let mut kept = String::with_capacity(list.len());
@@ -114,12 +147,25 @@ fn build_engines(lists: &[(String, bool)], tracker_lists: &[String], resources: 
                 continue;
             }
             count += 1;
-            match as_popup_rule(line) {
-                Some(rule) => popup_rules.push(rule),
-                None => {
-                    kept.push_str(line);
-                    kept.push('\n');
+            if let Some(rule) = as_popup_rule(line) {
+                popup_rules.push(rule);
+                continue;
+            }
+            let block = match generic_redirect(line) {
+                Some(block) => {
+                    redirect_rules.push(line.to_string());
+                    block
                 }
+                None => {
+                    if is_redirect_exception(line) {
+                        redirect_rules.push(line.to_string());
+                    }
+                    Some(line.to_string())
+                }
+            };
+            if let Some(rule) = block {
+                kept.push_str(&rule);
+                kept.push('\n');
             }
         }
         let options = ParseOptions {
@@ -134,10 +180,13 @@ fn build_engines(lists: &[(String, bool)], tracker_lists: &[String], resources: 
     for list in tracker_lists {
         trackers.add_filter_list(list.clone(), ParseOptions::default());
     }
+    let mut redirects = FilterSet::new(false);
+    redirects.add_filter_list(redirect_rules.join("\n"), ParseOptions::default());
     let engines = Engines {
         main: with_resources(Engine::new_with_filter_set(main), resources),
         popups: Engine::new_with_filter_set(popups),
         trackers: Engine::new_with_filter_set(trackers),
+        redirects: with_resources(Engine::new_with_filter_set(redirects), resources),
     };
     (engines, count)
 }
@@ -147,6 +196,7 @@ fn save(engines: &Engines, count: usize, dir: &Path) -> std::io::Result<()> {
     fs::write(dir.join(MAIN_FILE), engines.main.serialize())?;
     fs::write(dir.join(POPUP_FILE), engines.popups.serialize())?;
     fs::write(dir.join(TRACKER_FILE), engines.trackers.serialize())?;
+    fs::write(dir.join(REDIRECT_FILE), engines.redirects.serialize())?;
     fs::write(dir.join(COUNT_FILE), count.to_string())
 }
 
@@ -158,7 +208,15 @@ fn restore(dir: &Path, resources: &[Resource]) -> Option<(Engines, usize)> {
     popups.deserialize(&fs::read(dir.join(POPUP_FILE)).ok()?).ok()?;
     let mut trackers = Engine::default();
     trackers.deserialize(&fs::read(dir.join(TRACKER_FILE)).ok()?).ok()?;
-    Some((Engines { main: with_resources(main, resources), popups, trackers }, count))
+    let mut redirects = Engine::default();
+    redirects.deserialize(&fs::read(dir.join(REDIRECT_FILE)).ok()?).ok()?;
+    let engines = Engines {
+        main: with_resources(main, resources),
+        popups,
+        trackers,
+        redirects: with_resources(redirects, resources),
+    };
+    Some((engines, count))
 }
 
 fn string(env: &mut JNIEnv, value: &JString) -> Option<String> {
@@ -242,7 +300,9 @@ pub extern "system" fn Java_net_mangadot_scaffold_engine_AdblockNative_restore(
 }
 
 /// Flags for one request: [BLOCK] when it should be stopped, [THIRD_PARTY] when it leaves the page's
-/// site, and [TRACKER] when what stopped it is a tracker rather than an ad.
+/// site, [TRACKER] when what stopped it is a tracker rather than an ad, [REDIRECT] when a rule for
+/// its site names a stand-in to answer it with, and [GENERIC_REDIRECT] when only a rule naming no
+/// site does.
 #[no_mangle]
 pub extern "system" fn Java_net_mangadot_scaffold_engine_AdblockNative_check(
     mut env: JNIEnv,
@@ -261,8 +321,14 @@ pub extern "system" fn Java_net_mangadot_scaffold_engine_AdblockNative_check(
         let mut flags = if request.is_third_party { THIRD_PARTY } else { 0 };
         if let Some(engines) = current() {
             let engine = if popup_rules == JNI_TRUE { &engines.popups } else { &engines.main };
-            if engine.check_network_request(&request).should_block() {
+            let result = engine.check_network_request(&request);
+            if result.should_block() {
                 flags |= BLOCK;
+                if result.redirect.is_some() {
+                    flags |= REDIRECT;
+                } else if popup_rules != JNI_TRUE && engines.redirects.check_network_request(&request).redirect.is_some() {
+                    flags |= GENERIC_REDIRECT;
+                }
                 if engines.trackers.check_network_request(&request).should_block() {
                     flags |= TRACKER;
                 }
@@ -272,8 +338,41 @@ pub extern "system" fn Java_net_mangadot_scaffold_engine_AdblockNative_check(
     })
 }
 
+/// The stand-in for a request [check] flagged [REDIRECT], as a data URL, or null. With `generic`, a
+/// stand-in from a rule naming no site will do too.
+#[no_mangle]
+pub extern "system" fn Java_net_mangadot_scaffold_engine_AdblockNative_redirect(
+    mut env: JNIEnv,
+    _class: JClass,
+    url: JString,
+    source_url: JString,
+    request_type: JString,
+    generic: jboolean,
+) -> jstring {
+    let (Some(url), Some(request_type)) = (string(&mut env, &url), string(&mut env, &request_type)) else {
+        return std::ptr::null_mut();
+    };
+    let source_url = string(&mut env, &source_url).unwrap_or_default();
+    let redirect = guarded(None, || {
+        let request = Request::new(&url, &source_url, &request_type, "get").ok()?;
+        let engines = current()?;
+        let result = engines.main.check_network_request(&request);
+        if !result.should_block() {
+            return None;
+        }
+        result.redirect.or_else(|| {
+            (generic == JNI_TRUE).then(|| engines.redirects.check_network_request(&request).redirect).flatten()
+        })
+    });
+    match redirect {
+        Some(data_url) => new_string(&mut env, &data_url),
+        None => std::ptr::null_mut(),
+    }
+}
+
 /// What a page at `url` needs at document start, as JSON: `css` to hide its ads, `script` with
-/// its scriptlets, and `generic`, whether common ad classes and ids should be looked for too.
+/// its scriptlets, `procedural` with the rules only a script can follow, and `generic`, whether
+/// common ad classes and ids should be looked for too.
 #[no_mangle]
 pub extern "system" fn Java_net_mangadot_scaffold_engine_AdblockNative_cosmetics(
     mut env: JNIEnv,
@@ -281,17 +380,21 @@ pub extern "system" fn Java_net_mangadot_scaffold_engine_AdblockNative_cosmetics
     url: JString,
 ) -> jstring {
     let Some(url) = string(&mut env, &url) else { return std::ptr::null_mut() };
-    let json = guarded(String::new(), || {
-        let Some(engines) = current() else { return String::new() };
-        let resources = engines.main.url_cosmetic_resources(&url);
-        serde_json::json!({
-            "css": hiding_css(resources.hide_selectors.iter()),
-            "script": resources.injected_script,
-            "generic": !resources.generichide,
-        })
-        .to_string()
-    });
+    let json = guarded(String::new(), || current().map(|engines| cosmetics_json(&engines.main, &url)).unwrap_or_default());
     new_string(&mut env, &json)
+}
+
+fn cosmetics_json(engine: &Engine, url: &str) -> String {
+    let resources = engine.url_cosmetic_resources(url);
+    let (procedural, plain): (Vec<&String>, Vec<&String>) =
+        resources.hide_selectors.iter().partition(|selector| is_procedural(selector));
+    serde_json::json!({
+        "css": hiding_css(plain.into_iter()),
+        "script": resources.injected_script,
+        "procedural": procedural_rules(&procedural, &resources.procedural_actions),
+        "generic": !resources.generichide,
+    })
+    .to_string()
 }
 
 /// CSS hiding whatever generic rules name among the classes and ids now on a page at `url`.
@@ -316,6 +419,27 @@ pub extern "system" fn Java_net_mangadot_scaffold_engine_AdblockNative_genericCs
         hiding_css(engines.main.hidden_class_id_selectors(&classes, &ids, &exceptions).iter())
     });
     new_string(&mut env, &css)
+}
+
+// Operators no stylesheet understands, which adblock-rust leaves in the selector without css-validation
+const PROCEDURAL_OPERATORS: [&str; 15] = [
+    ":has-text(", ":contains(", ":-abp-contains(", ":-abp-has(", ":matches-attr(", ":matches-css(",
+    ":matches-css-before(", ":matches-css-after(", ":matches-path(", ":min-text-length(", ":upward(",
+    ":xpath(", ":watch-attr(", ":others(", ":nth-ancestor(",
+];
+
+fn is_procedural(selector: &str) -> bool {
+    PROCEDURAL_OPERATORS.iter().any(|operator| selector.contains(operator))
+}
+
+/// Hiding selectors that need a script, in the form adblock-rust gives rules with an action, so the
+/// page script reads both alike: `{"selector":[{"type":"css-selector","arg":...}],"action":...}`.
+fn procedural_rules(selectors: &[&String], actions: &HashSet<String>) -> Vec<serde_json::Value> {
+    let hidden = selectors
+        .iter()
+        .map(|selector| serde_json::json!({ "selector": [{ "type": "css-selector", "arg": selector }] }));
+    let acted = actions.iter().filter_map(|action| serde_json::from_str(action).ok());
+    hidden.chain(acted).collect()
 }
 
 // Each selector is its own rule, so one the browser can't parse doesn't sink the rest
@@ -354,6 +478,42 @@ mod tests {
         assert!(resources.hide_selectors.contains(".banner"));
         let generic = engines.main.hidden_class_id_selectors(["ad-box"], Vec::<String>::new(), &resources.exceptions);
         assert_eq!(generic, vec![".ad-box".to_string()]);
+    }
+
+    #[test]
+    fn redirects_to_stand_ins() {
+        let resources: Vec<Resource> = serde_json::from_str(
+            r#"[{"name":"noop.js","aliases":["noopjs"],"kind":{"mime":"application/javascript"},"content":"KGZ1bmN0aW9uKCl7fSkoKTs="}]"#,
+        )
+        .unwrap();
+        let rules = "||ads.example/tag.js$script,redirect=noopjs\n||ads.example/site.js$script,redirect=noop.js,domain=site.example\n||ads.example^";
+        let (engines, _) = build_engines(&[(rules.to_string(), false)], &[], &resources);
+        let stand_in = Some("data:application/javascript;base64,KGZ1bmN0aW9uKCl7fSkoKTs=");
+        // A rule naming no site still blocks, and its stand-in waits in the separate engine
+        let tag = Request::new("https://ads.example/tag.js", "https://site.example/", "script", "get").unwrap();
+        let result = engines.main.check_network_request(&tag);
+        assert!(result.should_block());
+        assert!(result.redirect.is_none());
+        assert_eq!(engines.redirects.check_network_request(&tag).redirect.as_deref(), stand_in);
+        let site = Request::new("https://ads.example/site.js", "https://site.example/", "script", "get").unwrap();
+        assert_eq!(engines.main.check_network_request(&site).redirect.as_deref(), stand_in);
+        let pixel = Request::new("https://ads.example/p.gif", "https://site.example/", "image", "get").unwrap();
+        assert!(engines.main.check_network_request(&pixel).redirect.is_none());
+        assert_eq!(generic_redirect("||x.example^$script,redirect-rule=noopjs"), Some(None));
+        assert_eq!(generic_redirect("||x.example^$important,redirect=noopjs:5,script").flatten().as_deref(), Some("||x.example^$important,script"));
+        assert_eq!(generic_redirect("||x.example^$script,redirect=noopjs,domain=a.example"), None);
+    }
+
+    #[test]
+    fn procedural_rules_reach_the_page() {
+        let rules = "site.example##.post:has-text(Sponsored)\nsite.example##.promo:remove()\nsite.example##.banner";
+        let (engines, _) = build_engines(&[(rules.to_string(), false)], &[], &[]);
+        let json: serde_json::Value = serde_json::from_str(&cosmetics_json(&engines.main, "https://site.example/")).unwrap();
+        assert_eq!(json["css"], ".banner{display:none!important}");
+        let procedural = json["procedural"].as_array().unwrap();
+        assert_eq!(procedural.len(), 2);
+        assert!(procedural.contains(&serde_json::json!({ "selector": [{ "type": "css-selector", "arg": ".post:has-text(Sponsored)" }] })));
+        assert!(procedural.contains(&serde_json::json!({ "selector": [{ "type": "css-selector", "arg": ".promo" }], "action": { "type": "remove" } })));
     }
 
     #[test]

@@ -16,7 +16,7 @@ object ServiceWorkerBlocker {
         val controller = ServiceWorkerControllerCompat.getInstance()
         controller.setServiceWorkerClient(object : ServiceWorkerClientCompat() {
             override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? {
-                if (adBlockEngine.shouldBlock(request, null)) return adBlockEngine.blockedResponse()
+                adBlockEngine.intercept(request, null)?.let { return it }
                 return super.shouldInterceptRequest(request)
             }
         })

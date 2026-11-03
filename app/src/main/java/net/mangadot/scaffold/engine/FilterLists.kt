@@ -11,9 +11,9 @@ import java.util.concurrent.TimeUnit
 
 /**
  * uBlock Origin's default public lists, plus AdGuard's for mobile ads, and Brave's scriptlet
- * resources, and uBlock Origin's scriptlets. They are fetched from their publishers and kept on
- * the device, which leaves them under their own licenses (uBlock Origin's being GPLv3) rather than
- * shipped in the app.
+ * resources, and uBlock Origin's scriptlets and redirect stand-ins. They are fetched from their
+ * publishers and kept on the device, which leaves them under their own licenses (uBlock Origin's
+ * being GPLv3) rather than shipped in the app.
  */
 object FilterLists {
 
@@ -42,6 +42,15 @@ object FilterLists {
     const val SCRIPTLETS_SOURCE = "https://cdn.jsdelivr.net/gh/gorhill/uBlock/src/js/resources/scriptlets.js"
     private const val SCRIPTLETS_FILE = "scriptlets.json"
 
+    /**
+     * The harmless files $redirect rules hand pages in place of what they block: uBlock Origin's,
+     * from the same release. Any module exporting the same map, beside a web_accessible_resources
+     * folder holding the files it names, can stand in.
+     */
+    const val REDIRECTS_SOURCE = "https://cdn.jsdelivr.net/gh/gorhill/uBlock/src/js/redirect-resources.js"
+    private const val REDIRECTS_FILE = "redirects.json"
+    private val RESOURCE_FILES = listOf(RESOURCES.fileName, SCRIPTLETS_FILE, REDIRECTS_FILE)
+
     private const val PREFS_NAME = "scraffold_filter_lists"
     private const val KEY_UPDATED = "updated_at"
     private const val KEY_ATTEMPTED = "attempted_at"
@@ -66,23 +75,28 @@ object FilterLists {
         return LISTS.filter { it.trusted }.map { File(folder(context), it.fileName) }.filter { it.exists() }
     }
 
-    /** Brave's resources, then the imported scriptlets when there are any. */
+    /** Brave's resources, then the imported scriptlets and redirect stand-ins when there are any. */
     fun resources(context: Context): List<File> {
-        return listOf(RESOURCES.fileName, SCRIPTLETS_FILE).map { File(folder(context), it) }.filter { it.exists() }
+        return RESOURCE_FILES.map { File(folder(context), it) }.filter { it.exists() }
     }
 
-    /** Keeps scriptlets [ScriptletImport] produced. A failed import leaves the last good ones in place. */
-    fun saveScriptlets(context: Context, json: String) {
-        val partial = File(folder(context), "$SCRIPTLETS_FILE.part")
+    /** Keeps what [ScriptletImport] produced. A half that failed leaves its last good copy in place. */
+    fun saveImport(context: Context, result: ScriptletImport.Result) {
+        result.scriptlets?.let { save(context, SCRIPTLETS_FILE, it) }
+        result.redirects?.let { save(context, REDIRECTS_FILE, it) }
+    }
+
+    private fun save(context: Context, fileName: String, json: String) {
+        val partial = File(folder(context), "$fileName.part")
         partial.writeText(json)
-        if (!partial.renameTo(File(folder(context), SCRIPTLETS_FILE))) partial.delete()
+        if (!partial.renameTo(File(folder(context), fileName))) partial.delete()
     }
 
     fun lastUpdated(context: Context): Long = prefs(context).getLong(KEY_UPDATED, 0L)
 
     fun isDue(context: Context): Boolean {
         val now = System.currentTimeMillis()
-        val stale = now - lastUpdated(context) > MAX_AGE_MS || files(context).size < LISTS.size || resources(context).size < 2
+        val stale = now - lastUpdated(context) > MAX_AGE_MS || files(context).size < LISTS.size || resources(context).size < RESOURCE_FILES.size
         return stale && now - prefs(context).getLong(KEY_ATTEMPTED, 0L) > RETRY_AFTER_MS
     }
 

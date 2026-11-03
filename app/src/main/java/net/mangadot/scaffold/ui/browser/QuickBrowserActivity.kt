@@ -138,9 +138,11 @@ class QuickBrowserActivity : CosmicActivity() {
 
     private val pageClient = object : WebViewClient() {
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-            if (adblock && adBlockEngine.shouldBlock(request, pageHosts[view], (view as? DeckWebView)?.shieldStats)) {
-                adBlockEngine.recordBlockedForApp(BROWSER_ID)
-                return adBlockEngine.blockedResponse()
+            if (adblock) {
+                adBlockEngine.intercept(request, pageHosts[view], (view as? DeckWebView)?.shieldStats)?.let {
+                    adBlockEngine.recordBlockedForApp(BROWSER_ID)
+                    return it
+                }
             }
             return super.shouldInterceptRequest(view, request)
         }
