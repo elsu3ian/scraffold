@@ -214,7 +214,7 @@ class QuickBrowserActivity : CosmicActivity() {
         adBlockEngine = AdBlockEngine.getInstance(this)
         adblock = GlobalWebSettingsStore.load(this).adblock
         scripts = ScriptRepository(db.scriptDao(), db.scriptStorageDao())
-        cookies = AppProfiles.cookies(BROWSER_ID)
+        cookies = AppProfiles.cookies(this, BROWSER_ID)
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.browserRoot) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime())
@@ -701,21 +701,15 @@ class QuickBrowserActivity : CosmicActivity() {
     private fun confirmClearLogins() {
         AlertDialog.Builder(this)
             .setTitle("Clear logins and site data?")
-            .setMessage("You'll be signed out of every site in this browser. Your web apps aren't affected.")
+            .setMessage("You'll be signed out of every site in this browser and in the web apps that share its logins. Apps set to keep their own login aren't affected.")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Clear") { _, _ ->
-                val cleared = AppProfiles.clear(BROWSER_ID)
-                if (cleared) current.web?.clearCache(true)
-                Toast.makeText(
-                    this,
-                    if (cleared) "Logins and site data cleared" else "This device's WebView is too old to clear them separately",
-                    Toast.LENGTH_LONG
-                ).show()
+                AppProfiles.clearShared()
+                current.web?.clearCache(true)
+                Toast.makeText(this, "Logins and site data cleared", Toast.LENGTH_LONG).show()
                 // A page still open could carry on signed in, so none stay
-                if (cleared) {
-                    tabs.filter { it !== current }.forEach(::closeTab)
-                    showStart()
-                }
+                tabs.filter { it !== current }.forEach(::closeTab)
+                showStart()
             }
             .showCosmic()
     }

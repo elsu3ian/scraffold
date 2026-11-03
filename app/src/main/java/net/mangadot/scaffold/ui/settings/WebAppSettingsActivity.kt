@@ -20,6 +20,7 @@ import net.mangadot.scaffold.data.settings.WebAppSettings
 import net.mangadot.scaffold.data.settings.ownSettings
 import net.mangadot.scaffold.data.settings.withSettings
 import net.mangadot.scaffold.databinding.ActivityWebAppSettingsBinding
+import net.mangadot.scaffold.engine.AppProfiles
 import net.mangadot.scaffold.ui.theme.CosmicActivity
 import net.mangadot.scaffold.ui.theme.CosmicThemeStore
 import net.mangadot.scaffold.ui.theme.applyHeader
@@ -35,6 +36,7 @@ class WebAppSettingsActivity : CosmicActivity() {
     private var app: WebAppEntity? = null
     private val toggles = mutableMapOf<String, MaterialSwitch>()
     private val toggleRows = mutableListOf<View>()
+    private var ownLogin: MaterialSwitch? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,6 +79,7 @@ class WebAppSettingsActivity : CosmicActivity() {
             binding.appSettingsRowOverride.visibility = View.GONE
             show(GlobalWebSettingsStore.load(this))
         } else {
+            if (AppProfiles.supported) addOwnLoginToggle(appId)
             lifecycleScope.launch {
                 val loaded = repository.getWebAppById(appId).firstOrNull()
                 if (loaded == null) {
@@ -120,6 +123,19 @@ class WebAppSettingsActivity : CosmicActivity() {
         toggles[key] = row.findViewById(R.id.toggle_switch)
         toggleRows += row
         group.addView(row)
+    }
+
+    // Not one of the switches the global defaults cover: whose login an app uses is always its own choice
+    private fun addOwnLoginToggle(appId: String) {
+        val group = binding.appSettingsGroupCookies
+        val row = layoutInflater.inflate(R.layout.item_settings_toggle, group, false)
+        row.findViewById<TextView>(R.id.toggle_tv_title).text = "Separate login"
+        row.findViewById<TextView>(R.id.toggle_tv_subtitle).text =
+            "Keep this app's own sign-ins instead of sharing them with the browser and other apps. For a second account."
+        ownLogin = row.findViewById<MaterialSwitch>(R.id.toggle_switch).apply {
+            isChecked = AppProfiles.keepsOwnLogin(this@WebAppSettingsActivity, appId)
+        }
+        group.addView(row, 0)
     }
 
     private fun updateEnabledState() {
@@ -170,6 +186,7 @@ class WebAppSettingsActivity : CosmicActivity() {
             finish()
             return
         }
+        ownLogin?.let { AppProfiles.setKeepsOwnLogin(this, existing.id, it.isChecked) }
         val label = binding.appSettingsEtLabel.text.toString().trim().ifEmpty { existing.name }
         val override = binding.appSettingsSwitchOverride.isChecked
         val updated = existing.copy(name = label, overrideGlobal = override).let {

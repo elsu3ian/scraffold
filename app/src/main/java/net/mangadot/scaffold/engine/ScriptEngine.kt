@@ -46,7 +46,7 @@ class ScriptEngine(
 
     fun attach(webView: WebView, appId: String?) {
         bridge.webView = webView
-        bridge.cookies = AppProfiles.cookies(appId)
+        bridge.cookies = AppProfiles.cookies(webView.context, appId)
     }
 
     /** Replaces what is registered on [webView]. Call before loading a page. */

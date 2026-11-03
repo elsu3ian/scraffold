@@ -151,7 +151,7 @@ class WebContainerActivity : CosmicActivity() {
         AppProfiles.attach(binding.deckWebview, appId)
         BackgroundMedia.attach(binding.deckWebview, intent.getStringExtra(EXTRA_APP_NAME).orEmpty(), AppTasks.intent(this, appId))
         binding.deckWebview.presentAsBrowser()
-        cookies = AppProfiles.cookies(appId)
+        cookies = AppProfiles.cookies(this, appId)
         pageZoom = PageZoom(binding.deckWebview)
         appLook = AppLook(this)
 

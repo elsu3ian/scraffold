@@ -126,12 +126,12 @@ class InAppBrowserActivity : CosmicActivity() {
         val scripts = ScriptRepository(db.scriptDao(), db.scriptStorageDao())
         scriptEngine = ScriptEngine(this, scripts, lifecycleScope)
 
-        appId?.let { AppProfiles.attach(binding.browserWebview, it) }
+        AppProfiles.attach(binding.browserWebview, appId)
         // Reopening an app's task would close this page on top of it, so the notification leads to the shelf
         BackgroundMedia.attach(binding.browserWebview, "Browser", Intent(this, MainActivity::class.java))
         binding.browserWebview.presentAsBrowser()
         binding.browserWebview.shield?.enabled = adblock
-        cookies = AppProfiles.cookies(appId)
+        cookies = AppProfiles.cookies(this, appId)
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.browserRoot) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime())
