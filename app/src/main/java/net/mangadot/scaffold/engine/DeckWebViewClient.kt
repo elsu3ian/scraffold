@@ -56,7 +56,7 @@ class DeckWebViewClient(
         val uri = request.url
 
         // 1. Ad and tracker blocking
-        if (settings.adblock && adBlockEngine.shouldBlock(request, pageHost)) {
+        if (settings.adblock && adBlockEngine.shouldBlock(request, pageHost, (view as? DeckWebView)?.shieldStats)) {
             adBlockEngine.recordBlockedForApp(webApp.id)
             return adBlockEngine.blockedResponse()
         }
@@ -135,13 +135,7 @@ class DeckWebViewClient(
     override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
         super.onPageStarted(view, url, favicon)
         pageHost = normalizeHost(Uri.parse(url).host)
-    }
-
-    override fun onPageCommitVisible(view: WebView, url: String) {
-        super.onPageCommitVisible(view, url)
-        if (settings.adblock) {
-            adBlockEngine.siteCosmeticScript(Uri.parse(url).host.orEmpty())?.let { view.evaluateJavascript(it, null) }
-        }
+        (view as? DeckWebView)?.shieldStats?.enter(pageHost)
     }
 
     override fun onPageFinished(view: WebView, url: String) {

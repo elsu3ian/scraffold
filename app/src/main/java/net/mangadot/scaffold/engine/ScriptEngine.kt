@@ -51,12 +51,7 @@ class ScriptEngine(
 
     /** Replaces what is registered on [webView]. Call before loading a page. */
     @SuppressLint("JavascriptInterface")
-    suspend fun register(
-        webView: WebView,
-        scripts: List<ScriptEntity>,
-        cosmeticCss: String,
-        scriptlets: String
-    ) {
+    suspend fun register(webView: WebView, scripts: List<ScriptEntity>) {
         handlers.forEach { it.remove() }
         handlers.clear()
         bridge.reset()
@@ -86,14 +81,13 @@ class ScriptEngine(
             webView.addJavascriptInterface(bridge, GmBridge.INTERFACE_NAME)
         }
 
-        val shield = buildShield(cosmeticCss, scriptlets)
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             fallbackScripts = emptyList()
-            (listOf(shield) + wrapped).filter { it.isNotEmpty() }.forEach { source ->
+            wrapped.forEach { source ->
                 handlers += WebViewCompat.addDocumentStartJavaScript(webView, source, setOf("*"))
             }
         } else {
-            fallbackScripts = listOf(shield) + wrapped
+            fallbackScripts = wrapped
         }
     }
 
@@ -155,27 +149,6 @@ ${scriptBody(script)}
 });
 })();
 """
-    }
-
-    private fun buildShield(cosmeticCss: String, scriptlets: String): String {
-        if (cosmeticCss.isEmpty() && scriptlets.isEmpty()) return ""
-        val style = if (cosmeticCss.isEmpty()) "" else """
-(function () {
-  var css = ${JSONObject.quote(cosmeticCss)};
-  var inject = function () {
-    var target = document.head || document.documentElement;
-    if (target && !document.getElementById('scraffold-cosmetic-shield')) {
-      var style = document.createElement('style');
-      style.id = 'scraffold-cosmetic-shield';
-      style.textContent = css;
-      target.appendChild(style);
-    }
-  };
-  if (document.documentElement) inject();
-  else document.addEventListener('DOMContentLoaded', inject, { once: true });
-})();
-"""
-        return scriptlets + "\n" + style
     }
 
     private companion object {

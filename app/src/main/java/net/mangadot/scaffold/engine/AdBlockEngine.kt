@@ -14,24 +14,22 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.mangadot.scaffold.ui.browser.QuickBrowserActivity
-import org.json.JSONObject
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * The shield: blocks requests using [FilterSet] and the lists from [FilterLists]. Until those have
- * downloaded, a short built-in list still covers the largest ad networks.
+ * The shield: Brave's adblock-rust ([AdblockNative]) running the lists from [FilterLists]. Until
+ * those have downloaded, a short built-in list still covers the largest ad networks.
  */
 class AdBlockEngine private constructor(private val context: Context) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val firstLoad = CountDownLatch(1)
-
-    @Volatile
-    private var filters: FilterSet = FilterSet.build(listOf { BUILT_IN_RULES.asSequence() })
+    private val cacheDir = File(context.noBackupFilesDir, "shield")
 
     // Telemetry
     private val statsPrefs = context.getSharedPreferences(STATS_PREFS_NAME, Context.MODE_PRIVATE)
@@ -41,8 +39,9 @@ class AdBlockEngine private constructor(private val context: Context) {
     val totalBlockedRequests: Long
         get() = totalBlocked.get()
 
-    val ruleCount: Int
-        get() = filters.ruleCount
+    @Volatile
+    var ruleCount: Int = 0
+        private set
 
     init {
         statsPrefs.all.forEach { (key, value) ->
@@ -51,20 +50,24 @@ class AdBlockEngine private constructor(private val context: Context) {
             }
         }
         scope.launch {
-            loadLists()
+            loadLists(rebuild = false)
             firstLoad.countDown()
         }
     }
 
-    private fun loadLists() {
-        val files = FilterLists.files(context)
-        if (files.isEmpty()) return
+    /** The engine kept from the last build loads in moments; parsing every list again is for when they change. */
+    private fun loadLists(rebuild: Boolean) {
         val started = SystemClock.elapsedRealtime()
-        val sources: List<() -> Sequence<String>> = files.map { file ->
-            { sequence { file.useLines { lines -> yieldAll(lines.toList()) } } }
-        } + listOf { BUILT_IN_RULES.asSequence() }
-        filters = FilterSet.build(sources)
-        Log.i(TAG, "Loaded ${filters.ruleCount} rules in ${SystemClock.elapsedRealtime() - started} ms")
+        val files = FilterLists.files(context)
+        val resources = FilterLists.resources(context)?.path
+        var count = if (!rebuild && files.isNotEmpty()) AdblockNative.restore(cacheDir.path, resources) else -1
+        if (count < 0) {
+            val keep = cacheDir.path.takeIf { files.isNotEmpty() }
+            val trackers = FilterLists.trackerFiles(context).map { it.path }.toTypedArray()
+            count = AdblockNative.build(files.map { it.path }.toTypedArray(), trackers, BUILT_IN_RULES, resources, keep)
+        }
+        ruleCount = count.coerceAtLeast(0)
+        Log.i(TAG, "Loaded $ruleCount rules in ${SystemClock.elapsedRealtime() - started} ms")
     }
 
     /** Called when the shelf opens. Quiet and in the background; the app works without it. */
@@ -74,12 +77,15 @@ class AdBlockEngine private constructor(private val context: Context) {
 
     suspend fun updateListsNow(): Int {
         val arrived = FilterLists.update(context)
-        if (arrived > 0) withContext(Dispatchers.IO) { loadLists() }
+        if (arrived > 0) withContext(Dispatchers.IO) { loadLists(rebuild = true) }
         return arrived
     }
 
-    /** Runs on WebView's network threads. A page load started right at launch waits here for the lists. */
-    fun shouldBlock(request: WebResourceRequest, pageHost: String?): Boolean {
+    /**
+     * Runs on WebView's network threads. A page load started right at launch waits here for the lists.
+     * What it stops is counted in [stats], as an ad or a tracker.
+     */
+    fun shouldBlock(request: WebResourceRequest, pageHost: String?, stats: ShieldStats? = null): Boolean {
         // A page someone chose to open is theirs to see, and only subresources are ads
         if (request.isForMainFrame) return false
         val uri = request.url
@@ -89,10 +95,22 @@ class AdBlockEngine private constructor(private val context: Context) {
         if (NEVER_BLOCKED.any { host == it || host.endsWith(".$it") }) return false
 
         firstLoad.await(FIRST_LOAD_WAIT_MS, TimeUnit.MILLISECONDS)
-        val source = request.requestHeaders["Referer"]?.let { Uri.parse(it).host?.lowercase() } ?: pageHost?.takeIf { it.isNotEmpty() }
-        val blocked = filters.isBlocked(uri.toString(), host, source, guessType(request))
-        if (blocked) totalBlocked.incrementAndGet()
-        return blocked
+        val source = request.requestHeaders["Referer"] ?: siteUrl(pageHost)
+        val url = uri.toString()
+        val flags = requestTypes(request).map { type -> AdblockNative.check(url, source, type, false) }
+            .firstOrNull { it and AdblockNative.BLOCK != 0 } ?: return false
+        totalBlocked.incrementAndGet()
+        if (flags and AdblockNative.TRACKER != 0) stats?.trackers?.incrementAndGet() else stats?.ads?.incrementAndGet()
+        return true
+    }
+
+    /**
+     * What a page at [url] needs at document start, as [AdblockNative.cosmetics] gives it. Pages
+     * asking from the bridge wait for the lists like requests do; the main thread doesn't.
+     */
+    fun cosmetics(url: String, waitForLists: Boolean): String? {
+        if (waitForLists) firstLoad.await(FIRST_LOAD_WAIT_MS, TimeUnit.MILLISECONDS)
+        return AdblockNative.cosmetics(url)
     }
 
     enum class PopupVerdict { OPEN, BLOCK, ASK }
@@ -110,13 +128,18 @@ class AdBlockEngine private constructor(private val context: Context) {
             // Pages that throw open the Play Store or another app by themselves, as Chrome also stops
             if (request.hasGesture() || request.isRedirect) return false
             totalBlocked.incrementAndGet()
+            (view as? DeckWebView)?.shieldStats?.popups?.incrementAndGet()
             Toast.makeText(context, "Shield stopped this page opening another app", Toast.LENGTH_SHORT).show()
             return true
         }
         // A server sending a tapped link on its way is still the link that was tapped
         val tapped = request.isRedirect || (request.hasGesture() && TappedLink(view).leadsTo(uri))
-        if (!blocksNavigation(uri, pageHost, popup = false, tapped = tapped)) return false
+        if (!blocksNavigation(uri, pageHost, popup = false, tapped = tapped)) {
+            (view as? DeckWebView)?.shield?.prepare(uri.toString())
+            return false
+        }
         totalBlocked.incrementAndGet()
+        (view as? DeckWebView)?.shieldStats?.popups?.incrementAndGet()
         Toast.makeText(context, "Shield blocked ${uri.host}", Toast.LENGTH_SHORT).show()
         return true
     }
@@ -125,17 +148,21 @@ class AdBlockEngine private constructor(private val context: Context) {
      * For a new window's first address. A window opened by a tapped link, on the opener's own site,
      * or for signing in opens; anything else a page opened on another site is held for the person to decide.
      */
-    fun judgePopup(uri: Uri, openerHost: String?, tapped: TappedLink): PopupVerdict {
+    fun judgePopup(uri: Uri, openerHost: String?, tapped: TappedLink, openerStats: ShieldStats? = null): PopupVerdict {
+        val verdict = popupVerdict(uri, openerHost, tapped)
+        if (verdict != PopupVerdict.OPEN) openerStats?.popups?.incrementAndGet()
+        return verdict
+    }
+
+    private fun popupVerdict(uri: Uri, openerHost: String?, tapped: TappedLink): PopupVerdict {
         val followsLink = tapped.leadsTo(uri)
         if (blocksNavigation(uri, openerHost, popup = true, tapped = followsLink)) {
             totalBlocked.incrementAndGet()
             return PopupVerdict.BLOCK
         }
         if (followsLink) return PopupVerdict.OPEN
-        val host = uri.host?.lowercase()
-        if (host != null && openerHost != null && FilterSet.siteOf(host) == FilterSet.siteOf(openerHost.lowercase())) {
-            return PopupVerdict.OPEN
-        }
+        val sameSite = AdblockNative.check(uri.toString(), siteUrl(openerHost), "other", false) and AdblockNative.THIRD_PARTY == 0
+        if (openerHost != null && sameSite) return PopupVerdict.OPEN
         // Signing in through another site happens in a window the page needs to hear back from
         if (QuickBrowserActivity.isSignIn(uri.toString())) return PopupVerdict.OPEN
         return PopupVerdict.ASK
@@ -147,24 +174,37 @@ class AdBlockEngine private constructor(private val context: Context) {
         if (scheme != "http" && scheme != "https") return false
         val host = uri.host?.lowercase() ?: return false
         if (NEVER_BLOCKED.any { host == it || host.endsWith(".$it") }) return false
-        return filters.blocksNavigation(uri.toString(), host, sourceHost?.lowercase()?.takeIf { it.isNotEmpty() }, popup, tapped)
+        val url = uri.toString()
+        val source = siteUrl(sourceHost)
+        // Rules written for page loads always count, and for a new window so do the lists' $popup rules
+        if (AdblockNative.check(url, source, "document", false) and AdblockNative.BLOCK != 0) return true
+        if (popup && AdblockNative.check(url, source, "document", true) and AdblockNative.BLOCK != 0) return true
+        if (tapped) return false
+        // Rules for an ad host's requests count too when nobody tapped for it, unless a site is moving between its own pages
+        val flags = AdblockNative.check(url, source, "other", false)
+        return flags and AdblockNative.BLOCK != 0 && flags and AdblockNative.THIRD_PARTY != 0
     }
 
-    /** WebView doesn't say what a request is for, so this works from its Accept header and file extension. */
-    private fun guessType(request: WebResourceRequest): Int {
+    /**
+     * WebView doesn't say what a request is for, so this works from its Accept header and file
+     * extension. Where those don't tell, it's whichever of the usual two a rule would stop.
+     */
+    private fun requestTypes(request: WebResourceRequest): List<String> {
         val accept = request.requestHeaders["Accept"].orEmpty()
         val path = request.url.path.orEmpty().lowercase()
         val extension = path.substringAfterLast('.', "")
         return when {
-            accept.startsWith("text/css") || extension == "css" -> FilterSet.TYPE_STYLESHEET
-            accept.startsWith("image/") || extension in IMAGE_EXTENSIONS -> FilterSet.TYPE_IMAGE
-            accept.startsWith("text/html") -> FilterSet.TYPE_SUBDOCUMENT
-            extension == "js" || extension == "mjs" -> FilterSet.TYPE_SCRIPT
-            extension in FONT_EXTENSIONS -> FilterSet.TYPE_FONT
-            extension in MEDIA_EXTENSIONS -> FilterSet.TYPE_MEDIA
-            else -> FilterSet.TYPE_UNKNOWN
+            accept.startsWith("text/css") || extension == "css" -> STYLESHEET
+            accept.startsWith("image/") || extension in IMAGE_EXTENSIONS -> IMAGE
+            accept.startsWith("text/html") -> SUBDOCUMENT
+            extension == "js" || extension == "mjs" -> SCRIPT
+            extension in FONT_EXTENSIONS -> FONT
+            extension in MEDIA_EXTENSIONS -> MEDIA
+            else -> UNSURE
         }
     }
+
+    private fun siteUrl(host: String?): String = host?.takeIf { it.isNotEmpty() }?.let { "https://$it/" }.orEmpty()
 
     /** Fails the way a blocked request does: script error events fire, and cross-site fetches reject. */
     fun blockedResponse(): WebResourceResponse {
@@ -176,37 +216,6 @@ class AdBlockEngine private constructor(private val context: Context) {
             mapOf("Cache-Control" to "no-store"),
             ByteArrayInputStream(ByteArray(0))
         )
-    }
-
-    /**
-     * CSS for the small built-in list, for pages under [host] loading at document start.
-     */
-    fun getCosmeticCss(host: String): String {
-        return "${BUILT_IN_SELECTORS.joinToString(", ")} { display: none !important; }"
-    }
-
-    /** Hides what the lists name for this site. Each selector is its own rule, so one bad one can't sink the rest. */
-    fun siteCosmeticScript(host: String): String? {
-        val selectors = filters.selectorsFor(host.lowercase())
-        if (selectors.isEmpty()) return null
-        val css = selectors.joinToString("") { "$it{display:none!important}" }
-        return "(function(){var s=document.createElement('style');s.textContent=${JSONObject.quote(css)};" +
-            "(document.head||document.documentElement).appendChild(s);})();"
-    }
-
-    /**
-     * Quiets the common checks pages use to detect an ad blocker.
-     */
-    fun getScriptletDefusers(host: String): String {
-        return """
-            (function() {
-                try {
-                    window.canRunAds = true;
-                    window.isAdBlockActive = false;
-                    window.google_ad_status = 1;
-                } catch(e) {}
-            })();
-        """.trimIndent()
     }
 
     fun recordBlockedForApp(appId: String) {
@@ -251,19 +260,27 @@ class AdBlockEngine private constructor(private val context: Context) {
         private val FONT_EXTENSIONS = setOf("woff", "woff2", "ttf", "otf", "eot")
         private val MEDIA_EXTENSIONS = setOf("mp4", "webm", "m3u8", "mp3", "m4a", "ogg", "ts", "mpd")
 
+        private val STYLESHEET = listOf("stylesheet")
+        private val IMAGE = listOf("image")
+        private val SUBDOCUMENT = listOf("subdocument")
+        private val SCRIPT = listOf("script")
+        private val FONT = listOf("font")
+        private val MEDIA = listOf("media")
+        private val UNSURE = listOf("xmlhttprequest", "script")
+
         private val BUILT_IN_RULES = listOf(
             "doubleclick.net", "googlesyndication.com", "google-analytics.com", "googletagmanager.com",
             "googleadservices.com", "adservice.google.com", "criteo.com", "adnxs.com", "amazon-adsystem.com",
             "taboola.com", "outbrain.com", "popads.net", "popcash.net", "exoclick.com", "adsterra.com",
             "propellerads.com", "mgid.com", "yadro.ru", "scorecardresearch.com", "quantserve.com", "hotjar.com",
             "branch.io", "appsflyer.com", "adjust.com", "adcolony.com", "mc.yandex.ru", "mc.yandex.com"
-        ).map { "||$it^" }
-
-        private val BUILT_IN_SELECTORS = listOf(
-            ".ad-banner", ".ad-box", ".ad-container", ".ad-slot", ".ad_wrapper",
-            "#banner-ad", "#div-gpt-ad", ".sponsored-post", ".adsbygoogle",
-            "[class*='AdSlot']", "[id*='AdSlot']", "[class*='banner_ad']"
-        )
+        ).map { "||$it^" }.plus(
+            listOf(
+                ".ad-banner", ".ad-box", ".ad-container", ".ad-slot", ".ad_wrapper",
+                "#banner-ad", "#div-gpt-ad", ".sponsored-post", ".adsbygoogle",
+                "[class*='AdSlot']", "[id*='AdSlot']", "[class*='banner_ad']"
+            ).map { "##$it" }
+        ).joinToString("\n")
 
         @Volatile
         private var INSTANCE: AdBlockEngine? = null

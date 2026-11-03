@@ -27,6 +27,7 @@ import net.mangadot.scaffold.databinding.ActivityInAppBrowserBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
 import net.mangadot.scaffold.engine.AppProfiles
 import net.mangadot.scaffold.engine.BackgroundMedia
+import net.mangadot.scaffold.engine.DeckWebView
 import net.mangadot.scaffold.ui.shelf.MainActivity
 import net.mangadot.scaffold.engine.ScriptEngine
 import net.mangadot.scaffold.engine.WebDownloads
@@ -129,6 +130,7 @@ class InAppBrowserActivity : CosmicActivity() {
         // Reopening an app's task would close this page on top of it, so the notification leads to the shelf
         BackgroundMedia.attach(binding.browserWebview, "Browser", Intent(this, MainActivity::class.java))
         binding.browserWebview.presentAsBrowser()
+        binding.browserWebview.shield?.enabled = adblock
         cookies = AppProfiles.cookies(appId)
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.browserRoot) { view, insets ->
@@ -148,7 +150,7 @@ class InAppBrowserActivity : CosmicActivity() {
         }
         binding.browserWebview.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                if (adblock && adBlockEngine.shouldBlock(request, pageHost)) {
+                if (adblock && adBlockEngine.shouldBlock(request, pageHost, (view as? DeckWebView)?.shieldStats)) {
                     appId?.let { adBlockEngine.recordBlockedForApp(it) }
                     return adBlockEngine.blockedResponse()
                 }
@@ -175,10 +177,7 @@ class InAppBrowserActivity : CosmicActivity() {
             override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                 binding.browserTvHost.text = Uri.parse(url).host ?: url
                 pageHost = Uri.parse(url).host?.lowercase()
-            }
-
-            override fun onPageCommitVisible(view: WebView, url: String) {
-                if (adblock) adBlockEngine.siteCosmeticScript(Uri.parse(url).host.orEmpty())?.let { view.evaluateJavascript(it, null) }
+                (view as? DeckWebView)?.shieldStats?.enter(pageHost)
             }
 
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
@@ -218,7 +217,7 @@ class InAppBrowserActivity : CosmicActivity() {
         lifecycleScope.launch {
             scriptEngine.attach(binding.browserWebview, appId)
             val active = if (intent.getBooleanExtra(EXTRA_USERSCRIPTS, true)) scripts.getEnabledScriptsList() else emptyList()
-            scriptEngine.register(binding.browserWebview, active, "", "")
+            scriptEngine.register(binding.browserWebview, active)
             if (savedInstanceState != null) {
                 binding.browserWebview.restoreState(savedInstanceState)
             } else {

@@ -10,24 +10,28 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
- * uBlock Origin's default public lists, plus AdGuard's for mobile ads. They are fetched from their
- * publishers and kept on the device, which leaves them under their own licenses rather than shipped in the app.
+ * uBlock Origin's default public lists, plus AdGuard's for mobile ads, and Brave's scriptlet
+ * resources. They are fetched from their publishers and kept on the device, which leaves them
+ * under their own licenses rather than shipped in the app.
  */
 object FilterLists {
 
-    private class FilterList(val fileName: String, val url: String)
+    private class FilterList(val fileName: String, val url: String, val trackers: Boolean = false)
 
     private val LISTS = listOf(
         FilterList("easylist.txt", "https://easylist.to/easylist/easylist.txt"),
-        FilterList("easyprivacy.txt", "https://easylist.to/easylist/easyprivacy.txt"),
+        FilterList("easyprivacy.txt", "https://easylist.to/easylist/easyprivacy.txt", trackers = true),
         FilterList("ublock.txt", "https://ublockorigin.github.io/uAssets/filters/filters.txt"),
-        FilterList("ublock-privacy.txt", "https://ublockorigin.github.io/uAssets/filters/privacy.txt"),
+        FilterList("ublock-privacy.txt", "https://ublockorigin.github.io/uAssets/filters/privacy.txt", trackers = true),
         FilterList("ublock-badware.txt", "https://ublockorigin.github.io/uAssets/filters/badware.txt"),
         FilterList("ublock-unbreak.txt", "https://ublockorigin.github.io/uAssets/filters/unbreak.txt"),
         FilterList("ublock-quick-fixes.txt", "https://ublockorigin.github.io/uAssets/filters/quick-fixes.txt"),
         FilterList("peter-lowe.txt", "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=1&mimetype=plaintext"),
         FilterList("adguard-mobile.txt", "https://filters.adtidy.org/extension/ublock/filters/11.txt")
     )
+
+    // The scriptlets that +js rules call on, under MPL-2.0
+    private val RESOURCES = FilterList("resources.json", "https://raw.githubusercontent.com/brave/adblock-resources/master/dist/resources.json")
 
     private const val PREFS_NAME = "scraffold_filter_lists"
     private const val KEY_UPDATED = "updated_at"
@@ -44,11 +48,18 @@ object FilterLists {
         return LISTS.map { File(folder(context), it.fileName) }.filter { it.exists() }
     }
 
+    /** The downloaded lists that are about tracking rather than ads, for telling the two apart. */
+    fun trackerFiles(context: Context): List<File> {
+        return LISTS.filter { it.trackers }.map { File(folder(context), it.fileName) }.filter { it.exists() }
+    }
+
+    fun resources(context: Context): File? = File(folder(context), RESOURCES.fileName).takeIf { it.exists() }
+
     fun lastUpdated(context: Context): Long = prefs(context).getLong(KEY_UPDATED, 0L)
 
     fun isDue(context: Context): Boolean {
         val now = System.currentTimeMillis()
-        val stale = now - lastUpdated(context) > MAX_AGE_MS || files(context).size < LISTS.size
+        val stale = now - lastUpdated(context) > MAX_AGE_MS || files(context).size < LISTS.size || resources(context) == null
         return stale && now - prefs(context).getLong(KEY_ATTEMPTED, 0L) > RETRY_AFTER_MS
     }
 
@@ -56,7 +67,7 @@ object FilterLists {
     suspend fun update(context: Context): Int = withContext(Dispatchers.IO) {
         prefs(context).edit().putLong(KEY_ATTEMPTED, System.currentTimeMillis()).apply()
         val client = OkHttpClient.Builder().callTimeout(90, TimeUnit.SECONDS).build()
-        val arrived = LISTS.count { list ->
+        val arrived = (LISTS + RESOURCES).count { list ->
             try {
                 download(client, list, folder(context))
                 true
@@ -81,8 +92,13 @@ object FilterLists {
                 }
             }
             // An error page served with a success code must not replace a good list
-            val lines = partial.useLines { it.take(MIN_LIST_LINES).toList() }
-            if (lines.size < MIN_LIST_LINES || lines.any { it.contains("<html", ignoreCase = true) }) throw IOException("Not a filter list")
+            if (list === RESOURCES) {
+                val start = partial.bufferedReader().use { reader -> CharArray(64).let { String(it, 0, maxOf(reader.read(it), 0)) } }
+                if (!start.trimStart().startsWith("[{")) throw IOException("Not a resource list")
+            } else {
+                val lines = partial.useLines { it.take(MIN_LIST_LINES).toList() }
+                if (lines.size < MIN_LIST_LINES || lines.any { it.contains("<html", ignoreCase = true) }) throw IOException("Not a filter list")
+            }
             if (!partial.renameTo(File(folder, list.fileName))) throw IOException("Couldn't save")
         } finally {
             partial.delete()

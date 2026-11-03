@@ -67,6 +67,7 @@ import net.mangadot.scaffold.ui.container.AppSwitcherBottomSheetDialog
 import net.mangadot.scaffold.ui.container.AppTasks
 import net.mangadot.scaffold.ui.container.AssistiveBall
 import net.mangadot.scaffold.ui.container.PageTools
+import net.mangadot.scaffold.ui.container.ShieldMeter
 import net.mangadot.scaffold.ui.shelf.showAddWebApp
 import net.mangadot.scaffold.ui.theme.CosmicAccent
 import net.mangadot.scaffold.ui.theme.CosmicActivity
@@ -123,6 +124,8 @@ class QuickBrowserActivity : CosmicActivity() {
         var appliedPageZoom = PageZoom.DEFAULT_PERCENT
         // Set while a new window waits out of sight for its first address
         var heldPopup: TappedLink? = null
+        // Script setup still under way, which must not reach a page that has since closed
+        var setup: Job? = null
     }
 
     private val atStart: Boolean
@@ -135,7 +138,7 @@ class QuickBrowserActivity : CosmicActivity() {
 
     private val pageClient = object : WebViewClient() {
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-            if (adblock && adBlockEngine.shouldBlock(request, pageHosts[view])) {
+            if (adblock && adBlockEngine.shouldBlock(request, pageHosts[view], (view as? DeckWebView)?.shieldStats)) {
                 adBlockEngine.recordBlockedForApp(BROWSER_ID)
                 return adBlockEngine.blockedResponse()
             }
@@ -164,10 +167,7 @@ class QuickBrowserActivity : CosmicActivity() {
             }
             if (view === current.web) showAddress(url)
             Uri.parse(url).host?.let { pageHosts[view] = it.lowercase() }
-        }
-
-        override fun onPageCommitVisible(view: WebView, url: String) {
-            if (adblock) adBlockEngine.siteCosmeticScript(Uri.parse(url).host.orEmpty())?.let { view.evaluateJavascript(it, null) }
+            (view as? DeckWebView)?.shieldStats?.enter(Uri.parse(url).host)
         }
 
         override fun onPageFinished(view: WebView, url: String) {
@@ -238,6 +238,7 @@ class QuickBrowserActivity : CosmicActivity() {
         AppProfiles.attach(web, BROWSER_ID)
         BackgroundMedia.attach(web, "Browser", AppTasks.browserIntent(this))
         web.presentAsBrowser()
+        web.shield?.enabled = adblock
         configure(web)
         tab.pageZoom = PageZoom(web)
         if (tab.desktop) web.settings.userAgentString = DeckWebView.desktopUserAgent(this)
@@ -251,11 +252,11 @@ class QuickBrowserActivity : CosmicActivity() {
         val engine = ScriptEngine(this, scripts, lifecycleScope)
         tab.scriptEngine = engine
         val start = tab.url
-        lifecycleScope.launch {
+        tab.setup = lifecycleScope.launch {
             engine.attach(web, BROWSER_ID)
             val enabled = scripts.getEnabledScriptsList()
             appliedScripts = enabled.map { it.id to it.updatedAt }
-            engine.register(web, enabled, "", "")
+            engine.register(web, enabled)
             if (tab.web !== web) return@launch
             if (state?.let(web::restoreState) != null && isWebPage(web.url.orEmpty())) return@launch
             if (!start.isNullOrEmpty() && web.url == null) web.loadUrl(start)
@@ -311,6 +312,7 @@ class QuickBrowserActivity : CosmicActivity() {
         val index = tabs.indexOf(tab)
         tabs.remove(tab)
         tabs.forEach { if (it.opener === tab) it.opener = null }
+        tab.setup?.cancel()
         tab.web?.let { web ->
             pageHosts.remove(web)
             binding.browserPages.removeView(web)
@@ -494,7 +496,7 @@ class QuickBrowserActivity : CosmicActivity() {
         }
         binding.browserBallShield.setOnClickListener {
             assistiveBall.close()
-            Toast.makeText(this, "Shield: ${adBlockEngine.totalBlockedRequests} requests blocked", Toast.LENGTH_SHORT).show()
+            ShieldMeter.show(this, webFor(current).shieldStats, adblock)
         }
         binding.browserBallScripts.setOnClickListener {
             assistiveBall.close()
@@ -544,7 +546,7 @@ class QuickBrowserActivity : CosmicActivity() {
             val signature = enabled.map { it.id to it.updatedAt }
             if (signature == appliedScripts) return@launch
             appliedScripts = signature
-            tabs.forEach { tab -> tab.web?.let { web -> tab.scriptEngine?.register(web, enabled, "", "") } }
+            tabs.forEach { tab -> tab.web?.let { web -> tab.scriptEngine?.register(web, enabled) } }
             if (!atStart) current.web?.reload()
         }
     }
@@ -741,7 +743,7 @@ class QuickBrowserActivity : CosmicActivity() {
         tab.heldPopup = null
         val openerHost = tab.opener?.web?.let { pageHosts[it] }
         // Tabs are shown and closed once the page's own callback has returned
-        return when (adBlockEngine.judgePopup(uri, openerHost, tapped)) {
+        return when (adBlockEngine.judgePopup(uri, openerHost, tapped, tab.opener?.web?.shieldStats)) {
             AdBlockEngine.PopupVerdict.OPEN -> {
                 binding.browserPages.post { if (tab in tabs) select(tab) }
                 true

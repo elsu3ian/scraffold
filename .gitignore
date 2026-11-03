@@ -30,3 +30,7 @@ Desktop.ini
 
 # Local tooling
 .kotlin/
+
+# Native shield engine, built by cargo-ndk from native/adblock
+/native/adblock/target
+/app/src/main/jniLibs

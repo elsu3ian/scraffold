@@ -6,7 +6,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Shield meter**: The side bubble's shield button shows how many ads, trackers and pop-ups were blocked on the site on screen, updating live.
+
 ### Changed
+- The shield now runs on Brave's adblock-rust (MPL-2.0), built from `native/adblock` for arm64-v8a, armeabi-v7a and x86_64. It reads the same lists, keeps a compiled copy so it loads in moments, and hides ads from the first moment a page loads, in every frame, using site and generic element-hiding rules. Brave's scriptlet resources are downloaded with the lists.
+- Pop-up rules (`$popup`) still apply, through a small separate engine checked only for new windows.
 - Pages see Chrome rather than an app: the user agent drops WebView's `wv` and `Version/4.0` marks, the `X-Requested-With` header no longer names the app, script brand checks report Google Chrome, and the userscript bridge is only added when a userscript runs.
 - The shield now applies `$popup` and `$document` filter rules, stops pages from redirecting by themselves to ad hosts, and stops pages from opening the Play Store or other apps without a tap.
 - A window a page opens on another site, when the tap wasn't on a link to it, is held behind a "Blocked a popup" notice with an Open button. Sign-in windows still open directly.

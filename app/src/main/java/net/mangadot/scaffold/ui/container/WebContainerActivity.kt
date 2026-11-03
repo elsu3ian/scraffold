@@ -274,8 +274,8 @@ class WebContainerActivity : CosmicActivity() {
         }
 
         binding.btnBallShield.setOnClickListener {
-            Toast.makeText(this, "Shield: ${adBlockEngine.totalBlockedRequests} requests blocked", Toast.LENGTH_SHORT).show()
             hideQuickMenu()
+            ShieldMeter.show(this, binding.deckWebview.shieldStats, appliedSettings?.adblock ?: true)
         }
 
         binding.btnBallScripts.setOnClickListener {
@@ -567,13 +567,7 @@ class WebContainerActivity : CosmicActivity() {
             userscriptsOn = app.userscriptsEnabled
             val scripts = if (userscriptsOn) scriptRepository.getEnabledScriptsList() else emptyList()
             appliedScripts = scripts.map { it.id to it.updatedAt }
-            val host = Uri.parse(app.url).host ?: ""
-            scriptEngine.register(
-                webView = binding.deckWebview,
-                scripts = scripts,
-                cosmeticCss = if (settings.adblock) adBlockEngine.getCosmeticCss(host) else "",
-                scriptlets = if (settings.adblock) adBlockEngine.getScriptletDefusers(host) else ""
-            )
+            scriptEngine.register(webView = binding.deckWebview, scripts = scripts)
 
             // Show HUD pill if matching userscripts are active
             val matching = scripts.count { it.id !in scriptEngine.failedScripts && UserscriptMeta.parse(it.code).appliesTo(app.url) }

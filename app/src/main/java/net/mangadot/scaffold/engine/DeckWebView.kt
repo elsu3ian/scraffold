@@ -23,6 +23,8 @@ class DeckWebView @JvmOverloads constructor(
 ) : WebView(context, attrs, defStyleAttr) {
 
     var media: BackgroundMedia? = null
+    var shield: PageShield? = null
+    val shieldStats = ShieldStats()
 
     /** While on, leaving the app doesn't suspend this page, so what it's playing carries on. */
     var keepRunningHidden = false
@@ -190,12 +192,26 @@ class DeckWebView @JvmOverloads constructor(
         }
     }
 
-    /** Has scripts on the page see Chrome too. Call after [AppProfiles.attach], which a page script would block. */
+    /**
+     * Has scripts on the page see Chrome too, and puts the shield's page side in place. Call after
+     * [AppProfiles.attach], which a page script would block.
+     */
     @SuppressLint("RequiresFeature")
     fun presentAsBrowser() {
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             WebViewCompat.addDocumentStartJavaScript(this, BRANDS_SCRIPT, setOf("*"))
         }
+        PageShield.attach(this)
+    }
+
+    override fun loadUrl(url: String) {
+        shield?.prepare(url)
+        super.loadUrl(url)
+    }
+
+    override fun loadUrl(url: String, additionalHttpHeaders: MutableMap<String, String>) {
+        shield?.prepare(url)
+        super.loadUrl(url, additionalHttpHeaders)
     }
 
     /**
@@ -225,6 +241,7 @@ class DeckWebView @JvmOverloads constructor(
             // Data Saver: Block image payloads
             blockNetworkImage = webSettings.dataSaver
         }
+        shield?.enabled = webSettings.adblock
 
         cookies.setAcceptCookie(webSettings.acceptCookies)
         cookies.setAcceptThirdPartyCookies(this, webSettings.thirdPartyCookies)

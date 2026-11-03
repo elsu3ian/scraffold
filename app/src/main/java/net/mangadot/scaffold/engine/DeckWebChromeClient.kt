@@ -126,7 +126,7 @@ class DeckWebChromeClient(
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val uri = request?.url ?: return false
                 val verdict = if (settings.adblock) {
-                    AdBlockEngine.getInstance(opener.context).judgePopup(uri, openerHost, tapped)
+                    AdBlockEngine.getInstance(opener.context).judgePopup(uri, openerHost, tapped, (opener as? DeckWebView)?.shieldStats)
                 } else {
                     AdBlockEngine.PopupVerdict.OPEN
                 }

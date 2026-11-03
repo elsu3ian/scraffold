@@ -32,6 +32,27 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/adblock
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --version ^4 --locked
+
+      # The shield's filter engine (adblock-rust), built into jniLibs for the APK to pick up
+      - name: Build Shield Engine
+        working-directory: native/adblock
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          cargo test --release
+          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -P 26 -o ../../app/src/main/jniLibs build --release
+
       - name: Build Debug & Release APK
         run: |
           chmod +x gradlew
