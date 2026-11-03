@@ -91,6 +91,9 @@ class DeckWebViewClient(
             return true
         }
 
+        // Redirect ads, and pages opening other apps by themselves
+        if (settings.adblock && adBlockEngine.stopsNavigation(view, request, pageHost)) return true
+
         // With Allow HTTP off, plain links are upgraded rather than loaded, unless the app itself was saved as http
         if (scheme == "http" && !settings.allowHttp && request.isForMainFrame && !webApp.url.startsWith("http://", ignoreCase = true)) {
             view.loadUrl(uri.buildUpon().scheme("https").build().toString())

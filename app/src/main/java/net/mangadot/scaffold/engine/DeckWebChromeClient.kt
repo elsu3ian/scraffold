@@ -28,7 +28,8 @@ class DeckWebChromeClient(
     private val onExternalLinkRequested: ((uri: Uri) -> Unit)? = null,
     private val onLocationRequested: ((origin: String, callback: GeolocationPermissions.Callback) -> Unit)? = null,
     private val onMediaRequested: ((request: PermissionRequest, allowed: List<String>) -> Unit)? = null,
-    private val onFileChooser: ((callback: ValueCallback<Array<Uri>>, params: FileChooserParams) -> Boolean)? = null
+    private val onFileChooser: ((callback: ValueCallback<Array<Uri>>, params: FileChooserParams) -> Boolean)? = null,
+    private val onPopupHeld: ((uri: Uri) -> Unit)? = null
 ) : WebChromeClient() {
 
     private var settings = WebAppSettings()
@@ -116,11 +117,24 @@ class DeckWebChromeClient(
         // A window nobody tapped for is a popup
         if (!isUserGesture) return false
         val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
-        val tempWebView = WebView(view?.context ?: return false)
+        val opener = view ?: return false
+        // A tap can also set off a window the page slips in behind it, so where it leads is checked once known
+        val tapped = TappedLink(opener)
+        val openerHost = opener.url?.let { Uri.parse(it).host }
+        val tempWebView = WebView(opener.context)
         tempWebView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val uri = request?.url ?: return false
-                onExternalLinkRequested?.invoke(uri)
+                val verdict = if (settings.adblock) {
+                    AdBlockEngine.getInstance(opener.context).judgePopup(uri, openerHost, tapped)
+                } else {
+                    AdBlockEngine.PopupVerdict.OPEN
+                }
+                when (verdict) {
+                    AdBlockEngine.PopupVerdict.OPEN -> onExternalLinkRequested?.invoke(uri)
+                    AdBlockEngine.PopupVerdict.ASK -> onPopupHeld?.invoke(uri)
+                    AdBlockEngine.PopupVerdict.BLOCK -> {}
+                }
                 view?.post { view.destroy() }
                 return true
             }

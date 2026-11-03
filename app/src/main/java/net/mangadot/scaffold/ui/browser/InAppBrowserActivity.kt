@@ -128,6 +128,7 @@ class InAppBrowserActivity : CosmicActivity() {
         appId?.let { AppProfiles.attach(binding.browserWebview, it) }
         // Reopening an app's task would close this page on top of it, so the notification leads to the shelf
         BackgroundMedia.attach(binding.browserWebview, "Browser", Intent(this, MainActivity::class.java))
+        binding.browserWebview.presentAsBrowser()
         cookies = AppProfiles.cookies(appId)
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.browserRoot) { view, insets ->
@@ -155,6 +156,7 @@ class InAppBrowserActivity : CosmicActivity() {
             }
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                if (adblock && adBlockEngine.stopsNavigation(view, request, pageHost)) return true
                 val scheme = request.url.scheme?.lowercase()
                 if (scheme != "http" && scheme != "https") {
                     ExternalLinks.openNative(this@InAppBrowserActivity, request.url)

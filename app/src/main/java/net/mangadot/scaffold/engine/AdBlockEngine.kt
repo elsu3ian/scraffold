@@ -6,11 +6,14 @@ import android.os.SystemClock
 import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
+import android.webkit.WebView
+import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.mangadot.scaffold.ui.browser.QuickBrowserActivity
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.util.concurrent.ConcurrentHashMap
@@ -90,6 +93,61 @@ class AdBlockEngine private constructor(private val context: Context) {
         val blocked = filters.isBlocked(uri.toString(), host, source, guessType(request))
         if (blocked) totalBlocked.incrementAndGet()
         return blocked
+    }
+
+    enum class PopupVerdict { OPEN, BLOCK, ASK }
+
+    /**
+     * For a page about to replace the one in [view], on the main thread. Says so when it stops one.
+     * Rules for page loads always count; ad hosts count too unless the person tapped a link to them.
+     */
+    fun stopsNavigation(view: WebView, request: WebResourceRequest, pageHost: String?): Boolean {
+        if (!request.isForMainFrame) return false
+        val uri = request.url
+        val scheme = uri.scheme?.lowercase().orEmpty()
+        if (scheme in PAGE_SCHEMES) return false
+        if (scheme != "http" && scheme != "https") {
+            // Pages that throw open the Play Store or another app by themselves, as Chrome also stops
+            if (request.hasGesture() || request.isRedirect) return false
+            totalBlocked.incrementAndGet()
+            Toast.makeText(context, "Shield stopped this page opening another app", Toast.LENGTH_SHORT).show()
+            return true
+        }
+        // A server sending a tapped link on its way is still the link that was tapped
+        val tapped = request.isRedirect || (request.hasGesture() && TappedLink(view).leadsTo(uri))
+        if (!blocksNavigation(uri, pageHost, popup = false, tapped = tapped)) return false
+        totalBlocked.incrementAndGet()
+        Toast.makeText(context, "Shield blocked ${uri.host}", Toast.LENGTH_SHORT).show()
+        return true
+    }
+
+    /**
+     * For a new window's first address. A window opened by a tapped link, on the opener's own site,
+     * or for signing in opens; anything else a page opened on another site is held for the person to decide.
+     */
+    fun judgePopup(uri: Uri, openerHost: String?, tapped: TappedLink): PopupVerdict {
+        val followsLink = tapped.leadsTo(uri)
+        if (blocksNavigation(uri, openerHost, popup = true, tapped = followsLink)) {
+            totalBlocked.incrementAndGet()
+            return PopupVerdict.BLOCK
+        }
+        if (followsLink) return PopupVerdict.OPEN
+        val host = uri.host?.lowercase()
+        if (host != null && openerHost != null && FilterSet.siteOf(host) == FilterSet.siteOf(openerHost.lowercase())) {
+            return PopupVerdict.OPEN
+        }
+        // Signing in through another site happens in a window the page needs to hear back from
+        if (QuickBrowserActivity.isSignIn(uri.toString())) return PopupVerdict.OPEN
+        return PopupVerdict.ASK
+    }
+
+    // Decided on the main thread, so it goes with whatever lists have loaded rather than waiting for them
+    private fun blocksNavigation(uri: Uri, sourceHost: String?, popup: Boolean, tapped: Boolean): Boolean {
+        val scheme = uri.scheme?.lowercase()
+        if (scheme != "http" && scheme != "https") return false
+        val host = uri.host?.lowercase() ?: return false
+        if (NEVER_BLOCKED.any { host == it || host.endsWith(".$it") }) return false
+        return filters.blocksNavigation(uri.toString(), host, sourceHost?.lowercase()?.takeIf { it.isNotEmpty() }, popup, tapped)
     }
 
     /** WebView doesn't say what a request is for, so this works from its Accept header and file extension. */
@@ -186,6 +244,8 @@ class AdBlockEngine private constructor(private val context: Context) {
 
         // Human checks and sign-in. Blocking these locks people out, whatever a list says.
         private val NEVER_BLOCKED = listOf("challenges.cloudflare.com", "accounts.google.com")
+        // Addresses a page uses for itself, rather than ones that leave for an app
+        private val PAGE_SCHEMES = setOf("about", "blob", "data", "javascript", "file")
 
         private val IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "gif", "webp", "avif", "svg", "ico", "bmp")
         private val FONT_EXTENSIONS = setOf("woff", "woff2", "ttf", "otf", "eot")

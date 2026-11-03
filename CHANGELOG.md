@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Changed
+- Pages see Chrome rather than an app: the user agent drops WebView's `wv` and `Version/4.0` marks, the `X-Requested-With` header no longer names the app, script brand checks report Google Chrome, and the userscript bridge is only added when a userscript runs.
+- The shield now applies `$popup` and `$document` filter rules, stops pages from redirecting by themselves to ad hosts, and stops pages from opening the Play Store or other apps without a tap.
+- A window a page opens on another site, when the tap wasn't on a link to it, is held behind a "Blocked a popup" notice with an Open button. Sign-in windows still open directly.
+
+---
+
 ## [1.0.3-beta] - 2026-11-02
 
 ### Added

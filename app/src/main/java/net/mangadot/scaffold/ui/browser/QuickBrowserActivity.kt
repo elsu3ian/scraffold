@@ -42,6 +42,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -60,6 +61,7 @@ import net.mangadot.scaffold.engine.BackgroundMedia
 import net.mangadot.scaffold.engine.DeckWebView
 import net.mangadot.scaffold.engine.PageZoom
 import net.mangadot.scaffold.engine.ScriptEngine
+import net.mangadot.scaffold.engine.TappedLink
 import net.mangadot.scaffold.engine.WebDownloads
 import net.mangadot.scaffold.ui.container.AppSwitcherBottomSheetDialog
 import net.mangadot.scaffold.ui.container.AppTasks
@@ -119,6 +121,8 @@ class QuickBrowserActivity : CosmicActivity() {
         var desktop = false
         var pageZoom: PageZoom? = null
         var appliedPageZoom = PageZoom.DEFAULT_PERCENT
+        // Set while a new window waits out of sight for its first address
+        var heldPopup: TappedLink? = null
     }
 
     private val atStart: Boolean
@@ -139,6 +143,12 @@ class QuickBrowserActivity : CosmicActivity() {
         }
 
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+            val tab = tabFor(view)
+            if (tab?.heldPopup != null) {
+                if (!admitPopup(tab, request.url)) return true
+            } else if (adblock && adBlockEngine.stopsNavigation(view, request, pageHosts[view])) {
+                return true
+            }
             val scheme = request.url.scheme?.lowercase()
             if (scheme == "http" || scheme == "https") return false
             ExternalLinks.openNative(this@QuickBrowserActivity, request.url)
@@ -146,6 +156,12 @@ class QuickBrowserActivity : CosmicActivity() {
         }
 
         override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+            // Where the opener sets a window's address in script, this is the first it's heard of
+            val tab = tabFor(view)
+            if (tab?.heldPopup != null && isWebPage(url) && !admitPopup(tab, Uri.parse(url))) {
+                view.stopLoading()
+                return
+            }
             if (view === current.web) showAddress(url)
             Uri.parse(url).host?.let { pageHosts[view] = it.lowercase() }
         }
@@ -221,9 +237,10 @@ class QuickBrowserActivity : CosmicActivity() {
         val web = DeckWebView(this)
         AppProfiles.attach(web, BROWSER_ID)
         BackgroundMedia.attach(web, "Browser", AppTasks.browserIntent(this))
+        web.presentAsBrowser()
         configure(web)
         tab.pageZoom = PageZoom(web)
-        if (tab.desktop) web.settings.userAgentString = DeckWebView.DESKTOP_USER_AGENT
+        if (tab.desktop) web.settings.userAgentString = DeckWebView.desktopUserAgent(this)
         web.webChromeClient = PageChromeClient()
         web.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             WebDownloads.start(this, url, cookies, null, contentDisposition, mimeType, userAgent)
@@ -249,6 +266,7 @@ class QuickBrowserActivity : CosmicActivity() {
     private fun select(tab: Tab, state: Bundle? = null) {
         hideHistory()
         current = tab
+        tab.heldPopup = null
         tabs.forEach { other ->
             if (other !== tab) other.web?.let {
                 it.visibility = View.GONE
@@ -513,8 +531,7 @@ class QuickBrowserActivity : CosmicActivity() {
         val tab = current
         tab.desktop = !tab.desktop
         val web = webFor(tab)
-        // Null goes back to WebView's own mobile user agent
-        web.settings.userAgentString = if (tab.desktop) DeckWebView.DESKTOP_USER_AGENT else null
+        web.settings.userAgentString = if (tab.desktop) DeckWebView.desktopUserAgent(this) else DeckWebView.mobileUserAgent(this)
         if (!atStart) web.reload()
         saveTabs()
         Toast.makeText(this, if (tab.desktop) "Desktop site on" else "Desktop site off", Toast.LENGTH_SHORT).show()
@@ -699,14 +716,65 @@ class QuickBrowserActivity : CosmicActivity() {
             .showCosmic()
     }
 
-    /** Stays tied to the page that opened it, which sign-in windows need in order to report back. */
-    private fun openWindowTab(opener: Tab, resultMsg: Message): Boolean {
+    /**
+     * Stays tied to the page that opened it, which sign-in windows need in order to report back. With
+     * the shield on, it stays out of sight until its address shows whether anyone asked for it.
+     */
+    private fun openWindowTab(opener: Tab, resultMsg: Message, tapped: TappedLink?): Boolean {
         val tab = newTab("", opener)
         val web = webFor(tab)
-        select(tab)
+        if (tapped == null) {
+            select(tab)
+        } else {
+            tab.heldPopup = tapped
+            web.visibility = View.GONE
+            showTabCount()
+        }
         (resultMsg.obj as WebView.WebViewTransport).webView = web
         resultMsg.sendToTarget()
         return true
+    }
+
+    /** Settles a held window on its first address. Returns whether it may go on loading. */
+    private fun admitPopup(tab: Tab, uri: Uri): Boolean {
+        val tapped = tab.heldPopup ?: return true
+        tab.heldPopup = null
+        val openerHost = tab.opener?.web?.let { pageHosts[it] }
+        // Tabs are shown and closed once the page's own callback has returned
+        return when (adBlockEngine.judgePopup(uri, openerHost, tapped)) {
+            AdBlockEngine.PopupVerdict.OPEN -> {
+                binding.browserPages.post { if (tab in tabs) select(tab) }
+                true
+            }
+            AdBlockEngine.PopupVerdict.BLOCK -> {
+                adBlockEngine.recordBlockedForApp(BROWSER_ID)
+                binding.browserPages.post { if (tab in tabs) closeTab(tab) }
+                false
+            }
+            AdBlockEngine.PopupVerdict.ASK -> {
+                binding.browserPages.post { offerPopup(tab, uri) }
+                false
+            }
+        }
+    }
+
+    /** A window the page opened on another site without a link being tapped. Unless asked for, it closes. */
+    private fun offerPopup(tab: Tab, uri: Uri) {
+        if (tab !in tabs) return
+        var opened = false
+        Snackbar.make(binding.browserRoot, "Blocked a popup to ${uri.host ?: uri.scheme}", Snackbar.LENGTH_LONG)
+            .setAction("Open") {
+                if (tab !in tabs) return@setAction
+                opened = true
+                select(tab)
+                tab.web?.loadUrl(uri.toString())
+            }
+            .addCallback(object : Snackbar.Callback() {
+                override fun onDismissed(bar: Snackbar?, event: Int) {
+                    if (!opened && tab in tabs && tab !== current) closeTab(tab)
+                }
+            })
+            .show()
     }
 
     private fun hideFullscreenVideo() {
@@ -732,7 +800,7 @@ class QuickBrowserActivity : CosmicActivity() {
         override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean {
             // Windows nobody asked for are the ads this browser is meant to spare you
             val opener = tabFor(view) ?: return false
-            return isUserGesture && openWindowTab(opener, resultMsg)
+            return isUserGesture && openWindowTab(opener, resultMsg, if (adblock) TappedLink(view) else null)
         }
 
         override fun onCloseWindow(view: WebView) {

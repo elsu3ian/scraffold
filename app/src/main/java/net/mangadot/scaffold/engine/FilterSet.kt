@@ -26,6 +26,30 @@ class FilterSet private constructor(
         return listed && !exceptions.matches(url, lowerUrl, host, sourceHost, type, thirdParty)
     }
 
+    /**
+     * A page load in a tab, or the first page of a new window when [popup]. Rules written for those
+     * always apply. Rules naming a whole host apply too when nobody tapped for it, since a page
+     * jumping off to an ad host on its own is how redirect ads work.
+     */
+    fun blocksNavigation(url: String, host: String, sourceHost: String?, popup: Boolean, tapped: Boolean): Boolean {
+        if (anySuffix(host) { it in allowedPages }) return false
+        if (sourceHost != null && anySuffix(sourceHost) { it in allowedPages }) return false
+        val lowerUrl = url.lowercase()
+        val thirdParty = isThirdParty(host, sourceHost)
+        val type = if (popup) TYPE_POPUP else TYPE_DOCUMENT
+        if (important.matches(url, lowerUrl, host, sourceHost, type, thirdParty)) return true
+        if (blocks.matches(url, lowerUrl, host, sourceHost, type, thirdParty)) {
+            return !exceptions.matches(url, lowerUrl, host, sourceHost, type, thirdParty)
+        }
+        if (tapped) return false
+        // A site's own pages moving between themselves are never an ad
+        if (!thirdParty) return false
+        if (important.matches(url, lowerUrl, host, sourceHost, WHOLE_HOST, thirdParty)) return true
+        val listed = anySuffix(host) { it in plainHosts } ||
+            blocks.matches(url, lowerUrl, host, sourceHost, WHOLE_HOST, thirdParty)
+        return listed && !exceptions.matches(url, lowerUrl, host, sourceHost, WHOLE_HOST, thirdParty)
+    }
+
     /** Element-hiding selectors written for this site. */
     fun selectorsFor(host: String): List<String> {
         val found = mutableListOf<String>()
@@ -49,7 +73,12 @@ class FilterSet private constructor(
         private var unusable = false
 
         fun applies(url: String, host: String, source: String?, type: Int, thirdParty: Boolean): Boolean {
-            if (type != TYPE_UNKNOWN && typeMask and type == 0) return false
+            when (type) {
+                // Unsure what a request is, any rule for some kind of request could be the one
+                TYPE_UNKNOWN -> if (typeMask and TYPE_ALL == 0) return false
+                WHOLE_HOST -> if (typeMask and TYPE_ALL != TYPE_ALL) return false
+                else -> if (typeMask and type == 0) return false
+            }
             if (party == PARTY_THIRD && !thirdParty) return false
             if (party == PARTY_FIRST && thirdParty) return false
             if (includes != null && (source == null || includes.none { isSameOrSubdomain(source, it) })) return false
@@ -180,7 +209,8 @@ class FilterSet private constructor(
                         name == "denyallow" -> denyAllow = value.lowercase().split('|').toTypedArray()
                         name == "match-case" -> matchCase = true
                         name == "important" -> isImportant = true
-                        name == "all" -> typeMask = TYPE_ALL
+                        name == "all" -> typeMask = TYPE_ALL or TYPE_DOCUMENT or TYPE_POPUP
+                        name == "popup" -> typeMask = typeMask or TYPE_POPUP
                         // The request is stopped either way; there is no local stand-in to serve here
                         name == "redirect" -> {}
                         name == "document" || name == "doc" -> document = true
@@ -192,9 +222,12 @@ class FilterSet private constructor(
             }
 
             if (document) {
-                // A page-wide exception. As a block it would stop whole pages, which is never done here.
-                if (exception && typeMask == 0 && includes == null) hostOf(pattern)?.let { allowedPages += it; count++ }
-                return
+                if (exception) {
+                    // A page-wide exception
+                    if (typeMask == 0 && includes == null) hostOf(pattern)?.let { allowedPages += it; count++ }
+                    return
+                }
+                typeMask = typeMask or TYPE_DOCUMENT
             }
             val mask = when {
                 typeMask != 0 -> typeMask
@@ -230,6 +263,11 @@ class FilterSet private constructor(
         const val TYPE_MEDIA = 1 shl 6
         const val TYPE_OTHER = 1 shl 7
         private const val TYPE_ALL = (1 shl 8) - 1
+        // Page loads and new windows, which only rules naming them apply to
+        private const val TYPE_DOCUMENT = 1 shl 8
+        private const val TYPE_POPUP = 1 shl 9
+        // Asks for rules that block a host for every kind of request
+        private const val WHOLE_HOST = -1
 
         private const val PARTY_ANY = 0
         private const val PARTY_THIRD = 1
@@ -350,7 +388,8 @@ class FilterSet private constructor(
             return host == domain || (host.length > domain.length && host.endsWith(domain) && host[host.length - domain.length - 1] == '.')
         }
 
-        private fun siteOf(host: String): String {
+        /** The part of a host its owner registered, so its subdomains count as the same site. */
+        fun siteOf(host: String): String {
             val labels = host.split('.')
             if (labels.size < 3) return host
             val keep = if (labels.last().length == 2 && labels[labels.size - 2] in COUNTRY_SECOND_LEVEL) 3 else 2

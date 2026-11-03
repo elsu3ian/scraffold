@@ -7,6 +7,10 @@ import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.webkit.ServiceWorkerControllerCompat
+import androidx.webkit.WebSettingsCompat
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import net.mangadot.scaffold.data.settings.WebAppSettings
 
 /**
@@ -17,10 +21,6 @@ class DeckWebView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = android.R.attr.webViewStyle
 ) : WebView(context, attrs, defStyleAttr) {
-
-    private val defaultMobileUserAgent: String by lazy {
-        settings.userAgentString
-    }
 
     var media: BackgroundMedia? = null
 
@@ -80,14 +80,71 @@ class DeckWebView @JvmOverloads constructor(
     }
 
     companion object {
-        const val DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+        private val CHROME_MAJOR = Regex("Chrome/(\\d+)")
+
+        @Volatile
+        private var engineUserAgent: String? = null
+
+        // Service workers have one set of settings for the whole app
+        private var workersQuiet = false
+
+        /** What Chrome on a phone sends, so sites see a browser rather than WebView's "wv" and "Version/4.0" marks. */
+        fun mobileUserAgent(context: Context): String =
+            "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajor(context)}.0.0.0 Mobile Safari/537.36"
+
+        fun desktopUserAgent(context: Context): String =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajor(context)}.0.0.0 Safari/537.36"
+
+        // Chrome's own reduced user agent, which carries only the major version of the engine underneath
+        private fun chromeMajor(context: Context): String {
+            val engine = engineUserAgent ?: WebSettings.getDefaultUserAgent(context).also { engineUserAgent = it }
+            return CHROME_MAJOR.find(engine)?.groupValues?.get(1) ?: "130"
+        }
+
+        // Where a page asks for brands in script, WebView names itself; Chrome names itself instead
+        private const val BRANDS_SCRIPT = """
+(function () {
+  var proto = window.NavigatorUAData && NavigatorUAData.prototype;
+  if (!proto) return;
+  var fix = function (list) {
+    if (!Array.isArray(list)) return list;
+    var webview = list.filter(function (b) { return b && b.brand === 'Android WebView'; })[0];
+    if (!webview) return list;
+    return list.filter(function (b) { return b !== webview; }).concat([{ brand: 'Google Chrome', version: webview.version }]);
+  };
+  var brands = Object.getOwnPropertyDescriptor(proto, 'brands');
+  if (brands && brands.get) {
+    Object.defineProperty(proto, 'brands', { get: function () { return fix(brands.get.call(this)); }, configurable: true, enumerable: true });
+  }
+  var high = proto.getHighEntropyValues;
+  if (high) {
+    proto.getHighEntropyValues = function () {
+      return high.apply(this, arguments).then(function (values) {
+        if (values) {
+          if (values.brands) values.brands = fix(values.brands);
+          if (values.fullVersionList) values.fullVersionList = fix(values.fullVersionList);
+        }
+        return values;
+      });
+    };
+  }
+  var toJSON = proto.toJSON;
+  if (toJSON) {
+    proto.toJSON = function () {
+      var values = toJSON.apply(this, arguments);
+      if (values && values.brands) values.brands = fix(values.brands);
+      return values;
+    };
+  }
+})();
+"""
     }
 
     init {
         configureEngine()
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint("SetJavaScriptEnabled", "RequiresFeature")
     private fun configureEngine() {
         // Enforce hardware acceleration
         setLayerType(View.LAYER_TYPE_HARDWARE, null)
@@ -119,6 +176,25 @@ class DeckWebView @JvmOverloads constructor(
             // Multi-window & External Popups
             setSupportMultipleWindows(true)
             javaScriptCanOpenWindowsAutomatically = true
+
+            userAgentString = mobileUserAgent(context)
+        }
+
+        // WebView otherwise names this app to every site in an X-Requested-With header
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
+            WebSettingsCompat.setRequestedWithHeaderOriginAllowList(settings, emptySet())
+            if (!workersQuiet && WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) {
+                ServiceWorkerControllerCompat.getInstance().serviceWorkerWebSettings.setRequestedWithHeaderOriginAllowList(emptySet())
+                workersQuiet = true
+            }
+        }
+    }
+
+    /** Has scripts on the page see Chrome too. Call after [AppProfiles.attach], which a page script would block. */
+    @SuppressLint("RequiresFeature")
+    fun presentAsBrowser() {
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(this, BRANDS_SCRIPT, setOf("*"))
         }
     }
 
@@ -139,11 +215,11 @@ class DeckWebView @JvmOverloads constructor(
             builtInZoomControls = webSettings.pinchZoom
 
             if (webSettings.desktop) {
-                userAgentString = DESKTOP_USER_AGENT
+                userAgentString = desktopUserAgent(context)
                 useWideViewPort = true
                 loadWithOverviewMode = true
             } else {
-                userAgentString = defaultMobileUserAgent
+                userAgentString = mobileUserAgent(context)
             }
 
             // Data Saver: Block image payloads

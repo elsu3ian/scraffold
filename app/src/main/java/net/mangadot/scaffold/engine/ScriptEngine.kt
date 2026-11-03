@@ -44,14 +44,13 @@ class ScriptEngine(
     var failedScripts: Map<String, String> = emptyMap()
         private set
 
-    @SuppressLint("JavascriptInterface")
     fun attach(webView: WebView, appId: String?) {
         bridge.webView = webView
         bridge.cookies = AppProfiles.cookies(appId)
-        webView.addJavascriptInterface(bridge, GmBridge.INTERFACE_NAME)
     }
 
     /** Replaces what is registered on [webView]. Call before loading a page. */
+    @SuppressLint("JavascriptInterface")
     suspend fun register(
         webView: WebView,
         scripts: List<ScriptEntity>,
@@ -78,6 +77,13 @@ class ScriptEngine(
                 bridge.prepare(token, script, meta)
                 wrap(script, meta, token)
             }
+        }
+
+        // Pages can see an added interface and take it for an app, so it's only there for scripts that use it
+        if (wrapped.isEmpty()) {
+            webView.removeJavascriptInterface(GmBridge.INTERFACE_NAME)
+        } else {
+            webView.addJavascriptInterface(bridge, GmBridge.INTERFACE_NAME)
         }
 
         val shield = buildShield(cosmeticCss, scriptlets)

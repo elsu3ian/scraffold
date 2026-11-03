@@ -35,6 +35,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -147,6 +148,7 @@ class WebContainerActivity : CosmicActivity() {
         // A WebView's profile can only be chosen before it does anything, so each app gets its own activity
         AppProfiles.attach(binding.deckWebview, appId)
         BackgroundMedia.attach(binding.deckWebview, intent.getStringExtra(EXTRA_APP_NAME).orEmpty(), AppTasks.intent(this, appId))
+        binding.deckWebview.presentAsBrowser()
         cookies = AppProfiles.cookies(appId)
         pageZoom = PageZoom(binding.deckWebview)
 
@@ -203,15 +205,14 @@ class WebContainerActivity : CosmicActivity() {
                     binding.containerProgressBar.visibility = View.GONE
                 }
             },
-            onExternalLinkRequested = { uri ->
-                if (webViewClient.staysInApp(uri)) binding.deckWebview.loadUrl(uri.toString()) else openExternalUrl(uri)
-            },
+            onExternalLinkRequested = { uri -> openWindowLink(uri) },
             onLocationRequested = { origin, callback -> requestLocation(origin, callback) },
             onFaviconReceived = { icon -> storeFavicon(icon) },
             onMediaRequested = { request, allowed -> requestMedia(request, allowed) },
             onFileChooser = { callback, params -> chooseFiles(callback, params) },
             onShowFullscreenVideo = { view, callback -> showFullscreenVideo(view, callback) },
-            onHideFullscreenVideo = { hideFullscreenVideo() }
+            onHideFullscreenVideo = { hideFullscreenVideo() },
+            onPopupHeld = { uri -> offerPopup(uri) }
         )
 
         binding.deckWebview.webViewClient = webViewClient
@@ -430,6 +431,18 @@ class WebContainerActivity : CosmicActivity() {
 
     private fun openExternalUrl(uri: Uri) {
         ExternalLinks.open(this, uri, webViewClient.linkOwner())
+    }
+
+    /** Where a new window from the page goes: this page when it's the app's own, the in-app browser otherwise. */
+    private fun openWindowLink(uri: Uri) {
+        if (webViewClient.staysInApp(uri)) binding.deckWebview.loadUrl(uri.toString()) else openExternalUrl(uri)
+    }
+
+    /** A window the page opened on another site without a link being tapped. It only opens if asked. */
+    private fun offerPopup(uri: Uri) {
+        Snackbar.make(binding.containerRootLayout, "Blocked a popup to ${uri.host ?: uri.scheme}", Snackbar.LENGTH_LONG)
+            .setAction("Open") { openWindowLink(uri) }
+            .show()
     }
 
     private fun requestMedia(request: PermissionRequest, allowed: List<String>) {
