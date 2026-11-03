@@ -87,6 +87,7 @@ class SettingsActivity : CosmicActivity() {
         const val PREFS_NAME = "scraffold_global_prefs"
         const val KEY_CLEAR_CACHE_EXIT = "pref_clear_cache_exit"
         const val KEY_GESTURE_RELOAD = "pref_gesture_reload"
+        const val KEY_GESTURE_PULL = "pref_gesture_pull"
         const val KEY_GESTURE_NAV = "pref_gesture_nav"
         const val KEY_GESTURE_APP_SWITCH = "pref_gesture_app_switch"
         const val KEY_PROGRESS_BAR = "pref_progress_bar"
@@ -130,6 +131,7 @@ class SettingsActivity : CosmicActivity() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         binding.settingsSwitchClearCache.isChecked = prefs.getBoolean(KEY_CLEAR_CACHE_EXIT, false)
         binding.settingsSwitchReloadGesture.isChecked = prefs.getBoolean(KEY_GESTURE_RELOAD, true)
+        binding.settingsSwitchPullReload.isChecked = prefs.getBoolean(KEY_GESTURE_PULL, true)
         binding.settingsSwitchNavGesture.isChecked = prefs.getBoolean(KEY_GESTURE_NAV, true)
         binding.settingsSwitchAppSwitchGesture.isChecked = prefs.getBoolean(KEY_GESTURE_APP_SWITCH, false)
         binding.settingsSwitchProgressBar.isChecked = prefs.getBoolean(KEY_PROGRESS_BAR, true)
@@ -166,6 +168,10 @@ class SettingsActivity : CosmicActivity() {
 
         binding.settingsSwitchReloadGesture.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_GESTURE_RELOAD, isChecked).apply()
+        }
+
+        binding.settingsSwitchPullReload.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(KEY_GESTURE_PULL, isChecked).apply()
         }
 
         binding.settingsSwitchNavGesture.setOnCheckedChangeListener { _, isChecked ->

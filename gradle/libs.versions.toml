@@ -7,6 +7,7 @@ appcompat = "1.7.0"
 material = "1.12.0"
 constraintlayout = "2.1.4"
 webkit = "1.18.0"
+swiperefreshlayout = "1.1.0"
 room = "2.6.1"
 lifecycle = "2.8.6"
 coroutines = "1.8.1"
@@ -21,6 +22,7 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-webkit = { group = "androidx.webkit", name = "webkit", version.ref = "webkit" }
+androidx-swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
 
 # Room SQLite
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }

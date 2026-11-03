@@ -215,6 +215,36 @@
                     android:background="@color/border_primary"
                     android:layout_marginVertical="3dp" />
 
+                <!-- Pull down at the top of a page to reload it -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Pull down at the top of a page to reload it"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/settings_switch_pull_reload"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        app:thumbTint="@color/text_primary"
+                        app:trackTint="@color/switch_track" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/border_primary"
+                    android:layout_marginVertical="3dp" />
+
                 <!-- Toggle 2: Use two-finger swipe down to reload page -->
                 <LinearLayout
                     android:layout_width="match_parent"

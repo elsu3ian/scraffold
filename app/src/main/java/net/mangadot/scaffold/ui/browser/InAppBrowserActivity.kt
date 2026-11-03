@@ -193,10 +193,12 @@ class InAppBrowserActivity : CosmicActivity() {
                 scriptEngine.onPageFinished(view)
             }
         }
+        binding.browserPull.page = { binding.browserWebview }
         binding.browserWebview.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView, newProgress: Int) {
                 binding.browserProgress.progress = newProgress
                 binding.browserProgress.visibility = if (newProgress < 100) View.VISIBLE else View.INVISIBLE
+                binding.browserPull.onProgress(newProgress)
             }
 
             override fun onReceivedTitle(view: WebView, title: String?) {

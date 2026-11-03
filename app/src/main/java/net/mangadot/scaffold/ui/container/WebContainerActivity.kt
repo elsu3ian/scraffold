@@ -205,6 +205,7 @@ class WebContainerActivity : CosmicActivity() {
             webApp = dummyApp,
             onProgressUpdate = { progress ->
                 appLook.onProgress(progress)
+                binding.containerPull.onProgress(progress)
                 if (progress < 100 && showProgressBar) {
                     binding.containerProgressBar.visibility = View.VISIBLE
                     binding.containerProgressBar.progress = progress
@@ -244,6 +245,7 @@ class WebContainerActivity : CosmicActivity() {
                 } else null
             )
         )
+        binding.containerPull.page = { binding.deckWebview }
     }
 
     private fun setupAssistiveEdgeBall() {

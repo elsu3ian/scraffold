@@ -80,9 +80,15 @@
         android:layout_height="2dp"
         android:max="100" />
 
-    <net.mangadot.scaffold.engine.DeckWebView
-        android:id="@+id/browser_webview"
+    <net.mangadot.scaffold.engine.gesture.PullToReloadLayout
+        android:id="@+id/browser_pull"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+
+        <net.mangadot.scaffold.engine.DeckWebView
+            android:id="@+id/browser_webview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </net.mangadot.scaffold.engine.gesture.PullToReloadLayout>
 </LinearLayout>

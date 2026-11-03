@@ -86,247 +86,253 @@
         android:max="100"
         android:visibility="invisible" />
 
-    <FrameLayout
-        android:id="@+id/browser_pages"
+    <net.mangadot.scaffold.engine.gesture.PullToReloadLayout
+        android:id="@+id/browser_pull"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <LinearLayout
-            android:id="@+id/browser_start"
+        <FrameLayout
+            android:id="@+id/browser_pages"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:paddingHorizontal="16dp">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:gravity="center"
-                android:text="@string/brand_name"
-                android:contentDescription="@string/app_name"
-                android:textColor="@color/text_primary"
-                android:textSize="30sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:gravity="center"
-                android:text="Ad-free look-ups. Logins stay on this phone."
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="6dp"
-                android:text="RECENT"
-                android:textColor="@color/accent_emerald"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:fontFamily="monospace"
-                android:letterSpacing="0.08" />
-
-            <TextView
-                android:id="@+id/browser_tv_empty"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Pages you visit will show up here."
-                android:textColor="@color/text_muted"
-                android:textSize="12sp"
-                android:visibility="gone" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/browser_rv_history"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:clipToPadding="false"
-                android:paddingBottom="16dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/browser_history_page"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:background="@color/bg_primary"
-            android:clickable="true"
-            android:visibility="gone">
+            android:layout_height="match_parent">
 
             <LinearLayout
+                android:id="@+id/browser_start"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:layout_marginBottom="8dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp">
 
                 <TextView
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="History"
+                    android:layout_marginTop="28dp"
+                    android:gravity="center"
+                    android:text="@string/brand_name"
+                    android:contentDescription="@string/app_name"
                     android:textColor="@color/text_primary"
-                    android:textSize="20sp"
+                    android:textSize="30sp"
                     android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/browser_btn_clear_history"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center"
+                    android:text="Ad-free look-ups. Logins stay on this phone."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
+                <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="7dp"
-                    android:text="Clear history"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="6dp"
+                    android:text="RECENT"
                     android:textColor="@color/accent_emerald"
-                    android:textSize="12sp"
+                    android:textSize="10sp"
                     android:textStyle="bold"
-                    android:background="@drawable/bg_card"
-                    android:clickable="true"
-                    android:focusable="true" />
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.08" />
+
+                <TextView
+                    android:id="@+id/browser_tv_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Pages you visit will show up here."
+                    android:textColor="@color/text_muted"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/browser_rv_history"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:clipToPadding="false"
+                    android:paddingBottom="16dp" />
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/browser_tv_history_empty"
+            <LinearLayout
+                android:id="@+id/browser_history_page"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Pages you visit will show up here."
-                android:textColor="@color/text_muted"
-                android:textSize="12sp"
-                android:visibility="gone" />
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:background="@color/bg_primary"
+                android:clickable="true"
+                android:visibility="gone">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/browser_rv_all_history"
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="8dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="History"
+                        android:textColor="@color/text_primary"
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/browser_btn_clear_history"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="7dp"
+                        android:text="Clear history"
+                        android:textColor="@color/accent_emerald"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_card"
+                        android:clickable="true"
+                        android:focusable="true" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/browser_tv_history_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Pages you visit will show up here."
+                    android:textColor="@color/text_muted"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/browser_rv_all_history"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:clipToPadding="false"
+                    android:paddingBottom="16dp" />
+            </LinearLayout>
+
+            <!-- The side bubble, same as in web apps: its home button is the way back to the shelf -->
+            <FrameLayout
+                android:id="@+id/browser_ball"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center_vertical|start"
+                android:background="@drawable/bg_edge_ball"
+                android:elevation="12dp"
+                android:alpha="0.55">
+
+                <ImageView
+                    android:id="@+id/browser_ball_icon"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_more_vert"
+                    app:tint="@color/accent_emerald"
+                    android:contentDescription="Assistive Dock" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:id="@+id/browser_ball_menu"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:clipToPadding="false"
-                android:paddingBottom="16dp" />
-        </LinearLayout>
+                android:layout_height="match_parent"
+                android:background="#66000000"
+                android:clickable="true"
+                android:elevation="11dp"
+                android:visibility="invisible">
 
-        <!-- The side bubble, same as in web apps: its home button is the way back to the shelf -->
-        <FrameLayout
-            android:id="@+id/browser_ball"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center_vertical|start"
-            android:background="@drawable/bg_edge_ball"
-            android:elevation="12dp"
-            android:alpha="0.55">
+                <ImageButton
+                    android:id="@+id/browser_ball_home"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:background="@drawable/bg_radial_button"
+                    android:src="@drawable/ic_home"
+                    app:tint="@color/text_primary"
+                    android:contentDescription="Home Shelf" />
 
-            <ImageView
-                android:id="@+id/browser_ball_icon"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:layout_gravity="center"
-                android:src="@drawable/ic_more_vert"
-                app:tint="@color/accent_emerald"
-                android:contentDescription="Assistive Dock" />
+                <ImageButton
+                    android:id="@+id/browser_ball_reload"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:background="@drawable/bg_radial_button"
+                    android:src="@drawable/ic_refresh"
+                    app:tint="@color/text_primary"
+                    android:contentDescription="Reload" />
+
+                <ImageButton
+                    android:id="@+id/browser_ball_shield"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:background="@drawable/bg_radial_button"
+                    android:src="@drawable/ic_shield"
+                    app:tint="@color/accent_emerald"
+                    android:contentDescription="Shield" />
+
+                <ImageButton
+                    android:id="@+id/browser_ball_scripts"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:background="@drawable/bg_radial_button"
+                    android:src="@drawable/ic_code"
+                    app:tint="@color/accent_emerald"
+                    android:contentDescription="Userscripts" />
+
+                <ImageButton
+                    android:id="@+id/browser_ball_text_size"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:background="@drawable/bg_radial_button"
+                    android:src="@drawable/ic_text_size"
+                    app:tint="@color/text_primary"
+                    android:contentDescription="Page and font size" />
+
+                <ImageButton
+                    android:id="@+id/browser_ball_desktop"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:background="@drawable/bg_radial_button"
+                    android:src="@drawable/ic_desktop"
+                    app:tint="@color/text_primary"
+                    android:contentDescription="Desktop site" />
+
+                <ImageButton
+                    android:id="@+id/browser_ball_history"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:background="@drawable/bg_radial_button"
+                    android:src="@drawable/ic_history"
+                    app:tint="@color/text_primary"
+                    android:contentDescription="History" />
+
+                <ImageButton
+                    android:id="@+id/browser_ball_copy_link"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:background="@drawable/bg_radial_button"
+                    android:src="@drawable/ic_link"
+                    app:tint="@color/text_primary"
+                    android:contentDescription="Copy link" />
+            </FrameLayout>
         </FrameLayout>
-
-        <FrameLayout
-            android:id="@+id/browser_ball_menu"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="#66000000"
-            android:clickable="true"
-            android:elevation="11dp"
-            android:visibility="invisible">
-
-            <ImageButton
-                android:id="@+id/browser_ball_home"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:padding="10dp"
-                android:scaleType="fitCenter"
-                android:background="@drawable/bg_radial_button"
-                android:src="@drawable/ic_home"
-                app:tint="@color/text_primary"
-                android:contentDescription="Home Shelf" />
-
-            <ImageButton
-                android:id="@+id/browser_ball_reload"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:padding="10dp"
-                android:scaleType="fitCenter"
-                android:background="@drawable/bg_radial_button"
-                android:src="@drawable/ic_refresh"
-                app:tint="@color/text_primary"
-                android:contentDescription="Reload" />
-
-            <ImageButton
-                android:id="@+id/browser_ball_shield"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:padding="10dp"
-                android:scaleType="fitCenter"
-                android:background="@drawable/bg_radial_button"
-                android:src="@drawable/ic_shield"
-                app:tint="@color/accent_emerald"
-                android:contentDescription="Shield" />
-
-            <ImageButton
-                android:id="@+id/browser_ball_scripts"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:padding="10dp"
-                android:scaleType="fitCenter"
-                android:background="@drawable/bg_radial_button"
-                android:src="@drawable/ic_code"
-                app:tint="@color/accent_emerald"
-                android:contentDescription="Userscripts" />
-
-            <ImageButton
-                android:id="@+id/browser_ball_text_size"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:padding="10dp"
-                android:scaleType="fitCenter"
-                android:background="@drawable/bg_radial_button"
-                android:src="@drawable/ic_text_size"
-                app:tint="@color/text_primary"
-                android:contentDescription="Page and font size" />
-
-            <ImageButton
-                android:id="@+id/browser_ball_desktop"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:padding="10dp"
-                android:scaleType="fitCenter"
-                android:background="@drawable/bg_radial_button"
-                android:src="@drawable/ic_desktop"
-                app:tint="@color/text_primary"
-                android:contentDescription="Desktop site" />
-
-            <ImageButton
-                android:id="@+id/browser_ball_history"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:padding="10dp"
-                android:scaleType="fitCenter"
-                android:background="@drawable/bg_radial_button"
-                android:src="@drawable/ic_history"
-                app:tint="@color/text_primary"
-                android:contentDescription="History" />
-
-            <ImageButton
-                android:id="@+id/browser_ball_copy_link"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:padding="10dp"
-                android:scaleType="fitCenter"
-                android:background="@drawable/bg_radial_button"
-                android:src="@drawable/ic_link"
-                app:tint="@color/text_primary"
-                android:contentDescription="Copy link" />
-        </FrameLayout>
-    </FrameLayout>
+    </net.mangadot.scaffold.engine.gesture.PullToReloadLayout>
 </LinearLayout>

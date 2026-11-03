@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.webkit)
+    implementation(libs.androidx.swiperefreshlayout)
 
     // Room SQLite
     implementation(libs.room.runtime)

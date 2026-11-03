@@ -3,6 +3,7 @@ package net.mangadot.scaffold.engine
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebSettings
@@ -42,6 +43,21 @@ class DeckWebView @JvmOverloads constructor(
             field = value
             presentAs(value)
         }
+
+    /** Whether this touch has pulled the page down past its top, which a pull to reload waits for. */
+    var pulledPastTop = false
+        private set
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) pulledPastTop = false
+        return super.dispatchTouchEvent(event)
+    }
+
+    // Only the page as a whole reports this, not a box scrolling inside it, so it's the same top Chrome pulls from
+    override fun onOverScrolled(scrollX: Int, scrollY: Int, clampedX: Boolean, clampedY: Boolean) {
+        super.onOverScrolled(scrollX, scrollY, clampedX, clampedY)
+        if (clampedY && scrollY <= 0) pulledPastTop = true
+    }
 
     private var windowVisibility = View.GONE
     private var appliedWindowVisibility = -1

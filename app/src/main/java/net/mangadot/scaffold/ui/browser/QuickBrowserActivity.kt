@@ -448,6 +448,7 @@ class QuickBrowserActivity : CosmicActivity() {
         }
         binding.browserBtnTabs.setOnClickListener { showTabs() }
         binding.browserBtnReload.setOnClickListener { if (!atStart) current.web?.reload() }
+        binding.browserPull.page = { current.web?.takeIf { !atStart } }
         binding.browserBtnMenu.setOnClickListener { showMenu() }
 
         binding.browserEtAddress.setOnEditorActionListener { field, action, _ ->
@@ -792,6 +793,7 @@ class QuickBrowserActivity : CosmicActivity() {
             if (view !== current.web) return
             binding.browserProgress.progress = newProgress
             binding.browserProgress.visibility = if (newProgress < 100 && !atStart) View.VISIBLE else View.INVISIBLE
+            binding.browserPull.onProgress(newProgress)
         }
 
         override fun onReceivedTitle(view: WebView, title: String?) {
