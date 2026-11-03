@@ -1,7 +1,10 @@
 package net.mangadot.scaffold.ui.folder
 
+import android.os.Build
 import android.os.Bundle
 import android.view.View
+import androidx.activity.OnBackPressedCallback
+import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import kotlinx.coroutines.launch
@@ -19,6 +22,7 @@ class FolderActivity : CosmicActivity() {
 
     private lateinit var binding: ActivityFolderBinding
     private lateinit var repository: WebAppRepository
+    private lateinit var opening: FolderOpening
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,7 +30,11 @@ class FolderActivity : CosmicActivity() {
         setContentView(binding.root)
         repository = WebAppRepository(AppDatabase.getInstance(this).webAppDao())
 
-        binding.root.setOnClickListener { finish() }
+        opening = FolderOpening(window, binding.folderPanel, listOf(binding.folderTitle, binding.folderGrid, binding.folderEmpty))
+        binding.root.setOnClickListener { opening.close(::finish) }
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() = opening.close(::finish)
+        })
         binding.folderEmpty.setOnClickListener {
             AppTasks.goToShelf(this)
             finish()
@@ -42,7 +50,20 @@ class FolderActivity : CosmicActivity() {
             binding.folderGrid.visibility = if (apps.isEmpty()) View.GONE else View.VISIBLE
             // A few apps sit centred rather than bunched at one side
             binding.folderGrid.layoutManager = GridLayoutManager(this@FolderActivity, columns().coerceAtMost(apps.size.coerceAtLeast(1)))
-            adapter.submitList(apps)
+            adapter.submitList(apps) {
+                binding.folderPanel.doOnPreDraw { opening.open(intent.sourceBounds) }
+            }
+        }
+    }
+
+    /** The folder animates itself, so the window comes and goes without one. */
+    override fun finish() {
+        super.finish()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
+        } else {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(0, 0)
         }
     }
 

@@ -35,7 +35,7 @@ import net.mangadot.scaffold.ui.shelf.ShelfSort
  * A home screen folder like a phone's large folders: the first three apps are big icons that open
  * directly, and the small icons in the last cell open FolderActivity with everything.
  */
-class FolderWidgetProvider : AppWidgetProvider() {
+open class FolderWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         drawAsync(context, manager, ids)
@@ -61,10 +61,17 @@ class FolderWidgetProvider : AppWidgetProvider() {
         private const val ICON_CORNER = 0.25f
         private const val SMALL_ICON_GAP_PX = 12f
         private const val SMALL_ICONS = 4
+        private const val CLASSIC_PX = 192
+        private const val CLASSIC_COLUMNS = 3
+        private const val CLASSIC_PADDING = 0.14f
+        private const val CLASSIC_GAP = 0.06f
         private const val LABEL_DP = 22
         private const val ICON_BASE_COLOR = 0x33FFFFFF
+        // The same see-through backdrop as bg_widget_folder
+        private val CLASSIC_BASE_COLOR = 0x8C1C1C22.toInt()
         private val BIG_ICON_CELLS = intArrayOf(R.id.widget_folder_app1, R.id.widget_folder_app2, R.id.widget_folder_app3)
-        private val SHOWN_APPS = BIG_ICON_CELLS.size + SMALL_ICONS
+        private val SHOWN_APPS = maxOf(BIG_ICON_CELLS.size + SMALL_ICONS, CLASSIC_COLUMNS * CLASSIC_COLUMNS)
+        private val PROVIDERS = listOf(FolderWidgetProvider::class.java, ClassicFolderWidgetProvider::class.java)
 
         /** For work that has to finish after the screen that started it has closed. */
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -88,24 +95,32 @@ class FolderWidgetProvider : AppWidgetProvider() {
 
         private suspend fun drawAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context) ?: return
-            val ids = manager.getAppWidgetIds(ComponentName(context, FolderWidgetProvider::class.java))
+            val ids = PROVIDERS.flatMap { manager.getAppWidgetIds(ComponentName(context, it)).asList() }.toIntArray()
             if (ids.isNotEmpty()) draw(context, manager, ids)
         }
 
         private suspend fun draw(context: Context, manager: AppWidgetManager, ids: IntArray) {
             val apps = ShelfSort.current(context, AppDatabase.getInstance(context).webAppDao().getAll())
-            ids.forEach { id -> manager.updateAppWidget(id, views(context, apps, manager.getAppWidgetOptions(id))) }
+            ids.forEach { id ->
+                val options = manager.getAppWidgetOptions(id)
+                val classic = manager.getAppWidgetInfo(id)?.provider?.className == ClassicFolderWidgetProvider::class.java.name
+                manager.updateAppWidget(id, if (classic) classicViews(context, apps, options) else views(context, apps, options))
+            }
         }
 
+        private fun openFolder(context: Context) = PendingIntent.getActivity(
+            context,
+            0,
+            Intent(context, FolderActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         private fun views(context: Context, apps: List<WebAppEntity>, options: Bundle): RemoteViews {
-            val openFolder = PendingIntent.getActivity(
-                context,
-                0,
-                Intent(context, FolderActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+            val openFolder = openFolder(context)
             return RemoteViews(context.packageName, R.layout.widget_folder).apply {
+                // The folder grows out of whatever was tapped, so the box takes taps before the label around it
                 setOnClickPendingIntent(R.id.widget_folder_root, openFolder)
+                setOnClickPendingIntent(R.id.widget_folder_box, openFolder)
                 setOnClickPendingIntent(R.id.widget_folder_more, openFolder)
                 setImageViewBitmap(R.id.widget_folder_more, smallIcons(apps.drop(BIG_ICON_CELLS.size).take(SMALL_ICONS)))
 
@@ -120,7 +135,18 @@ class FolderWidgetProvider : AppWidgetProvider() {
                         setOnClickPendingIntent(cell, openApp(context, app, index + 1))
                     }
                 }
-                keepSquare(context, this, options)
+                keepSquare(context, this, R.id.widget_folder_root, options)
+            }
+        }
+
+        /** One cell, like a folder of app icons: a few apps in tiny icons, and a tap opens them all. */
+        private fun classicViews(context: Context, apps: List<WebAppEntity>, options: Bundle): RemoteViews {
+            val openFolder = openFolder(context)
+            return RemoteViews(context.packageName, R.layout.widget_folder_classic).apply {
+                setOnClickPendingIntent(R.id.widget_folder_classic_root, openFolder)
+                setOnClickPendingIntent(R.id.widget_folder_classic_icon, openFolder)
+                setImageViewBitmap(R.id.widget_folder_classic_icon, classicIcon(apps.take(CLASSIC_COLUMNS * CLASSIC_COLUMNS)))
+                keepSquare(context, this, R.id.widget_folder_classic_root, options)
             }
         }
 
@@ -135,7 +161,7 @@ class FolderWidgetProvider : AppWidgetProvider() {
         }
 
         /** Home screen cells are rarely square, so the space left over goes around the folder. */
-        private fun keepSquare(context: Context, views: RemoteViews, options: Bundle) {
+        private fun keepSquare(context: Context, views: RemoteViews, root: Int, options: Bundle) {
             val portrait = context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             val width = options.getInt(if (portrait) AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH else AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH)
             val height = options.getInt(if (portrait) AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT) - LABEL_DP
@@ -144,7 +170,7 @@ class FolderWidgetProvider : AppWidgetProvider() {
             val density = context.resources.displayMetrics.density
             val sides = ((width - side) / 2 * density).toInt()
             val ends = ((height - side) / 2 * density).toInt()
-            views.setViewPadding(R.id.widget_folder_root, sides, ends, sides, ends)
+            views.setViewPadding(root, sides, ends, sides, ends)
         }
 
         private fun bigIcon(app: WebAppEntity): Bitmap {
@@ -161,6 +187,25 @@ class FolderWidgetProvider : AppWidgetProvider() {
             apps.forEachIndexed { index, app ->
                 val left = (index % 2) * (size + SMALL_ICON_GAP_PX)
                 val top = (index / 2) * (size + SMALL_ICON_GAP_PX)
+                drawIcon(canvas, app, RectF(left, top, left + size, top + size))
+            }
+            return bitmap
+        }
+
+        /** The folder's backdrop with the apps in rows of three, the way a launcher draws a closed folder. */
+        private fun classicIcon(apps: List<WebAppEntity>): Bitmap {
+            val bitmap = Bitmap.createBitmap(CLASSIC_PX, CLASSIC_PX, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val full = CLASSIC_PX.toFloat()
+            val corner = full * ICON_CORNER
+            canvas.drawRoundRect(RectF(0f, 0f, full, full), corner, corner, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = CLASSIC_BASE_COLOR })
+
+            val padding = full * CLASSIC_PADDING
+            val gap = full * CLASSIC_GAP
+            val size = (full - padding * 2 - gap * (CLASSIC_COLUMNS - 1)) / CLASSIC_COLUMNS
+            apps.forEachIndexed { index, app ->
+                val left = padding + (index % CLASSIC_COLUMNS) * (size + gap)
+                val top = padding + (index / CLASSIC_COLUMNS) * (size + gap)
                 drawIcon(canvas, app, RectF(left, top, left + size, top + size))
             }
             return bitmap

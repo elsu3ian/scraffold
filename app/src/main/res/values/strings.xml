@@ -16,6 +16,8 @@
     <!-- Home screen folder -->
     <string name="folder_widget_name">App folder</string>
     <string name="folder_widget_description">Open any of your web apps from a folder on the home screen</string>
+    <string name="folder_classic_widget_name">App folder (classic)</string>
+    <string name="folder_classic_widget_description">A small folder of your web apps that fits in one cell</string>
     <string name="folder_empty">No apps yet. Tap here to add one.</string>
     
     <!-- About & Licenses -->

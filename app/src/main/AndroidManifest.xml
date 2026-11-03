@@ -136,6 +136,18 @@
                 android:resource="@xml/folder_widget_info" />
         </receiver>
 
+        <receiver
+            android:name=".ui.folder.ClassicFolderWidgetProvider"
+            android:exported="false"
+            android:label="@string/folder_classic_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/folder_classic_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>
