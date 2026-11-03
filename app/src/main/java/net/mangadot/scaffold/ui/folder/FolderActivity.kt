@@ -23,6 +23,9 @@ class FolderActivity : CosmicActivity() {
     private lateinit var binding: ActivityFolderBinding
     private lateinit var repository: WebAppRepository
     private lateinit var opening: FolderOpening
+    private var laidOut = false
+    private var shown = false
+    private var opened = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +46,8 @@ class FolderActivity : CosmicActivity() {
         val adapter = AppAdapter(onAppClick = ::openApp, onAppOptionsClick = {})
         adapter.showDomains = false
         binding.folderGrid.adapter = adapter
+        // The icons fly in themselves; the grid's own fade-in for new items would hide them on the way
+        binding.folderGrid.itemAnimator = null
 
         lifecycleScope.launch {
             val apps = ShelfSort.current(this@FolderActivity, AppDatabase.getInstance(this@FolderActivity).webAppDao().getAll())
@@ -51,12 +56,29 @@ class FolderActivity : CosmicActivity() {
             // A few apps sit centred rather than bunched at one side
             binding.folderGrid.layoutManager = GridLayoutManager(this@FolderActivity, columns().coerceAtMost(apps.size.coerceAtLeast(1)))
             adapter.submitList(apps) {
-                binding.folderPanel.doOnPreDraw { open() }
+                binding.folderPanel.doOnPreDraw {
+                    laidOut = true
+                    // Should the launcher never say its animation is done, the folder still opens
+                    binding.root.postDelayed({ shown = true; open() }, MAX_LAUNCH_WAIT_MS)
+                    open()
+                }
             }
         }
     }
 
+    /**
+     * Launchers play their own animation out of the widget, and the window only shows once it ends.
+     * Starting ours then lets the icons be seen flying rather than having nearly landed already.
+     */
+    override fun onEnterAnimationComplete() {
+        super.onEnterAnimationComplete()
+        shown = true
+        open()
+    }
+
     private fun open() {
+        if (!laidOut || !shown || opened) return
+        opened = true
         val source = intent.sourceBounds
         val style = intent.getIntExtra(FolderWidgetProvider.EXTRA_STYLE, FolderWidgetProvider.STYLE_UNKNOWN)
         opening.open(source, source?.let { FolderWidgetProvider.iconSpots(this, style, it) }.orEmpty())
@@ -86,6 +108,7 @@ class FolderActivity : CosmicActivity() {
     }
 
     private companion object {
+        const val MAX_LAUNCH_WAIT_MS = 2000L
         const val PANEL_MARGIN_DP = 80
         const val PANEL_MAX_DP = 400
         const val CELL_DP = 80

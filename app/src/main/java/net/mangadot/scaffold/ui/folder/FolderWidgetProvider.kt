@@ -123,7 +123,9 @@ open class FolderWidgetProvider : AppWidgetProvider() {
             Intent(context, FolderActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .putExtra(EXTRA_STYLE, style),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            // Mutable so the launcher can fill in where the tap was, which an immutable one drops.
+            // The intent names our own screen, so filling in can't send it anywhere else
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
 
         private fun views(context: Context, apps: List<WebAppEntity>, options: Bundle): RemoteViews {

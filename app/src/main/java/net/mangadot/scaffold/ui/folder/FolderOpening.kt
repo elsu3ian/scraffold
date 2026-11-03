@@ -96,8 +96,11 @@ internal class FolderOpening(
         backdrop.pivotY = height / 2
 
         flights = (0 until grid.childCount).map { grid.getChildAt(it) }.sortedBy { grid.getChildAdapterPosition(it) }.map { item ->
-            // The icon leaves its cell on the way, so the cell mustn't cut it off
-            (item as? ViewGroup)?.clipChildren = false
+            // The icon leaves its cell on the way, so the cell mustn't cut it off, its padding included
+            (item as? ViewGroup)?.apply {
+                clipChildren = false
+                clipToPadding = false
+            }
             val icon = item.findViewById<View>(R.id.icon_container)
             val iconLocation = IntArray(2).also { icon.getLocationOnScreen(it) }
             val centerX = iconLocation[0] + icon.width / 2f
