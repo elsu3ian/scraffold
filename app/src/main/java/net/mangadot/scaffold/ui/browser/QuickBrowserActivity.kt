@@ -243,7 +243,7 @@ class QuickBrowserActivity : CosmicActivity() {
         web.shield?.enabled = adblock
         configure(web)
         tab.pageZoom = PageZoom(web)
-        if (tab.desktop) web.settings.userAgentString = DeckWebView.desktopUserAgent(this)
+        if (tab.desktop) web.desktopMode = true
         web.webChromeClient = PageChromeClient()
         web.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             WebDownloads.start(this, url, cookies, null, contentDisposition, mimeType, userAgent)
@@ -535,7 +535,7 @@ class QuickBrowserActivity : CosmicActivity() {
         val tab = current
         tab.desktop = !tab.desktop
         val web = webFor(tab)
-        web.settings.userAgentString = if (tab.desktop) DeckWebView.desktopUserAgent(this) else DeckWebView.mobileUserAgent(this)
+        web.desktopMode = tab.desktop
         if (!atStart) web.reload()
         saveTabs()
         Toast.makeText(this, if (tab.desktop) "Desktop site on" else "Desktop site off", Toast.LENGTH_SHORT).show()

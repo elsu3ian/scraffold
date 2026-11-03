@@ -84,6 +84,10 @@ object GlobalWebSettingsStore {
         )
     }
 
+    /** Just the shield switch, cheap enough to read for each request. */
+    fun adblock(context: Context): Boolean =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean("adblock", WebAppSettings().adblock)
+
     fun save(context: Context, settings: WebAppSettings) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
             .putBoolean("javascript", settings.javascript)

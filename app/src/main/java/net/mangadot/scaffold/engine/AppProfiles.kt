@@ -49,8 +49,9 @@ object AppProfiles {
     /** Must run before the WebView loads anything or has a JavaScript interface added. */
     fun attach(webView: WebView, appId: String?) {
         val name = ownProfile(webView.context, appId) ?: return
-        ProfileStore.getInstance().getOrCreateProfile(name)
+        val profile = ProfileStore.getInstance().getOrCreateProfile(name)
         WebViewCompat.setProfile(webView, name)
+        ServiceWorkerBlocker.watch(webView.context, profile, appId)
     }
 
     fun cookies(context: Context, appId: String?): CookieManager {
