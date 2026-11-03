@@ -59,12 +59,13 @@ class AdBlockEngine private constructor(private val context: Context) {
     private fun loadLists(rebuild: Boolean) {
         val started = SystemClock.elapsedRealtime()
         val files = FilterLists.files(context)
-        val resources = FilterLists.resources(context)?.path
+        val resources = FilterLists.resources(context).map { it.path }.toTypedArray()
         var count = if (!rebuild && files.isNotEmpty()) AdblockNative.restore(cacheDir.path, resources) else -1
         if (count < 0) {
             val keep = cacheDir.path.takeIf { files.isNotEmpty() }
             val trackers = FilterLists.trackerFiles(context).map { it.path }.toTypedArray()
-            count = AdblockNative.build(files.map { it.path }.toTypedArray(), trackers, BUILT_IN_RULES, resources, keep)
+            val trusted = FilterLists.trustedFiles(context).map { it.path }.toTypedArray()
+            count = AdblockNative.build(files.map { it.path }.toTypedArray(), trackers, trusted, BUILT_IN_RULES, resources, keep)
         }
         ruleCount = count.coerceAtLeast(0)
         Log.i(TAG, "Loaded $ruleCount rules in ${SystemClock.elapsedRealtime() - started} ms")
@@ -77,7 +78,11 @@ class AdBlockEngine private constructor(private val context: Context) {
 
     suspend fun updateListsNow(): Int {
         val arrived = FilterLists.update(context)
-        if (arrived > 0) withContext(Dispatchers.IO) { loadLists(rebuild = true) }
+        // Without them, +js rules still find Brave's scriptlets
+        val scriptlets = ScriptletImport.run(context, FilterLists.SCRIPTLETS_SOURCE)
+        if (scriptlets != null) FilterLists.saveScriptlets(context, scriptlets)
+        Log.i(TAG, if (scriptlets != null) "Scriptlets imported" else "Scriptlets unavailable, keeping what there was")
+        if (arrived > 0 || scriptlets != null) withContext(Dispatchers.IO) { loadLists(rebuild = true) }
         return arrived
     }
 

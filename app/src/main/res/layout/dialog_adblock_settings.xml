@@ -79,7 +79,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Blocks ads and trackers using EasyList, EasyPrivacy, uBlock filters, Peter Lowe and AdGuard Mobile. Lists update by themselves every few days."
+            android:text="Blocks ads, trackers and pop-ups with Brave's adblock-rust engine, using EasyList, EasyPrivacy, uBlock filters, Peter Lowe and AdGuard Mobile. Lists update by themselves every few days."
             android:textColor="@color/text_muted"
             android:textSize="10sp" />
     </LinearLayout>
@@ -105,12 +105,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Hides ad boxes the lists name for each site."
+            android:text="Hides ad boxes from the moment a page opens, using each site's rules and common ad names."
             android:textColor="@color/text_muted"
             android:textSize="10sp" />
     </LinearLayout>
 
-    <!-- Feature 3: Anti-Adblock Defusers -->
+    <!-- Feature 3: Scriptlets -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -122,7 +122,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Anti-Adblock Checks"
+            android:text="Scriptlets"
             android:textColor="@color/text_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -131,7 +131,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Answers a few common checks pages use to detect ad blockers. This is basic, not full uBlock scriptlets."
+            android:text="Runs the small fixes the lists call for, like removing ads built into pages and getting past ad-blocker walls. Fetched from uBlock Origin (GPLv3) and Brave with the lists."
             android:textColor="@color/text_muted"
             android:textSize="10sp" />
     </LinearLayout>

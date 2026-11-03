@@ -11,27 +11,36 @@ import java.util.concurrent.TimeUnit
 
 /**
  * uBlock Origin's default public lists, plus AdGuard's for mobile ads, and Brave's scriptlet
- * resources. They are fetched from their publishers and kept on the device, which leaves them
- * under their own licenses rather than shipped in the app.
+ * resources, and uBlock Origin's scriptlets. They are fetched from their publishers and kept on
+ * the device, which leaves them under their own licenses (uBlock Origin's being GPLv3) rather than
+ * shipped in the app.
  */
 object FilterLists {
 
-    private class FilterList(val fileName: String, val url: String, val trackers: Boolean = false)
+    private class FilterList(val fileName: String, val url: String, val trackers: Boolean = false, val trusted: Boolean = false)
 
     private val LISTS = listOf(
         FilterList("easylist.txt", "https://easylist.to/easylist/easylist.txt"),
         FilterList("easyprivacy.txt", "https://easylist.to/easylist/easyprivacy.txt", trackers = true),
-        FilterList("ublock.txt", "https://ublockorigin.github.io/uAssets/filters/filters.txt"),
-        FilterList("ublock-privacy.txt", "https://ublockorigin.github.io/uAssets/filters/privacy.txt", trackers = true),
-        FilterList("ublock-badware.txt", "https://ublockorigin.github.io/uAssets/filters/badware.txt"),
-        FilterList("ublock-unbreak.txt", "https://ublockorigin.github.io/uAssets/filters/unbreak.txt"),
-        FilterList("ublock-quick-fixes.txt", "https://ublockorigin.github.io/uAssets/filters/quick-fixes.txt"),
+        // uBlock Origin's own lists may use the scriptlets it marks as needing trust, as they can there
+        FilterList("ublock.txt", "https://ublockorigin.github.io/uAssets/filters/filters.txt", trusted = true),
+        FilterList("ublock-privacy.txt", "https://ublockorigin.github.io/uAssets/filters/privacy.txt", trackers = true, trusted = true),
+        FilterList("ublock-badware.txt", "https://ublockorigin.github.io/uAssets/filters/badware.txt", trusted = true),
+        FilterList("ublock-unbreak.txt", "https://ublockorigin.github.io/uAssets/filters/unbreak.txt", trusted = true),
+        FilterList("ublock-quick-fixes.txt", "https://ublockorigin.github.io/uAssets/filters/quick-fixes.txt", trusted = true),
         FilterList("peter-lowe.txt", "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=1&mimetype=plaintext"),
         FilterList("adguard-mobile.txt", "https://filters.adtidy.org/extension/ublock/filters/11.txt")
     )
 
-    // The scriptlets that +js rules call on, under MPL-2.0
+    // Brave's scriptlets that +js rules call on, under MPL-2.0
     private val RESOURCES = FilterList("resources.json", "https://raw.githubusercontent.com/brave/adblock-resources/master/dist/resources.json")
+
+    /**
+     * The scriptlets the lists' +js rules mostly call on, YouTube's among them: uBlock Origin's,
+     * from its latest release. Any module exporting `builtinScriptlets` the same way can stand in.
+     */
+    const val SCRIPTLETS_SOURCE = "https://cdn.jsdelivr.net/gh/gorhill/uBlock/src/js/resources/scriptlets.js"
+    private const val SCRIPTLETS_FILE = "scriptlets.json"
 
     private const val PREFS_NAME = "scraffold_filter_lists"
     private const val KEY_UPDATED = "updated_at"
@@ -53,13 +62,27 @@ object FilterLists {
         return LISTS.filter { it.trackers }.map { File(folder(context), it.fileName) }.filter { it.exists() }
     }
 
-    fun resources(context: Context): File? = File(folder(context), RESOURCES.fileName).takeIf { it.exists() }
+    fun trustedFiles(context: Context): List<File> {
+        return LISTS.filter { it.trusted }.map { File(folder(context), it.fileName) }.filter { it.exists() }
+    }
+
+    /** Brave's resources, then the imported scriptlets when there are any. */
+    fun resources(context: Context): List<File> {
+        return listOf(RESOURCES.fileName, SCRIPTLETS_FILE).map { File(folder(context), it) }.filter { it.exists() }
+    }
+
+    /** Keeps scriptlets [ScriptletImport] produced. A failed import leaves the last good ones in place. */
+    fun saveScriptlets(context: Context, json: String) {
+        val partial = File(folder(context), "$SCRIPTLETS_FILE.part")
+        partial.writeText(json)
+        if (!partial.renameTo(File(folder(context), SCRIPTLETS_FILE))) partial.delete()
+    }
 
     fun lastUpdated(context: Context): Long = prefs(context).getLong(KEY_UPDATED, 0L)
 
     fun isDue(context: Context): Boolean {
         val now = System.currentTimeMillis()
-        val stale = now - lastUpdated(context) > MAX_AGE_MS || files(context).size < LISTS.size || resources(context) == null
+        val stale = now - lastUpdated(context) > MAX_AGE_MS || files(context).size < LISTS.size || resources(context).size < 2
         return stale && now - prefs(context).getLong(KEY_ATTEMPTED, 0L) > RETRY_AFTER_MS
     }
 

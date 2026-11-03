@@ -16,20 +16,22 @@ object AdblockNative {
 
     /**
      * Builds from list files plus [extraRules], keeping a copy in [cacheDir]. Returns the rule count,
-     * or -1. [trackerListPaths] names the lists among them about tracking rather than ads.
+     * or -1. Among the lists, [trackerListPaths] are about tracking rather than ads, and
+     * [trustedListPaths] may use scriptlets that need trust. [resourcePaths] hold the scriptlets.
      */
     @JvmStatic
     external fun build(
         listPaths: Array<String>,
         trackerListPaths: Array<String>,
+        trustedListPaths: Array<String>,
         extraRules: String,
-        resourcesPath: String?,
+        resourcePaths: Array<String>,
         cacheDir: String?
     ): Int
 
     /** Loads the copy [build] kept. Returns the rule count, or -1 when there is none to use. */
     @JvmStatic
-    external fun restore(cacheDir: String, resourcesPath: String?): Int
+    external fun restore(cacheDir: String, resourcePaths: Array<String>): Int
 
     /** [BLOCK], [THIRD_PARTY] and [TRACKER] flags for one request. [popupRules] checks the lists' $popup rules instead. */
     @JvmStatic

@@ -2,6 +2,7 @@ package net.mangadot.scaffold.engine
 
 import android.annotation.SuppressLint
 import android.net.Uri
+import android.util.Log
 import android.webkit.JavascriptInterface
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
@@ -36,6 +37,7 @@ class PageShield private constructor(private val webView: DeckWebView, private v
         if (script.isEmpty()) return
         scriptedOrigins += origin
         WebViewCompat.addDocumentStartJavaScript(webView, script, setOf(origin))
+        Log.i("Shield", "Scriptlets ready for $origin")
     }
 
     private inner class Bridge {
