@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
+import net.mangadot.scaffold.engine.ManifestInstall
 import net.mangadot.scaffold.ui.browser.QuickBrowserActivity
 import net.mangadot.scaffold.ui.shelf.MainActivity
 
@@ -74,6 +75,7 @@ object AppTasks {
     fun close(context: Context, appId: String) {
         find(context, appId)?.finishAndRemoveTask()
         forgetLastPage(context, appId)
+        ManifestInstall.clear(context, appId)
     }
 
     private fun find(context: Context, appId: String) = findByUri(context, taskUri(appId))

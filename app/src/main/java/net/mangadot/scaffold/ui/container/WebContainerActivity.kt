@@ -72,8 +72,10 @@ class WebContainerActivity : CosmicActivity() {
 
     private var currentApp: WebAppEntity? = null
     private lateinit var assistiveBall: AssistiveBall
+    private lateinit var appLook: AppLook
     private var iconLookup: Job? = null
     private var iconLookups = 0
+    private var manifestReads = 0
     private var isFullscreenEnabled = false
     private var showProgressBar = true
     private var userscriptsOn = true
@@ -151,6 +153,7 @@ class WebContainerActivity : CosmicActivity() {
         binding.deckWebview.presentAsBrowser()
         cookies = AppProfiles.cookies(appId)
         pageZoom = PageZoom(binding.deckWebview)
+        appLook = AppLook(this)
 
         setupWindowInsets()
         setupWebView(appId, appUrl)
@@ -167,6 +170,7 @@ class WebContainerActivity : CosmicActivity() {
                 insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             }
             val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            appLook.onStatusBarHeight(bars.top)
             view.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, imeBottom))
             // Handled here, so the page must not also see them as safe-area-inset-* and pad itself
             WindowInsetsCompat.CONSUMED
@@ -186,6 +190,8 @@ class WebContainerActivity : CosmicActivity() {
                 cookies.flush()
                 rememberPage()
                 upgradeIcon()
+                appLook.hideSplash()
+                readManifestFromPage()
             },
             onUserscriptLink = { url -> UserscriptInstallPrompt.fromUrl(this, scriptRepository, url) },
             onRendererGone = {
@@ -198,6 +204,7 @@ class WebContainerActivity : CosmicActivity() {
         webChromeClient = DeckWebChromeClient(
             webApp = dummyApp,
             onProgressUpdate = { progress ->
+                appLook.onProgress(progress)
                 if (progress < 100 && showProgressBar) {
                     binding.containerProgressBar.visibility = View.VISIBLE
                     binding.containerProgressBar.progress = progress
@@ -528,6 +535,25 @@ class WebContainerActivity : CosmicActivity() {
         }
     }
 
+    /** For an app whose site adds its manifest with script, so it couldn't be read when the app was added. */
+    private fun readManifestFromPage() {
+        val app = currentApp?.takeIf { it.name.isNotEmpty() && ManifestInstall.isPending(this, it.id) } ?: return
+        if (manifestReads++ >= MAX_ICON_LOOKUPS) return
+        lifecycleScope.launch {
+            val updated = ManifestInstall.fromPage(this@WebContainerActivity, binding.deckWebview, app) ?: return@launch
+            ManifestInstall.clear(this@WebContainerActivity, app.id)
+            val latest = webAppRepository.getWebAppById(app.id).first() ?: return@launch
+            val merged = latest.copy(
+                name = updated.name, startUrl = updated.startUrl, scope = updated.scope, display = updated.display,
+                themeColor = updated.themeColor, backgroundColor = updated.backgroundColor
+            )
+            webAppRepository.updateWebApp(merged)
+            currentApp = merged
+            appliedSettings?.let { webViewClient.updateWebApp(merged, it) }
+            appLook.apply(merged, showSplash = false)
+        }
+    }
+
     private fun requestLocation(origin: String, callback: GeolocationPermissions.Callback) {
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
@@ -544,6 +570,8 @@ class WebContainerActivity : CosmicActivity() {
             val app = webAppRepository.getWebAppById(appId).first() ?: WebAppEntity(id = appId, name = "", url = initialUrl)
             currentApp = app
             showTaskInRecents(app)
+            // Android brought back the page as it was, so there's nothing to wait for behind a splash
+            appLook.apply(app, showSplash = restoredState == null)
             val settings = app.effectiveSettings(this@WebContainerActivity)
             appliedSettings = settings
             binding.deckWebview.applySettings(settings, cookies)
@@ -580,7 +608,8 @@ class WebContainerActivity : CosmicActivity() {
 
             // Start navigation
             val keepHttp = settings.allowHttp || app.url.startsWith("http://", ignoreCase = true)
-            val target = intent.getStringExtra(EXTRA_NAVIGATE_URL) ?: AppTasks.lastPage(this@WebContainerActivity, appId) ?: app.url
+            val target = intent.getStringExtra(EXTRA_NAVIGATE_URL) ?: AppTasks.lastPage(this@WebContainerActivity, appId)
+                ?: app.startUrl ?: app.url
             val startUrl = if (keepHttp) target else target.replaceFirst("http://", "https://")
             binding.deckWebview.loadUrl(startUrl)
         }

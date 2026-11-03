@@ -13,11 +13,9 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.mangadot.scaffold.engine.userscript.UserscriptMeta
 import net.mangadot.scaffold.ui.theme.showCosmic
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
 import net.mangadot.scaffold.BuildConfig
 import net.mangadot.scaffold.R
 import net.mangadot.scaffold.ui.browser.ExternalLinks
@@ -104,32 +102,33 @@ class AboutActivity : CosmicActivity() {
     private sealed class UpdateCheck {
         data class Available(val version: String, val url: String) : UpdateCheck()
         object Current : UpdateCheck()
-        object NoReleases : UpdateCheck()
         object Failed : UpdateCheck()
     }
 
-    private suspend fun fetchLatestRelease(): UpdateCheck = withContext(Dispatchers.IO) {
+    /**
+     * Builds are published from main rather than as GitHub Releases, so the latest version is the one main's build
+     * file declares, and the download is wherever the README's Download APK button points. Both are plain files on
+     * raw.githubusercontent.com, which isn't held to the GitHub API's 60 anonymous requests an hour.
+     */
+    private suspend fun fetchLatestBuild(): UpdateCheck = withContext(Dispatchers.IO) {
         try {
             val repository = Uri.parse(getString(R.string.github_repo_url)).path.orEmpty().trim('/')
-            val request = Request.Builder()
-                // Not /releases/latest, which skips pre-releases
-                .url("https://api.github.com/repos/$repository/releases?per_page=1")
-                .header("Accept", "application/vnd.github+json")
-                .build()
-            OkHttpClient().newCall(request).execute().use { response ->
-                if (response.code == 404) return@withContext UpdateCheck.NoReleases
-                if (!response.isSuccessful) return@withContext UpdateCheck.Failed
-                val release = JSONArray(response.body?.string().orEmpty()).optJSONObject(0)
-                    ?: return@withContext UpdateCheck.NoReleases
-                val latest = release.getString("tag_name").removePrefix("v")
-                if (UserscriptMeta.isNewerVersion(latest, BuildConfig.VERSION_NAME)) {
-                    UpdateCheck.Available(latest, release.getString("html_url"))
-                } else {
-                    UpdateCheck.Current
-                }
-            }
+            val raw = "https://raw.githubusercontent.com/$repository/$UPDATE_BRANCH"
+            val build = download("$raw/app/build.gradle.kts") ?: return@withContext UpdateCheck.Failed
+            val latestCode = versionCode.find(build)?.groupValues?.get(1)?.toIntOrNull() ?: return@withContext UpdateCheck.Failed
+            if (latestCode <= BuildConfig.VERSION_CODE) return@withContext UpdateCheck.Current
+            val latestName = versionName.find(build)?.groupValues?.get(1) ?: latestCode.toString()
+            val link = download("$raw/README.md")?.let { downloadButton.find(it)?.groupValues?.get(1) }
+                ?: getString(R.string.github_repo_url)
+            UpdateCheck.Available(latestName, link)
         } catch (e: Exception) {
             UpdateCheck.Failed
+        }
+    }
+
+    private fun download(url: String): String? {
+        OkHttpClient().newCall(Request.Builder().url(url).build()).execute().use { response ->
+            return if (response.isSuccessful) response.body?.string() else null
         }
     }
 
@@ -138,7 +137,7 @@ class AboutActivity : CosmicActivity() {
         binding.aboutTvUpdateStatus.text = getString(R.string.checking_updates)
 
         lifecycleScope.launch {
-            val result = fetchLatestRelease()
+            val result = fetchLatestBuild()
             binding.aboutBtnCheckUpdates.isEnabled = true
             val installed = getString(R.string.release_stage)
             when (result) {
@@ -147,14 +146,13 @@ class AboutActivity : CosmicActivity() {
                     AlertDialog.Builder(this@AboutActivity)
                         .setTitle("Update available")
                         .setMessage("Scraffold v${result.version} is out.")
-                        .setPositiveButton("View release") { _, _ -> openExternalUrl(result.url) }
+                        .setPositiveButton("Download") { _, _ -> openExternalUrl(result.url) }
                         .setNegativeButton(android.R.string.cancel, null)
                         .showCosmic()
                 }
                 UpdateCheck.Current -> binding.aboutTvUpdateStatus.text = getString(R.string.up_to_date, installed)
-                UpdateCheck.NoReleases -> binding.aboutTvUpdateStatus.text = "No releases published yet"
                 UpdateCheck.Failed -> {
-                    binding.aboutTvUpdateStatus.text = "Installed: $installed"
+                    binding.aboutTvUpdateStatus.text = "Couldn't check. Installed: $installed"
                     Toast.makeText(this@AboutActivity, "Couldn't check for updates", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -163,6 +161,14 @@ class AboutActivity : CosmicActivity() {
 
     private fun openExternalUrl(url: String) {
         ExternalLinks.open(this, Uri.parse(url))
+    }
+
+    private companion object {
+        const val UPDATE_BRANCH = "main"
+        val versionCode = Regex("""\bversionCode\s*=\s*(\d+)""")
+        val versionName = Regex("""\bversionName\s*=\s*"([^"]+)"""")
+        /** The README's Download APK badge: [![Download APK](badge)](link) */
+        val downloadButton = Regex("""\[!\[Download APK]\([^)]*\)]\(([^)\s]+)\)""")
     }
 
     private fun dpToPx(dp: Int): Int {

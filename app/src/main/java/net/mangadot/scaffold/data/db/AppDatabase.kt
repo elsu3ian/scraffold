@@ -22,7 +22,7 @@ import net.mangadot.scaffold.data.db.entity.WebAppEntity
         ScriptStorageEntity::class,
         BrowserHistoryEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -81,7 +81,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        internal val MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+        /** What the site's manifest says about the app. Existing apps keep every column and get nulls here. */
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                listOf("startUrl", "scope", "display", "themeColor", "backgroundColor").forEach { column ->
+                    db.execSQL("ALTER TABLE web_apps ADD COLUMN $column TEXT")
+                }
+            }
+        }
+
+        internal val MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
         @Volatile
         private var INSTANCE: AppDatabase? = null

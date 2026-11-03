@@ -7,7 +7,6 @@ import android.net.Uri
 import android.util.Base64
 import android.util.LruCache
 import android.view.View
-import android.webkit.WebSettings
 import android.webkit.WebView
 import android.widget.ImageView
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +15,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -47,19 +47,38 @@ object AppIcons {
 
     private data class Candidate(val url: HttpUrl, val size: Int)
 
+    /** What a site offers for installing it: its best icon and its manifest, either of which may be missing. */
+    data class Site(val icon: Bitmap?, val manifest: WebManifest?)
+
     /** The site's best icon: its manifest and touch icons first, then favicons. Null if it has none we can read. */
-    suspend fun fetch(context: Context, pageUrl: String): Bitmap? = withContext(Dispatchers.IO) {
+    suspend fun fetch(context: Context, pageUrl: String): Bitmap? = fetchSite(context, pageUrl).icon
+
+    suspend fun fetchSite(context: Context, pageUrl: String): Site = withContext(Dispatchers.IO) {
         try {
-            val userAgent = WebSettings.getDefaultUserAgent(context)
+            val userAgent = DeckWebView.mobileUserAgent(context)
             get(pageUrl, userAgent).use { page ->
                 val base = page.request.url
                 val html = if (page.isSuccessful) page.peekBody(MAX_PAGE_BYTES).string() else ""
-                val candidates = (parseLinks(html, base, userAgent) +
+                var manifest: WebManifest? = null
+                val candidates = (parseLinks(html, base, userAgent) { manifest = it } +
                     listOfNotNull(base.resolve("/favicon.ico")?.let { Candidate(it, 0) }))
                     .sortedByDescending { it.size }
                     .distinctBy { it.url }
                     .take(MAX_CANDIDATES)
-                candidates.firstNotNullOfOrNull { download(it.url, userAgent) }
+                Site(candidates.firstNotNullOfOrNull { download(it.url, userAgent) }, manifest)
+            }
+        } catch (e: Exception) {
+            Site(null, null)
+        }
+    }
+
+    /** Reads a manifest the loaded page points to, for sites that add the link with script. */
+    suspend fun fetchManifest(context: Context, manifestUrl: String, pageUrl: String): WebManifest? = withContext(Dispatchers.IO) {
+        try {
+            val page = pageUrl.toHttpUrlOrNull() ?: return@withContext null
+            get(manifestUrl, DeckWebView.mobileUserAgent(context)).use { response ->
+                if (!response.isSuccessful) return@withContext null
+                WebManifest.parse(JSONObject(response.peekBody(MAX_PAGE_BYTES).string()), response.request.url, page)
             }
         } catch (e: Exception) {
             null
@@ -75,14 +94,14 @@ object AppIcons {
             ?.groupValues?.drop(1)?.firstOrNull { it.isNotEmpty() }
     }
 
-    private fun parseLinks(html: String, base: HttpUrl, userAgent: String): List<Candidate> {
+    private fun parseLinks(html: String, base: HttpUrl, userAgent: String, onManifest: (WebManifest) -> Unit): List<Candidate> {
         val found = mutableListOf<Candidate>()
         linkTag.findAll(html).forEach { match ->
             val rel = attribute(match.value, "rel")?.lowercase() ?: return@forEach
             val href = attribute(match.value, "href") ?: return@forEach
             val url = base.resolve(href.replace("&amp;", "&")) ?: return@forEach
             when {
-                rel == "manifest" -> found += parseManifest(url, userAgent)
+                rel == "manifest" -> found += parseManifest(url, base, userAgent, onManifest)
                 "apple-touch-icon" in rel -> found += Candidate(url, parseSize(attribute(match.value, "sizes"), 180))
                 "icon" in rel -> found += Candidate(url, parseSize(attribute(match.value, "sizes"), 32))
             }
@@ -90,16 +109,17 @@ object AppIcons {
         return found
     }
 
-    private fun parseManifest(url: HttpUrl, userAgent: String): List<Candidate> {
+    private fun parseManifest(url: HttpUrl, page: HttpUrl, userAgent: String, onManifest: (WebManifest) -> Unit): List<Candidate> {
         return try {
             get(url.toString(), userAgent).use { response ->
                 if (!response.isSuccessful) return emptyList()
-                val icons = JSONObject(response.peekBody(MAX_PAGE_BYTES).string()).optJSONArray("icons")
-                    ?: return emptyList()
+                val json = JSONObject(response.peekBody(MAX_PAGE_BYTES).string())
+                onManifest(WebManifest.parse(json, response.request.url, page))
+                val icons = json.optJSONArray("icons") ?: return emptyList()
                 (0 until icons.length()).mapNotNull { index ->
                     val icon = icons.getJSONObject(index)
-                    // Maskable icons carry extra padding, so they rank behind a plain icon of the same size
-                    val size = parseSize(icon.optString("sizes"), 64) / if (icon.optString("purpose") == "maskable") 2 else 1
+                    // Maskable icons are drawn edge to edge for a launcher to crop, which is how the shelf shows them
+                    val size = parseSize(icon.optString("sizes"), 64) * if ("maskable" in icon.optString("purpose")) 4 else 1
                     url.resolve(icon.optString("src"))?.let { Candidate(it, size) }
                 }
             }
@@ -259,7 +279,7 @@ object AppIcons {
           var manifest = await (await fetch(link.href)).json();
           (manifest.icons || []).forEach(function (icon) {
             var score = /svg/.test(icon.type || icon.src) ? $MAX_ICON_PX : size(icon.sizes, 64);
-            add(icon.src, icon.purpose === 'maskable' ? score / 2 : score, link.href);
+            add(icon.src, /maskable/.test(icon.purpose || '') ? score * 4 : score, link.href);
           });
         } catch (e) {}
       } else {

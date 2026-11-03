@@ -59,7 +59,7 @@ class AppDatabaseMigrationTest {
         // Throws if the migrated tables differ from the exported current schema
         val db = helper.runMigrationsAndValidate(TEST_DB, CURRENT_VERSION, true, *AppDatabase.MIGRATIONS)
 
-        db.query("SELECT name, url, desktopMode, launchCount, overrideGlobal, allowJavascript, userscriptsEnabled, shelfOrder FROM web_apps").use {
+        db.query("SELECT name, url, desktopMode, launchCount, overrideGlobal, allowJavascript, userscriptsEnabled, shelfOrder, startUrl, themeColor FROM web_apps").use {
             assertEquals(1, it.count)
             it.moveToFirst()
             assertEquals("GitHub", it.getString(0))
@@ -70,6 +70,8 @@ class AppDatabaseMigrationTest {
             assertEquals(1, it.getInt(5))
             assertEquals(1, it.getInt(6))
             assertEquals(0, it.getInt(7))
+            assertEquals(true, it.isNull(8))
+            assertEquals(true, it.isNull(9))
         }
         db.query("SELECT code, enabled, sourceUrl FROM userscripts").use {
             it.moveToFirst()
@@ -86,6 +88,6 @@ class AppDatabaseMigrationTest {
 
     private companion object {
         const val TEST_DB = "migration-test"
-        const val CURRENT_VERSION = 6
+        const val CURRENT_VERSION = 7
     }
 }

@@ -127,6 +127,7 @@ class DeckWebViewClient(
     /** Whether a link belongs inside the container, rather than in the system browser. */
     fun staysInApp(uri: Uri): Boolean {
         if (!webApp.openExternalLinks) return true
+        webApp.scopeVerdict(uri)?.let { return it }
         val appBaseHost = normalizeHost(Uri.parse(webApp.url).host)
         val requestHost = normalizeHost(uri.host)
         if (appBaseHost.isEmpty() || requestHost.isEmpty()) return true

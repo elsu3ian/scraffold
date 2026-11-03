@@ -33,5 +33,11 @@ data class WebAppEntity(
     val lastLaunchedAt: Long = 0L,
     val launchCount: Int = 0,
     // Place in the Custom sort, from 1; 0 means not placed yet
-    val shelfOrder: Int = 0
+    val shelfOrder: Int = 0,
+    // From the site's web app manifest when it was added; null for sites without one
+    val startUrl: String? = null,
+    val scope: String? = null,
+    val display: String? = null,
+    val themeColor: String? = null,
+    val backgroundColor: String? = null
 )
