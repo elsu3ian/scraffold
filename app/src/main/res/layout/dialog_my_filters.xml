@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="4dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="One filter per line, in the lists' syntax. example.com##.banner hides an element there, ||ads.example^ blocks a host, and @@||example.com^$document lets a site through. Lines starting with ! are notes."
+        android:textColor="@color/text_muted"
+        android:textSize="11sp" />
+
+    <EditText
+        android:id="@+id/et_my_filters"
+        android:layout_width="match_parent"
+        android:layout_height="260dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_card"
+        android:fontFamily="monospace"
+        android:gravity="top|start"
+        android:hint="example.com##.sticky-ad"
+        android:importantForAutofill="no"
+        android:inputType="textMultiLine|textNoSuggestions"
+        android:padding="10dp"
+        android:scrollbars="vertical"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_muted"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/tv_my_filters_count"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:fontFamily="monospace"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp" />
+</LinearLayout>

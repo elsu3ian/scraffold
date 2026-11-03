@@ -32,6 +32,8 @@ import net.mangadot.scaffold.ui.shelf.MainActivity
 import net.mangadot.scaffold.engine.ScriptEngine
 import net.mangadot.scaffold.engine.WebDownloads
 import net.mangadot.scaffold.ui.container.AppTasks
+import net.mangadot.scaffold.ui.container.ElementPicker
+import net.mangadot.scaffold.ui.container.ShieldMeter
 import net.mangadot.scaffold.ui.container.WebContainerActivity
 import net.mangadot.scaffold.ui.theme.CosmicActivity
 
@@ -206,6 +208,11 @@ class InAppBrowserActivity : CosmicActivity() {
         }
 
         binding.browserBtnClose.setOnClickListener { finish() }
+        binding.browserBtnShield.setOnClickListener { ShieldMeter.show(this, binding.browserWebview, adblock) }
+        binding.browserBtnShield.setOnLongClickListener {
+            ElementPicker.start(this, binding.browserWebview)
+            true
+        }
         binding.browserBtnExternal.setOnClickListener {
             binding.browserWebview.url?.let { ExternalLinks.openInBrowser(this, Uri.parse(it)) }
         }

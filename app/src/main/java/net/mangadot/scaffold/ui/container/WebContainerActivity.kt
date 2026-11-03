@@ -282,7 +282,12 @@ class WebContainerActivity : CosmicActivity() {
 
         binding.btnBallShield.setOnClickListener {
             hideQuickMenu()
-            ShieldMeter.show(this, binding.deckWebview.shieldStats, appliedSettings?.adblock ?: true)
+            ShieldMeter.show(this, binding.deckWebview, appliedSettings?.adblock ?: true)
+        }
+        binding.btnBallShield.setOnLongClickListener {
+            hideQuickMenu()
+            ElementPicker.start(this, binding.deckWebview)
+            true
         }
 
         binding.btnBallScripts.setOnClickListener {

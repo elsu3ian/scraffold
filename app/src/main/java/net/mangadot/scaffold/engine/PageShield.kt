@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.net.Uri
 import android.util.Log
 import android.webkit.JavascriptInterface
+import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import org.json.JSONArray
@@ -26,25 +27,41 @@ class PageShield private constructor(private val webView: DeckWebView, private v
     var enabled = true
 
     private val scriptedOrigins = ConcurrentHashMap.newKeySet<String>()
+    private val scriptHandlers = ConcurrentHashMap<String, ScriptHandler>()
 
     /** For a page about to load [url], on the main thread. */
     @SuppressLint("RequiresFeature")
     fun prepare(url: String) {
-        if (!enabled) return
+        if (!enabled || ShieldSites.isOff(webView.context, Uri.parse(url).host)) return
         val origin = originOf(url) ?: return
         if (origin in scriptedOrigins) return
-        val script = engine.cosmetics(url, waitForLists = false)?.let { JSONObject(it).optString("script") }.orEmpty()
+        val script = engine.cosmetics(url, waitForLists = false)?.takeIf { it.isNotEmpty() }?.let { JSONObject(it).optString("script") }.orEmpty()
         if (script.isEmpty()) return
         scriptedOrigins += origin
-        WebViewCompat.addDocumentStartJavaScript(webView, script, setOf(origin))
+        scriptHandlers[origin] = WebViewCompat.addDocumentStartJavaScript(webView, script, setOf(origin))
         Log.i("Shield", "Scriptlets ready for $origin")
     }
+
+    /** After a site's switch changes, on the main thread: its scriptlets stop from the next page on. */
+    fun sitesChanged() {
+        scriptHandlers.entries.removeIf { (origin, handler) ->
+            if (!ShieldSites.isOff(webView.context, Uri.parse(origin).host)) return@removeIf false
+            handler.remove()
+            scriptedOrigins -= origin
+            true
+        }
+    }
+
+    // A frame goes by its own site and by the page it's in
+    private fun siteOff(url: String): Boolean =
+        ShieldSites.isOff(webView.context, Uri.parse(url).host) || ShieldSites.isOff(webView.context, webView.shieldStats.top)
 
     private inner class Bridge {
         @JavascriptInterface
         fun page(url: String): String {
-            if (!enabled) return ""
-            val found = engine.cosmetics(url, waitForLists = true) ?: return ""
+            if (!enabled || siteOff(url)) return ""
+            // Empty while the engine is still being built
+            val found = engine.cosmetics(url, waitForLists = true)?.takeIf { it.isNotEmpty() } ?: return ""
             val data = JSONObject(found)
             val origin = originOf(url)
             if (origin != null && origin in scriptedOrigins) {
@@ -58,7 +75,7 @@ class PageShield private constructor(private val webView: DeckWebView, private v
 
         @JavascriptInterface
         fun generic(url: String, classes: String, ids: String): String {
-            if (!enabled) return ""
+            if (!enabled || siteOff(url)) return ""
             return AdblockNative.genericCss(url, strings(classes), strings(ids)).orEmpty()
         }
     }

@@ -70,20 +70,36 @@ class AdBlockEngine private constructor(private val context: Context) {
         }
     }
 
-    /** The engine kept from the last build loads in moments; parsing every list again is for when they change. */
+    /**
+     * The engine kept from the last build loads in moments; parsing every list again is for when they
+     * change, or [UserRules] did. One build at a time, so the last change is the one that stays.
+     */
+    @Synchronized
     private fun loadLists(rebuild: Boolean) {
         val started = SystemClock.elapsedRealtime()
         val files = FilterLists.files(context)
         val resources = FilterLists.resources(context).map { it.path }.toTypedArray()
-        var count = if (!rebuild && files.isNotEmpty()) AdblockNative.restore(cacheDir.path, resources) else -1
+        val mine = UserRules.load(context)
+        val mineStamp = File(cacheDir, USER_RULES_STAMP)
+        val mineKept = runCatching { mineStamp.readText() }.getOrNull() == mine.hashCode().toString()
+        var count = if (!rebuild && mineKept && files.isNotEmpty()) AdblockNative.restore(cacheDir.path, resources) else -1
         if (count < 0) {
             val keep = cacheDir.path.takeIf { files.isNotEmpty() }
             val trackers = FilterLists.trackerFiles(context).map { it.path }.toTypedArray()
             val trusted = FilterLists.trustedFiles(context).map { it.path }.toTypedArray()
-            count = AdblockNative.build(files.map { it.path }.toTypedArray(), trackers, trusted, BUILT_IN_RULES, resources, keep)
+            count = AdblockNative.build(files.map { it.path }.toTypedArray(), trackers, trusted, BUILT_IN_RULES + "\n" + mine, resources, keep)
+            if (keep != null && count >= 0) runCatching { mineStamp.writeText(mine.hashCode().toString()) }
         }
         ruleCount = count.coerceAtLeast(0)
         Log.i(TAG, "Loaded $ruleCount rules in ${SystemClock.elapsedRealtime() - started} ms")
+    }
+
+    /** Builds again with the person's own filters, once they've changed. */
+    fun userRulesChanged() {
+        scope.launch {
+            firstLoad.await()
+            loadLists(rebuild = true)
+        }
     }
 
     /** Called when the shelf opens. Quiet and in the background; the app works without it. */
@@ -112,7 +128,12 @@ class AdBlockEngine private constructor(private val context: Context) {
      */
     fun intercept(request: WebResourceRequest, pageHost: String?, stats: ShieldStats? = null): WebResourceResponse? {
         // A page someone chose to open is theirs to see, and only subresources are ads
-        if (request.isForMainFrame) return null
+        if (request.isForMainFrame) {
+            stats?.heading(request.url.host)
+            return null
+        }
+        // Turned off for the site the page is on, or the one it's heading to
+        if (ShieldSites.isOff(context, pageHost) || ShieldSites.isOff(context, stats?.top)) return null
         val uri = request.url
         val scheme = uri.scheme?.lowercase()
         if (scheme != "http" && scheme != "https") return null
@@ -150,6 +171,7 @@ class AdBlockEngine private constructor(private val context: Context) {
      */
     fun stopsNavigation(view: WebView, request: WebResourceRequest, pageHost: String?): Boolean {
         if (!request.isForMainFrame) return false
+        if (ShieldSites.isOff(context, pageHost)) return false
         val uri = request.url
         val scheme = uri.scheme?.lowercase().orEmpty()
         if (scheme in PAGE_SCHEMES) return false
@@ -178,6 +200,7 @@ class AdBlockEngine private constructor(private val context: Context) {
      * or for signing in opens; anything else a page opened on another site is held for the person to decide.
      */
     fun judgePopup(uri: Uri, openerHost: String?, tapped: TappedLink, openerStats: ShieldStats? = null): PopupVerdict {
+        if (ShieldSites.isOff(context, openerHost)) return PopupVerdict.OPEN
         val verdict = popupVerdict(uri, openerHost, tapped)
         if (verdict != PopupVerdict.OPEN) openerStats?.popups?.incrementAndGet()
         return verdict
@@ -297,6 +320,8 @@ class AdBlockEngine private constructor(private val context: Context) {
         private const val KEY_APP_BLOCKED_PREFIX = "app_blocked_"
         private const val TAG = "Shield"
         private const val FIRST_LOAD_WAIT_MS = 4000L
+        // The hash of the UserRules the kept engine was built with
+        private const val USER_RULES_STAMP = "my_filters.stamp"
 
         // Human checks and sign-in. Blocking these locks people out, whatever a list says.
         private val NEVER_BLOCKED = listOf("challenges.cloudflare.com", "accounts.google.com")

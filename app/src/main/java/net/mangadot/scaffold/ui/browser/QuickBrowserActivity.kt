@@ -66,6 +66,7 @@ import net.mangadot.scaffold.engine.WebDownloads
 import net.mangadot.scaffold.ui.container.AppSwitcherBottomSheetDialog
 import net.mangadot.scaffold.ui.container.AppTasks
 import net.mangadot.scaffold.ui.container.AssistiveBall
+import net.mangadot.scaffold.ui.container.ElementPicker
 import net.mangadot.scaffold.ui.container.PageTools
 import net.mangadot.scaffold.ui.container.ShieldMeter
 import net.mangadot.scaffold.ui.shelf.showAddWebApp
@@ -498,7 +499,12 @@ class QuickBrowserActivity : CosmicActivity() {
         }
         binding.browserBallShield.setOnClickListener {
             assistiveBall.close()
-            ShieldMeter.show(this, webFor(current).shieldStats, adblock)
+            ShieldMeter.show(this, webFor(current), adblock)
+        }
+        binding.browserBallShield.setOnLongClickListener {
+            assistiveBall.close()
+            if (!atStart) ElementPicker.start(this, webFor(current))
+            true
         }
         binding.browserBallScripts.setOnClickListener {
             assistiveBall.close()

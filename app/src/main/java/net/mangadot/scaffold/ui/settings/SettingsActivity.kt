@@ -244,6 +244,8 @@ class SettingsActivity : CosmicActivity() {
             }
         }
 
+        dialogBinding.btnMyFilters.setOnClickListener { MyFilters.show(this) }
+
         val dialog = AlertDialog.Builder(this)
             .setView(dialogBinding.root)
             .create()
