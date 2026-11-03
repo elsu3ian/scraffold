@@ -13,6 +13,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import android.os.Bundle
@@ -57,6 +58,14 @@ open class FolderWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
+        /** Which widget opened the folder, so it can find where each app was drawn. */
+        const val EXTRA_STYLE = "net.mangadot.scaffold.folder.STYLE"
+        const val STYLE_UNKNOWN = 0
+        const val STYLE_LARGE = 1
+        const val STYLE_CLASSIC = 2
+
+        // Clear of the big icons' 1 to 3, and one per style so each keeps its own extra
+        private const val OPEN_FOLDER_REQUEST = 100
         private const val ICON_PX = 144
         private const val ICON_CORNER = 0.25f
         private const val SMALL_ICON_GAP_PX = 12f
@@ -108,20 +117,21 @@ open class FolderWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        private fun openFolder(context: Context) = PendingIntent.getActivity(
+        private fun openFolder(context: Context, style: Int) = PendingIntent.getActivity(
             context,
-            0,
-            Intent(context, FolderActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            OPEN_FOLDER_REQUEST + style,
+            Intent(context, FolderActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(EXTRA_STYLE, style),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         private fun views(context: Context, apps: List<WebAppEntity>, options: Bundle): RemoteViews {
-            val openFolder = openFolder(context)
             return RemoteViews(context.packageName, R.layout.widget_folder).apply {
-                // The folder grows out of whatever was tapped, so the box takes taps before the label around it
-                setOnClickPendingIntent(R.id.widget_folder_root, openFolder)
-                setOnClickPendingIntent(R.id.widget_folder_box, openFolder)
-                setOnClickPendingIntent(R.id.widget_folder_more, openFolder)
+                // The icons fly out of where the box drew them, so the box takes every tap but the big icons',
+                // the small icons' cell included. A tap on the label only says roughly where the folder is.
+                setOnClickPendingIntent(R.id.widget_folder_root, openFolder(context, STYLE_UNKNOWN))
+                setOnClickPendingIntent(R.id.widget_folder_box, openFolder(context, STYLE_LARGE))
                 setImageViewBitmap(R.id.widget_folder_more, smallIcons(apps.drop(BIG_ICON_CELLS.size).take(SMALL_ICONS)))
 
                 BIG_ICON_CELLS.forEachIndexed { index, cell ->
@@ -141,10 +151,9 @@ open class FolderWidgetProvider : AppWidgetProvider() {
 
         /** One cell, like a folder of app icons: a few apps in tiny icons, and a tap opens them all. */
         private fun classicViews(context: Context, apps: List<WebAppEntity>, options: Bundle): RemoteViews {
-            val openFolder = openFolder(context)
             return RemoteViews(context.packageName, R.layout.widget_folder_classic).apply {
-                setOnClickPendingIntent(R.id.widget_folder_classic_root, openFolder)
-                setOnClickPendingIntent(R.id.widget_folder_classic_icon, openFolder)
+                setOnClickPendingIntent(R.id.widget_folder_classic_root, openFolder(context, STYLE_UNKNOWN))
+                setOnClickPendingIntent(R.id.widget_folder_classic_icon, openFolder(context, STYLE_CLASSIC))
                 setImageViewBitmap(R.id.widget_folder_classic_icon, classicIcon(apps.take(CLASSIC_COLUMNS * CLASSIC_COLUMNS)))
                 keepSquare(context, this, R.id.widget_folder_classic_root, options)
             }
@@ -173,6 +182,39 @@ open class FolderWidgetProvider : AppWidgetProvider() {
             views.setViewPadding(root, sides, ends, sides, ends)
         }
 
+        /**
+         * Where the widget of [style] drew each app, in shelf order, given the [bounds] the launcher
+         * reported for the tap. Both styles draw square icons centred in their views.
+         */
+        fun iconSpots(context: Context, style: Int, bounds: Rect): List<RectF> {
+            val area = RectF(bounds)
+            return when (style) {
+                STYLE_CLASSIC -> {
+                    val folder = square(area)
+                    classicSpots(folder.width()).onEach { it.offset(folder.left, folder.top) }
+                }
+                STYLE_LARGE -> {
+                    val padding = context.resources.getDimension(R.dimen.widget_folder_padding)
+                    val margin = context.resources.getDimension(R.dimen.widget_folder_cell_margin)
+                    val cellWidth = (area.width() - padding * 2) / 2
+                    val cellHeight = (area.height() - padding * 2) / 2
+                    val cells = List(BIG_ICON_CELLS.size + 1) { index ->
+                        val left = area.left + padding + (index % 2) * cellWidth
+                        val top = area.top + padding + (index / 2) * cellHeight
+                        square(RectF(left + margin, top + margin, left + cellWidth - margin, top + cellHeight - margin))
+                    }
+                    val more = cells.last()
+                    cells.dropLast(1) + smallSpots(more.width()).onEach { it.offset(more.left, more.top) }
+                }
+                else -> emptyList()
+            }
+        }
+
+        private fun square(area: RectF): RectF {
+            val half = minOf(area.width(), area.height()) / 2
+            return RectF(area.centerX() - half, area.centerY() - half, area.centerX() + half, area.centerY() + half)
+        }
+
         private fun bigIcon(app: WebAppEntity): Bitmap {
             val bitmap = Bitmap.createBitmap(ICON_PX, ICON_PX, Bitmap.Config.ARGB_8888)
             drawIcon(Canvas(bitmap), app, RectF(0f, 0f, ICON_PX.toFloat(), ICON_PX.toFloat()))
@@ -183,13 +225,19 @@ open class FolderWidgetProvider : AppWidgetProvider() {
         private fun smallIcons(apps: List<WebAppEntity>): Bitmap {
             val bitmap = Bitmap.createBitmap(ICON_PX, ICON_PX, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
-            val size = (ICON_PX - SMALL_ICON_GAP_PX) / 2
-            apps.forEachIndexed { index, app ->
-                val left = (index % 2) * (size + SMALL_ICON_GAP_PX)
-                val top = (index / 2) * (size + SMALL_ICON_GAP_PX)
-                drawIcon(canvas, app, RectF(left, top, left + size, top + size))
-            }
+            apps.zip(smallSpots(ICON_PX.toFloat())).forEach { (app, spot) -> drawIcon(canvas, app, spot) }
             return bitmap
+        }
+
+        /** The small icons' places in a cell [side] wide. */
+        private fun smallSpots(side: Float): List<RectF> {
+            val gap = side * SMALL_ICON_GAP_PX / ICON_PX
+            val size = (side - gap) / 2
+            return List(SMALL_ICONS) { index ->
+                val left = (index % 2) * (size + gap)
+                val top = (index / 2) * (size + gap)
+                RectF(left, top, left + size, top + size)
+            }
         }
 
         /** The folder's backdrop with the apps in rows of three, the way a launcher draws a closed folder. */
@@ -200,15 +248,20 @@ open class FolderWidgetProvider : AppWidgetProvider() {
             val corner = full * ICON_CORNER
             canvas.drawRoundRect(RectF(0f, 0f, full, full), corner, corner, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = CLASSIC_BASE_COLOR })
 
-            val padding = full * CLASSIC_PADDING
-            val gap = full * CLASSIC_GAP
-            val size = (full - padding * 2 - gap * (CLASSIC_COLUMNS - 1)) / CLASSIC_COLUMNS
-            apps.forEachIndexed { index, app ->
+            apps.zip(classicSpots(full)).forEach { (app, spot) -> drawIcon(canvas, app, spot) }
+            return bitmap
+        }
+
+        /** The apps' places in a classic folder [side] wide. */
+        private fun classicSpots(side: Float): List<RectF> {
+            val padding = side * CLASSIC_PADDING
+            val gap = side * CLASSIC_GAP
+            val size = (side - padding * 2 - gap * (CLASSIC_COLUMNS - 1)) / CLASSIC_COLUMNS
+            return List(CLASSIC_COLUMNS * CLASSIC_COLUMNS) { index ->
                 val left = padding + (index % CLASSIC_COLUMNS) * (size + gap)
                 val top = padding + (index / CLASSIC_COLUMNS) * (size + gap)
-                drawIcon(canvas, app, RectF(left, top, left + size, top + size))
+                RectF(left, top, left + size, top + size)
             }
-            return bitmap
         }
 
         private fun drawIcon(canvas: Canvas, app: WebAppEntity, area: RectF) {

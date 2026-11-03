@@ -30,7 +30,7 @@ class FolderActivity : CosmicActivity() {
         setContentView(binding.root)
         repository = WebAppRepository(AppDatabase.getInstance(this).webAppDao())
 
-        opening = FolderOpening(window, binding.folderPanel, listOf(binding.folderTitle, binding.folderGrid, binding.folderEmpty))
+        opening = FolderOpening(window, binding.folderBackdrop, binding.folderPanel, binding.folderGrid, listOf(binding.folderTitle, binding.folderEmpty))
         binding.root.setOnClickListener { opening.close(::finish) }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = opening.close(::finish)
@@ -51,9 +51,15 @@ class FolderActivity : CosmicActivity() {
             // A few apps sit centred rather than bunched at one side
             binding.folderGrid.layoutManager = GridLayoutManager(this@FolderActivity, columns().coerceAtMost(apps.size.coerceAtLeast(1)))
             adapter.submitList(apps) {
-                binding.folderPanel.doOnPreDraw { opening.open(intent.sourceBounds) }
+                binding.folderPanel.doOnPreDraw { open() }
             }
         }
+    }
+
+    private fun open() {
+        val source = intent.sourceBounds
+        val style = intent.getIntExtra(FolderWidgetProvider.EXTRA_STYLE, FolderWidgetProvider.STYLE_UNKNOWN)
+        opening.open(source, source?.let { FolderWidgetProvider.iconSpots(this, style, it) }.orEmpty())
     }
 
     /** The folder animates itself, so the window comes and goes without one. */

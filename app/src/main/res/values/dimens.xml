@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The large folder widget. FolderWidgetProvider.iconSpots reads these to find where it drew each app -->
+    <dimen name="widget_folder_padding">10dp</dimen>
+    <dimen name="widget_folder_cell_margin">6dp</dimen>
+</resources>

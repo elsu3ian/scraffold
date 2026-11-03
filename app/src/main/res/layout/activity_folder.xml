@@ -3,7 +3,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/folder_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <!-- Apart from the panel, so the icons can fly in from the widget outside it -->
+    <View
+        android:id="@+id/folder_backdrop"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_folder_panel"
+        app:layout_constraintBottom_toBottomOf="@id/folder_panel"
+        app:layout_constraintEnd_toEndOf="@id/folder_panel"
+        app:layout_constraintStart_toStartOf="@id/folder_panel"
+        app:layout_constraintTop_toTopOf="@id/folder_panel" />
 
     <LinearLayout
         android:id="@+id/folder_panel"
@@ -11,8 +24,9 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="24dp"
         android:layout_marginVertical="56dp"
-        android:background="@drawable/bg_folder_panel"
         android:clickable="true"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:focusable="false"
         android:orientation="vertical"
         android:paddingHorizontal="16dp"
@@ -39,6 +53,8 @@
             android:id="@+id/folder_grid"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:overScrollMode="never" />
 
         <TextView
