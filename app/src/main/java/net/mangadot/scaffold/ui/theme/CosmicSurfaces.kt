@@ -32,10 +32,11 @@ import net.mangadot.scaffold.R
 /**
  * Clear over the nebula, and frosted glass once [scroller] has moved, as the userscript's sticky
  * header does. With [overlay], [scroller] must be the next view after the header: it then runs
- * underneath, so the glass has its content to blur. Needs Android 12; before that the header
- * stays a tinted pane above the content.
+ * underneath, so the glass has its content to blur. With [laidOutUnder], the screen has already
+ * put [scroller] underneath the header itself, both starting at the top of their parent. Needs
+ * Android 12; before that the header stays a tinted pane above the content.
  */
-fun CosmicTheme.applyHeader(header: View, scroller: View? = null, overlay: Boolean = false) {
+fun CosmicTheme.applyHeader(header: View, scroller: View? = null, overlay: Boolean = false, laidOutUnder: Boolean = false) {
     if (!cosmicStyling) {
         scroller?.setOnScrollChangeListener(null)
         header.setBackgroundColor(ContextCompat.getColor(header.context, R.color.bg_surface))
@@ -43,8 +44,8 @@ fun CosmicTheme.applyHeader(header: View, scroller: View? = null, overlay: Boole
     }
 
     val tint = ContextCompat.getDrawable(header.context, R.drawable.bg_cosmic_header_scrolled)
-    val glass = if (overlay && scroller != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        runUnderHeader(header, scroller)
+    val glass = if ((overlay || laidOutUnder) && scroller != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (overlay) runUnderHeader(header, scroller)
         LayerDrawable(arrayOf(BackdropBlurDrawable(header, scroller), tint))
     } else {
         tint
@@ -70,11 +71,14 @@ private fun runUnderHeader(header: View, scroller: View) {
     header.translationZ = header.resources.displayMetrics.density
     header.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
         val height = bottom - top
-        val params = scroller.layoutParams as ViewGroup.MarginLayoutParams
-        if (params.topMargin != -height) {
+        val params = header.layoutParams as ViewGroup.MarginLayoutParams
+        if (params.bottomMargin != -height) {
             header.post {
-                params.topMargin = -height
-                scroller.layoutParams = params
+                // The header takes no room, so the content starts at the top and runs its full height.
+                // A negative margin on the content instead would leave a header's height empty at the
+                // bottom, since LinearLayout ignores it when sharing out the room.
+                params.bottomMargin = -height
+                header.layoutParams = params
                 scroller.setPadding(scroller.paddingLeft, paddingTop + height, scroller.paddingRight, scroller.paddingBottom)
             }
         }

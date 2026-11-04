@@ -22,6 +22,7 @@ import net.mangadot.scaffold.databinding.DialogAdblockSettingsBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
 import net.mangadot.scaffold.engine.cache.CacheManager
 import net.mangadot.scaffold.ui.about.AboutActivity
+import net.mangadot.scaffold.ui.shelf.MainActivity
 import net.mangadot.scaffold.ui.theme.CosmicActivity
 import net.mangadot.scaffold.ui.theme.CosmicThemeStore
 import net.mangadot.scaffold.ui.theme.applyDialogSurface
@@ -157,6 +158,15 @@ class SettingsActivity : CosmicActivity() {
         }
 
         // Row 3: Userscripts Manager
+        binding.settingsRowGuide.setOnClickListener {
+            startActivity(
+                Intent(this, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    .putExtra(MainActivity.EXTRA_SHOW_GUIDE, true)
+            )
+            finish()
+        }
+
         binding.settingsRowUserscripts.setOnClickListener {
             startActivity(Intent(this, UserscriptsActivity::class.java))
         }

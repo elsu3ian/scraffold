@@ -35,6 +35,7 @@ import net.mangadot.scaffold.data.repository.WebAppRepository
 import net.mangadot.scaffold.databinding.ActivityMainBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
 import net.mangadot.scaffold.engine.cache.CacheManager
+import net.mangadot.scaffold.ui.about.Updates
 import net.mangadot.scaffold.ui.container.AppTasks
 import net.mangadot.scaffold.ui.settings.SettingsActivity
 import net.mangadot.scaffold.ui.theme.CosmicTheme
@@ -53,6 +54,8 @@ class MainActivity : CosmicActivity() {
     private lateinit var adBlockEngine: AdBlockEngine
     private var allApps: List<WebAppEntity> = emptyList()
     private var reopenCosmicDialog = false
+    private var shelfShown = false
+    private var guide: ShelfGuide? = null
     private var cosmicDialog: CosmicThemeDialog? = null
     private lateinit var sort: ShelfSort
     private var dragList = mutableListOf<WebAppEntity>()
@@ -148,6 +151,11 @@ class MainActivity : CosmicActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_SHOW_GUIDE, false)) showGuide()
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean(STATE_REOPEN_COSMIC, reopenCosmicDialog)
@@ -206,6 +214,36 @@ class MainActivity : CosmicActivity() {
         binding.rvShelf.layoutManager = GridLayoutManager(this, 3)
         binding.rvShelf.adapter = adapter
         dragHelper.attachToRecyclerView(binding.rvShelf)
+        setupScrollingTabs()
+    }
+
+    /** The apps run under the top bar, and the view tabs scroll away with them. */
+    private fun setupScrollingTabs() {
+        val list = binding.rvShelf
+        val tabs = binding.layoutSwitcherContainer
+        val gap = list.paddingTop
+        fun placeTabs() {
+            tabs.translationY = -list.computeVerticalScrollOffset().coerceAtMost(tabs.bottom).toFloat()
+        }
+        val fit = View.OnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+            if (bottom - top == oldBottom - oldTop) return@OnLayoutChangeListener
+            // Padding can't change in the middle of a layout, so it waits for this one to end
+            list.post {
+                val clear = binding.shelfTopBar.height + tabs.height + gap
+                if (list.paddingTop == clear) return@post
+                val atTop = !list.canScrollVertically(-1)
+                list.setPadding(list.paddingLeft, clear, list.paddingRight, list.paddingBottom)
+                // The apps would otherwise keep their place on screen, under the bars, as if scrolled
+                if (atTop) list.scrollToPosition(0)
+            }
+        }
+        binding.shelfTopBar.addOnLayoutChangeListener(fit)
+        tabs.addOnLayoutChangeListener(fit)
+        // The list only reports scrolls, not being laid out again with a new padding or layout
+        list.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> placeTabs() }
+        list.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) = placeTabs()
+        })
     }
 
     private fun setupListeners() {
@@ -294,6 +332,11 @@ class MainActivity : CosmicActivity() {
                 allApps = apps
                 filterApps(binding.etSearch.text.toString())
                 apps.filter { it.iconUrl == null && iconAttempts.add(it.id) }.forEach(::fetchIcon)
+                if (!shelfShown) {
+                    shelfShown = true
+                    // Once the apps are on screen, so the guide can point at one
+                    binding.rvShelf.post(::greet)
+                }
             }
         }
         lifecycleScope.launch {
@@ -302,6 +345,63 @@ class MainActivity : CosmicActivity() {
             }
         }
     }
+
+    /** The guide the first time, or when Settings asks for it; otherwise news of an update, if there is one. */
+    private fun greet() {
+        val prefs = getSharedPreferences(SettingsActivity.PREFS_NAME, MODE_PRIVATE)
+        if (intent.getBooleanExtra(EXTRA_SHOW_GUIDE, false) || !prefs.getBoolean(KEY_GUIDE_SEEN, false)) {
+            showGuide()
+        } else {
+            Updates.offerIfDue(this, lifecycleScope)
+        }
+    }
+
+    private fun showGuide() {
+        if (guide != null) return
+        binding.rvShelf.scrollToPosition(0)
+        binding.rvShelf.post {
+            guide = ShelfGuide(this, guideSteps()) {
+                guide = null
+                getSharedPreferences(SettingsActivity.PREFS_NAME, MODE_PRIVATE).edit().putBoolean(KEY_GUIDE_SEEN, true).apply()
+                Updates.offerIfDue(this, lifecycleScope)
+            }.also { it.show() }
+        }
+    }
+
+    private fun guideSteps() = listOfNotNull(
+        ShelfGuide.Step(
+            binding.fabAddApp, "Add a web app",
+            "Tap + and enter a site's address. Scraffold reads the site's own app details, like its name, icon " +
+                "and colors, and puts it on your shelf as an app of its own."
+        ),
+        binding.rvShelf.getChildAt(0)?.let { firstApp ->
+            ShelfGuide.Step(
+                firstApp, "Your apps",
+                "Tap an app to open it. Hold it for its options: its settings, ad blocking, fullscreen, " +
+                    "userscripts, or removing it."
+            )
+        },
+        ShelfGuide.Step(binding.layoutSwitcherContainer, "Three views", "Show your apps as icons, a grid or a list."),
+        ShelfGuide.Step(binding.btnToggleSearch, "Search", "Find an app by its name or address."),
+        ShelfGuide.Step(
+            binding.btnBrowser, "Quick Browser",
+            "Browse any site, with tabs. Its menu adds the page you're on to your shelf."
+        ),
+        ShelfGuide.Step(binding.btnCustomize, "Customize", "Change the theme and colors, and how your apps are sorted."),
+        ShelfGuide.Step(
+            binding.btnSettings, "Settings",
+            "Ad blocking, the settings new apps start with, userscripts, gestures and backups. This guide is there too."
+        ),
+        ShelfGuide.Step(
+            null, "Inside an app",
+            "• The ball at the edge of the screen: tap it to reload, go home, see what the shield blocked, run " +
+                "userscripts, change the text size or ask for the desktop site. Hold it to switch apps, and drag " +
+                "it anywhere.\n\n" +
+                "• Pull down at the top of a page, or swipe down with two fingers, to reload. Swipe sideways " +
+                "with two fingers to go back and forward.\n\n" +
+                "• Add the Scraffold folder widget to your home screen to open your apps from there."
+        )
+    )
 
     private fun fetchIcon(app: WebAppEntity) {
         lifecycleScope.launch {
@@ -376,7 +476,7 @@ class MainActivity : CosmicActivity() {
 
     private fun applyTheme(theme: CosmicTheme) {
         theme.applyBackground(binding.mainRootLayout)
-        theme.applyHeader(binding.headerLayout, binding.rvShelf)
+        theme.applyHeader(binding.shelfTopBar, binding.rvShelf, laidOutUnder = true)
     }
 
     private fun showAppActionSheet(app: WebAppEntity) {
@@ -403,7 +503,10 @@ class MainActivity : CosmicActivity() {
         return (dp * resources.displayMetrics.density).toInt()
     }
 
-    private companion object {
-        const val STATE_REOPEN_COSMIC = "reopen_cosmic"
+    companion object {
+        /** Plays the guide again, from Settings. */
+        const val EXTRA_SHOW_GUIDE = "show_guide"
+        private const val KEY_GUIDE_SEEN = "guide_seen"
+        private const val STATE_REOPEN_COSMIC = "reopen_cosmic"
     }
 }

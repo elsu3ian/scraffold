@@ -6,98 +6,19 @@
     android:layout_height="match_parent"
     android:background="@color/bg_primary">
 
-    <!-- Top App Header Bar -->
-    <LinearLayout
-        android:id="@+id/header_layout"
+    <!-- Main Shelf RecyclerView, from the top of the screen; its top padding clears the bars -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_shelf"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="12dp"
-        android:background="#15121215"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_height="0dp"
+        android:paddingHorizontal="8dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="16dp"
+        android:clipToPadding="false"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/shelf_bottom_bar" />
 
-        <TextView
-            android:id="@+id/tv_app_title"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/shelf_title"
-            android:contentDescription="@string/app_name"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:letterSpacing="-0.02" />
-
-        <!-- Naked Search Button -->
-        <ImageButton
-            android:id="@+id/btn_toggle_search"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_search"
-            android:contentDescription="Search" />
-
-        <!-- Quick browser -->
-        <ImageButton
-            android:id="@+id/btn_browser"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_marginStart="4dp"
-            android:padding="6dp"
-            android:scaleType="fitCenter"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_globe"
-            android:contentDescription="Browser" />
-
-        <!-- Customize: theme and app order -->
-        <ImageButton
-            android:id="@+id/btn_customize"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_marginStart="4dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_tune"
-            android:contentDescription="Customize" />
-
-        <!-- Global Settings Button (⚙️) -->
-        <ImageButton
-            android:id="@+id/btn_settings"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_marginStart="4dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_settings"
-            android:contentDescription="Settings" />
-    </LinearLayout>
-
-    <!-- Expandable Search Input (Hidden by default) -->
-    <FrameLayout
-        android:id="@+id/search_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:paddingHorizontal="14dp"
-        android:paddingBottom="8dp"
-        android:background="#15121215"
-        app:layout_constraintTop_toBottomOf="@id/header_layout">
-
-        <EditText
-            android:id="@+id/et_search"
-            android:layout_width="match_parent"
-            android:layout_height="38dp"
-            android:background="@drawable/bg_card"
-            android:paddingHorizontal="12dp"
-            android:hint="@string/search_hint"
-            android:textColor="@color/text_primary"
-            android:textColorHint="@color/text_muted"
-            android:textSize="13sp"
-            android:imeOptions="actionSearch"
-            android:inputType="text" />
-    </FrameLayout>
-
-    <!-- View Switcher Tabs (Icons | Grid | List) Aligned to Right -->
+    <!-- View Switcher Tabs (Icons | Grid | List) Aligned to Right, scrolling away with the apps -->
     <LinearLayout
         android:id="@+id/layout_switcher_container"
         android:layout_width="match_parent"
@@ -106,7 +27,7 @@
         android:gravity="end|center_vertical"
         android:paddingHorizontal="16dp"
         android:paddingVertical="8dp"
-        app:layout_constraintTop_toBottomOf="@id/search_container">
+        app:layout_constraintTop_toBottomOf="@id/shelf_top_bar">
 
         <TextView
             android:id="@+id/tab_icons"
@@ -143,6 +64,106 @@
             android:paddingVertical="6dp"
             android:layout_marginStart="8dp"
             android:background="@drawable/bg_tab_inactive" />
+    </LinearLayout>
+
+    <!-- Top bar over the apps, which run underneath it -->
+    <LinearLayout
+        android:id="@+id/shelf_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:clickable="true"
+        android:focusable="false"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- Top App Header Bar -->
+        <LinearLayout
+            android:id="@+id/header_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+    >
+
+            <TextView
+                android:id="@+id/tv_app_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/shelf_title"
+                android:contentDescription="@string/app_name"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:letterSpacing="-0.02" />
+
+            <!-- Naked Search Button -->
+            <ImageButton
+                android:id="@+id/btn_toggle_search"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_search"
+                android:contentDescription="Search" />
+
+            <!-- Quick browser -->
+            <ImageButton
+                android:id="@+id/btn_browser"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="4dp"
+                android:padding="6dp"
+                android:scaleType="fitCenter"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_globe"
+                android:contentDescription="Browser" />
+
+            <!-- Customize: theme and app order -->
+            <ImageButton
+                android:id="@+id/btn_customize"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_tune"
+                android:contentDescription="Customize" />
+
+            <!-- Global Settings Button (⚙️) -->
+            <ImageButton
+                android:id="@+id/btn_settings"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_settings"
+                android:contentDescription="Settings" />
+        </LinearLayout>
+
+        <!-- Expandable Search Input (Hidden by default) -->
+        <FrameLayout
+            android:id="@+id/search_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:paddingHorizontal="14dp"
+            android:paddingBottom="8dp"
+    >
+
+            <EditText
+                android:id="@+id/et_search"
+                android:layout_width="match_parent"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_card"
+                android:paddingHorizontal="12dp"
+                android:hint="@string/search_hint"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_muted"
+                android:textSize="13sp"
+                android:imeOptions="actionSearch"
+                android:inputType="text" />
+        </FrameLayout>
     </LinearLayout>
 
     <!-- Empty State View (Shown when shelf has 0 WebApps) -->
@@ -189,17 +210,6 @@
             android:textSize="12sp" />
     </LinearLayout>
 
-    <!-- Main Shelf RecyclerView -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_shelf"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:paddingHorizontal="8dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="16dp"
-        android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/layout_switcher_container"
-        app:layout_constraintBottom_toTopOf="@id/shelf_bottom_bar" />
 
     <!-- Sleek 44dp Squircle Floating Add Button -->
     <ImageButton

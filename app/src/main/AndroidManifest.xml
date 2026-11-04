@@ -4,6 +4,8 @@
     <!-- Essential Network & Storage Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Installs Scraffold's own updates; Android asks the user first -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Audio and video carrying on after the app is left -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

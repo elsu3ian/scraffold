@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **First-run guide**: The first time Scraffold opens, a short guide points out where everything is on the shelf and what's inside an app. Settings has **How to use Scraffold** to play it again.
+- **Update pop-up**: When a newer version is on GitHub, the home screen says so, with what's new in it, and **Install** downloads it and hands it to Android's installer. It looks at most twice a day, and a version can be skipped. About's Check for Updates does the same.
 - **Install from the site's manifest**: Adding a web app, from the Add WebApp sheet or the Quick Browser, reads the site's web app manifest. The app takes its short name (unless you typed one), opens at its `start_url`, keeps links inside its `scope` and sends the rest to the in-app browser, tints the status bar with its `theme_color`, and opens behind a splash of its icon on its `background_color`. Maskable icons are preferred. Sites that add their manifest link with script are read from the page the first time the app opens. Icons and manifests are fetched as Chrome, like pages. Sites without a manifest work as before, and existing apps are left as they are.
 - **Update check without Releases**: About compares the installed version with the one `app/build.gradle.kts` declares on `main`, read from raw.githubusercontent.com rather than the rate-limited GitHub API, and its Download button follows the README's Download APK button.
 - **Pull to reload**: Pulling down at the top of a page reloads it, in web apps, the Quick Browser and the in-app browser. Like Chrome, it waits until the page itself is at its top, so feeds and chats that scroll inside the page scroll instead. It can be switched off in Settings.
@@ -27,6 +29,12 @@ All notable changes to this project are documented in this file.
 - A window a page opens on another site, when the tap wasn't on a link to it, is held behind a "Blocked a popup" notice with an Open button. Sign-in windows still open directly.
 - Client hints now present Chrome too: the `Sec-CH-UA` headers and `navigator.userAgentData` name Google Chrome and Chromium with the engine's real version, and say Windows desktop when an app or tab uses the desktop site, down to the form factor. androidx.webkit is now 1.18.0, which can set that. WebView still sends an `X-Requested-With` header naming the app: the setting that turned it off stopped working when WebView's trial ended, so that code is gone. Older WebViews that can't set these keep the script that fixes what page scripts see.
 - The shield now covers requests made by a site's service worker, following the shield switch of the web app the worker belongs to, or the default setting in the Quick Browser.
+- The background is obsidian black until the radiant background is turned on, matching what the theme's Reset gives.
+- On the shelf, the apps run under a frosted top bar, and the Icons, Grid and List tabs scroll away with them.
+
+### Fixed
+- The home screen folder no longer draws its apps over its title when they don't all fit.
+- Settings, Web App Settings and About scroll all the way to the bottom of the screen instead of stopping short.
 
 ---
 
