@@ -92,6 +92,7 @@ object UsageStore {
     fun clear(context: Context) {
         prefs(context).edit().clear().apply()
         hourPrefs(context).edit().clear().apply()
+        BatteryUse.clear(context)
     }
 
     private fun prune(context: Context) {
@@ -121,16 +122,18 @@ object UsageStore {
     }
 
     /**
-     * Times one screen while it's in front. Call [start] when it resumes and [stop] when it pauses;
-     * what [appId] returns at [stop] gets the time.
+     * Times one screen while it's in front, and what the battery gave meanwhile. Call [start] when it
+     * resumes and [stop] when it pauses; what [appId] returns at [stop] gets the time.
      */
     class Timer(private val context: Context, private val appId: () -> String?) {
         private var startedWall = 0L
         private var startedClock = 0L
+        private var battery: BatteryUse.Reading? = null
 
         fun start() {
             startedWall = System.currentTimeMillis()
             startedClock = SystemClock.elapsedRealtime()
+            battery = BatteryUse.read(context)
         }
 
         fun stop() {
@@ -139,7 +142,12 @@ object UsageStore {
             val span = SystemClock.elapsedRealtime() - startedClock
             startedClock = 0L
             val id = appId() ?: return
-            add(context.applicationContext, id, startedWall, startedWall + span)
+            val app = context.applicationContext
+            add(app, id, startedWall, startedWall + span)
+            val start = battery ?: return
+            battery = null
+            val end = BatteryUse.read(app) ?: return
+            BatteryUse.add(app, id, startedWall, start, end)
         }
     }
 }

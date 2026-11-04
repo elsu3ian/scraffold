@@ -39,8 +39,8 @@
             android:layout_width="wrap_content"
             android:layout_height="36dp"
             android:gravity="center"
-            android:paddingHorizontal="14dp"
-            android:background="@drawable/bg_card"
+            android:paddingHorizontal="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:clickable="true"
             android:focusable="true"
             android:text="Day"
@@ -53,6 +53,7 @@
         android:id="@+id/usage_scroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:scrollbarStyle="outsideOverlay"
         android:paddingHorizontal="16dp">
 
         <LinearLayout
@@ -60,6 +61,40 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingBottom="24dp">
+
+            <!-- Screen time and battery, each its own page -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card"
+                android:orientation="horizontal"
+                android:padding="4dp">
+
+                <TextView
+                    android:id="@+id/usage_page_time"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:text="Screen time"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/usage_page_battery"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:text="Battery"
+                    android:textColor="@color/text_muted"
+                    android:textSize="13sp" />
+            </LinearLayout>
 
             <!-- Each app's share, with the total in the middle -->
             <net.mangadot.scaffold.ui.usage.UsageRing
@@ -172,12 +207,39 @@
                 android:visibility="gone" />
 
             <TextView
+                android:id="@+id/usage_note_time"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="Counted while an app is on your screen. Only the time is kept, on this phone: each day for a year, and hour by hour for a month. Tap a bar to see just that time."
                 android:textColor="@color/text_muted"
                 android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/usage_note_battery"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                android:text="Battery use is an estimate: it's how much the battery dropped while each app was open, so the screen and other apps running in the background count too, and time spent charging is left out. For exact numbers, check your phone's own battery usage."
+                android:textColor="@color/text_muted"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/usage_btn_phone_battery"
+                android:visibility="gone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:text="Open phone's battery usage"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_card"
+                android:clickable="true"
+                android:focusable="true" />
 
             <TextView
                 android:id="@+id/usage_btn_clear"

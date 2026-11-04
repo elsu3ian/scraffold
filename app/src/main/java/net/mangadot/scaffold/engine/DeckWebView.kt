@@ -39,12 +39,80 @@ class DeckWebView @JvmOverloads constructor(
             if (!value) super.onVisibilityChanged(this, visibility)
         }
 
-    /** Desktop sites get the user agent Chrome on a phone sends for them, and client hints that say the same. */
+    /**
+     * Desktop sites get the user agent Chrome on a phone sends for them, and client hints that say the
+     * same, except on sites whose Cloudflare check was answered with the mobile version ([DesktopFallback]).
+     */
+    @Volatile
     var desktopMode = false
         set(value) {
             field = value
-            presentAs(value)
+            if (!value) unwiden()
+            beforeNavigation(url.orEmpty())
         }
+
+    // Whether pages are being told this is a desktop, read on the network thread
+    @Volatile
+    private var presentedDesktop = false
+
+    // Per site, the script that lays its phone pages out wide in desktop mode
+    private val widened = HashMap<String, androidx.webkit.ScriptHandler>()
+
+    // The page's own host, which decides the identity, read on the network thread
+    @Volatile
+    private var pageHost = ""
+
+    /**
+     * Call before a page of [url] loads: in desktop mode, a site answered with the mobile version gets
+     * the phone's identity, everything else the desktop's. Returns whether the identity changed.
+     */
+    fun beforeNavigation(url: String): Boolean {
+        val host = android.net.Uri.parse(url).host
+        if (!host.isNullOrEmpty()) pageHost = host
+        val mobileHere = desktopMode && DesktopFallback.usesMobile(context, host)
+        val desktop = desktopMode && !mobileHere
+        val changed = desktop != presentedDesktop
+        if (changed) presentAs(desktop)
+        if (mobileHere) widen(DesktopFallback.siteOf(host))
+        return changed
+    }
+
+    /**
+     * Call from onPageStarted. Pages brought back by Android, and history and form navigations, start
+     * without [beforeNavigation]; one that started with the wrong identity loads again with the right one.
+     */
+    fun pageStarted(url: String) {
+        if (beforeNavigation(url)) {
+            stopLoading()
+            reload()
+        }
+    }
+
+    /** Call from shouldInterceptRequest: notices Cloudflare's check turning desktop mode away. */
+    fun watchRequest(request: android.webkit.WebResourceRequest) {
+        if (!presentedDesktop || !DesktopFallback.isCheck(request.url)) return
+        // The page's site is the one to switch, where the check is in a frame from somewhere else
+        val host = pageHost.ifEmpty { request.url.host.orEmpty() }
+        if (host.isEmpty()) return
+        post {
+            var owner = context
+            while (owner is android.content.ContextWrapper && owner !is android.app.Activity) owner = owner.baseContext
+            (owner as? android.app.Activity)?.let { DesktopFallback.met(it, this, host) }
+        }
+    }
+
+    // A phone page fills a desktop's width when its viewport says so; the site's own viewport is overruled
+    @SuppressLint("RequiresFeature")
+    private fun widen(site: String) {
+        if (site.isEmpty() || site in widened || !WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return
+        val script = WIDE_SCRIPT.replace("@WIDTH@", DesktopFallback.WIDE_LAYOUT.toString())
+        widened[site] = WebViewCompat.addDocumentStartJavaScript(this, script, setOf("https://$site", "https://*.$site"))
+    }
+
+    private fun unwiden() {
+        widened.values.forEach { it.remove() }
+        widened.clear()
+    }
 
     /** Whether this touch has pulled the page down past its top, which a pull to reload waits for. */
     var pulledPastTop = false
@@ -217,6 +285,22 @@ class DeckWebView @JvmOverloads constructor(
                 .replace("@FULL_BRANDS@", brandsJson(brands, full = true))
         }
 
+        // Sets the page's viewport to a desktop's width, and keeps it there when the page changes it
+        private const val WIDE_SCRIPT = """
+(function () {
+  // Zoomed out to fit, as a desktop site opens on a phone
+  var wide = 'width=@WIDTH@, initial-scale=' + Math.min(1, screen.width / @WIDTH@).toFixed(3);
+  function fix(meta) { if (meta.getAttribute('content') !== wide) meta.setAttribute('content', wide); }
+  function check(node) { if (node.nodeName === 'META' && (node.getAttribute('name') || '').toLowerCase() === 'viewport') fix(node); }
+  new MutationObserver(function (changes) {
+    changes.forEach(function (change) {
+      if (change.type === 'attributes') check(change.target);
+      else change.addedNodes.forEach(check);
+    });
+  }).observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ['content', 'name'] });
+})();
+"""
+
         // Where a page asks for brands in script, WebView names itself; Chrome names itself instead.
         // Desktop sites carry a Linux user agent with no Android in it, so the platform follows whichever is in use.
         private const val BRANDS_SCRIPT = """
@@ -310,12 +394,14 @@ class DeckWebView @JvmOverloads constructor(
             javaScriptCanOpenWindowsAutomatically = true
         }
         presentAs(desktop = false)
-        // WebView still names this app in an X-Requested-With header. The allow-list that once turned
-        // it off went with WebView's origin trial, and the header is added after shouldInterceptRequest.
+        // WebView names this app in an X-Requested-With header on every request, which no browser sends.
+        // The allow-list meant to turn it off is still offered but does nothing (tried on WebView 124),
+        // and the header is added after shouldInterceptRequest, so a desktop identity always shows as an app's.
     }
 
     @SuppressLint("RequiresFeature")
     private fun presentAs(desktop: Boolean) {
+        presentedDesktop = desktop
         settings.userAgentString = if (desktop) desktopUserAgent(context) else mobileUserAgent(context)
         if (WebViewFeature.isFeatureSupported(WebViewFeature.USER_AGENT_METADATA)) {
             WebSettingsCompat.setUserAgentMetadata(settings, chromeMetadata(context, desktop))
@@ -338,11 +424,13 @@ class DeckWebView @JvmOverloads constructor(
     }
 
     override fun loadUrl(url: String) {
+        beforeNavigation(url)
         shield?.prepare(url)
         super.loadUrl(url)
     }
 
     override fun loadUrl(url: String, additionalHttpHeaders: MutableMap<String, String>) {
+        beforeNavigation(url)
         shield?.prepare(url)
         super.loadUrl(url, additionalHttpHeaders)
     }

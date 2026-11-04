@@ -32,6 +32,24 @@ val releaseKey: Map<String, String>? = run {
     props.stringPropertyNames().associateWith { props.getProperty(it) }
 }
 
+/**
+ * The version code Android compares, worked out from the version name, so a release only sets the name.
+ * The app's update check works it out the same way (Updates.versionCodeOf), so the two must match.
+ * x.y.z gives (x * 10000 + y * 100 + z) * 10, and a final release 9 more than its betas, so each new
+ * version always installs over the one before. 1.0.3-beta is 100030, 1.1.0-beta 101000, 1.1.0 101009.
+ */
+fun versionCodeOf(name: String): Int {
+    val core = name.substringBefore('-')
+    val parts = core.split('.').map { part ->
+        part.toIntOrNull() ?: error("Version $name: \"$part\" isn't a number")
+    }
+    require(parts.size == 3) { "Version $name needs three numbers, like 1.1.0" }
+    val (major, minor, patch) = parts
+    require(minor < 100 && patch < 100) { "Version $name: the second and third numbers must be below 100" }
+    val final = if (name.contains('-')) 0 else 9
+    return (major * 10000 + minor * 100 + patch) * 10 + final
+}
+
 android {
     namespace = "net.mangadot.scaffold"
     compileSdk = 35
@@ -40,8 +58,11 @@ android {
         applicationId = "net.mangadot.scaffold"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
+        // The one line to change for a release
         versionName = "1.0.3-beta"
+        versionCode = versionCodeOf(versionName!!)
+        // Scraffold 1.0.3-beta and the builds before it read a written-out number here to tell that a
+        // newer version is out, and anything above their 4 does: versionCode = 5
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         

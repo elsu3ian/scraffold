@@ -1,5 +1,9 @@
 Required Notice: Copyright (c) 2026 elsu3ian (https://github.com/elsu3ian/scraffold)
 
+These terms cover Scraffold's own code. Third-party code included in Scraffold, such as Brave's
+adblock-rust (Mozilla Public License 2.0) and the AndroidX libraries (Apache License 2.0), stays
+under its own license; the README's "Third-party code" section lists it.
+
 # PolyForm Noncommercial License 1.0.0
 
 <https://polyformproject.org/licenses/noncommercial/1.0.0>

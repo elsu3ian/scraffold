@@ -2,7 +2,9 @@ package net.mangadot.scaffold.ui.usage
 
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +13,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -22,6 +25,7 @@ import net.mangadot.scaffold.R
 import net.mangadot.scaffold.data.db.AppDatabase
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
 import net.mangadot.scaffold.data.repository.WebAppRepository
+import net.mangadot.scaffold.data.usage.BatteryUse
 import net.mangadot.scaffold.data.usage.UsageStore
 import net.mangadot.scaffold.databinding.ActivityUsageBinding
 import net.mangadot.scaffold.engine.AppIcons
@@ -52,12 +56,17 @@ class UsageActivity : CosmicActivity() {
         YEAR("Year", "Last 12 months", 0, "MONTH BY MONTH")
     }
 
+    /** The two pages: time on screen, and the battery used meanwhile, each counted the same way. */
+    private enum class Page { TIME, BATTERY }
+
     /** One bar: an hour of the day, a day, or in the year a month. */
     private class Bucket(val label: String, val title: String, val byApp: Map<String, Long>)
 
     private lateinit var binding: ActivityUsageBinding
     private var apps: Map<String, WebAppEntity> = emptyMap()
+    // What the page on show counts, day by day: milliseconds, or thousandths of a percent of battery
     private var usage: Map<LocalDate, Map<String, Long>> = emptyMap()
+    private var page = Page.TIME
     private var range = Range.DAY
     // The day Day shows, stepped back with the arrows as far as hours are kept
     private var day = LocalDate.now()
@@ -83,6 +92,7 @@ class UsageActivity : CosmicActivity() {
 
         binding.usageBtnBack.setOnClickListener { finish() }
         binding.usageBtnClear.setOnClickListener { confirmClear() }
+        binding.usageBtnPhoneBattery.setOnClickListener { openPhoneBattery() }
         binding.usageChart.onSelect = { index ->
             // Tapping the picked bar again goes back to all of them
             chosen = if (index == chosen) -1 else index
@@ -90,6 +100,9 @@ class UsageActivity : CosmicActivity() {
             showChosen()
         }
         binding.usageRange.setOnClickListener { pickRange() }
+        binding.usagePageTime.setOnClickListener { showPage(Page.TIME) }
+        binding.usagePageBattery.setOnClickListener { showPage(Page.BATTERY) }
+        if (intent.getStringExtra(EXTRA_PAGE) == Page.BATTERY.name) page = Page.BATTERY
         binding.usageDayBack.setOnClickListener { stepDay(-1) }
         binding.usageDayForward.setOnClickListener { stepDay(1) }
 
@@ -137,10 +150,43 @@ class UsageActivity : CosmicActivity() {
         show()
     }
 
+    private fun showPage(next: Page) {
+        if (page == next) return
+        page = next
+        show()
+    }
+
+    private fun showTabs() {
+        listOf(binding.usagePageTime to Page.TIME, binding.usagePageBattery to Page.BATTERY).forEach { (tab, which) ->
+            val on = page == which
+            tab.setTextColor(ContextCompat.getColor(this, if (on) R.color.text_primary else R.color.text_muted))
+            tab.paint.isFakeBoldText = on
+            tab.background = if (on) GradientDrawable().apply {
+                setColor(androidx.core.graphics.ColorUtils.setAlphaComponent(CosmicAccent.color, 60))
+                setStroke(dp(1), CosmicAccent.color)
+                // The card's 10dp corners less its 4dp padding, so the two curves run side by side
+                cornerRadius = dp(6).toFloat()
+            } else null
+            tab.invalidate()
+        }
+        val battery = page == Page.BATTERY
+        binding.usageNoteTime.visibility = if (battery) View.GONE else View.VISIBLE
+        binding.usageNoteBattery.visibility = if (battery) View.VISIBLE else View.GONE
+        binding.usageBtnPhoneBattery.visibility = if (battery) View.VISIBLE else View.GONE
+        binding.usageTvEmpty.text = if (battery) {
+            "No battery use counted yet. It's counted while an app is open and your phone isn't charging."
+        } else {
+            "Nothing here yet. Time spent in your apps and the browser shows up here."
+        }
+    }
+
+    private fun format(value: Long) = if (page == Page.BATTERY) BatteryUse.format(value) else UsageStore.format(value)
+
     private fun oldestDay() = LocalDate.now().minusDays(UsageStore.KEEP_HOURS_DAYS - 1)
 
     private fun show() {
-        usage = UsageStore.byDay(this)
+        usage = if (page == Page.BATTERY) BatteryUse.byDay(this) else UsageStore.byDay(this)
+        showTabs()
         val today = LocalDate.now()
         binding.usageRange.text = "${range.label}  ▾"
         binding.usageChartTitle.text = range.chartTitle
@@ -153,7 +199,7 @@ class UsageActivity : CosmicActivity() {
 
         buckets = when (range) {
             Range.DAY -> {
-                val hours = UsageStore.byHour(this, day)
+                val hours = if (page == Page.BATTERY) BatteryUse.byHour(this, day) else UsageStore.byHour(this, day)
                 (0..23).map { hour ->
                     val time = LocalTime.of(hour, 0)
                     // Every sixth hour is labelled, which is as many as fit
@@ -229,13 +275,13 @@ class UsageActivity : CosmicActivity() {
         val parts = sorted.take(colors.size).mapIndexed { index, (_, ms) -> UsageRing.Part(ms, colors[index]) } +
             UsageRing.Part(sorted.drop(colors.size).sumOf { it.second }, OTHER_COLOR)
         val caption = picked?.title ?: if (dayView) dayTitle(day) else range.title
-        binding.usageRing.set(parts, UsageStore.format(total), caption)
+        binding.usageRing.set(parts, format(total), caption)
 
         // Days before anything was counted are left out of the average
         val first = usage.keys.minOrNull()
         val days = spanDays()
         val counted = days.count { first != null && !it.isBefore(first) }.coerceAtLeast(1)
-        val average = UsageStore.format(days.sumOf { usage[it]?.values?.sum() ?: 0L } / counted)
+        val average = format(days.sumOf { usage[it]?.values?.sum() ?: 0L } / counted) + if (page == Page.BATTERY) " of battery" else ""
         binding.usageTvAverage.text = if (dayView) "Daily average this week: $average" else "Daily average: $average"
 
         binding.usageList.removeAllViews()
@@ -257,8 +303,8 @@ class UsageActivity : CosmicActivity() {
         return apart < 25
     }
 
-    /** An app's icon and name, with its color and time under the name, and its share on the right. */
-    private fun row(id: String, millis: Long, total: Long, color: Int): View {
+    /** An app's icon and name, with its color and time or battery use under the name, and its share on the right. */
+    private fun row(id: String, value: Long, total: Long, color: Int): View {
         val app = apps[id]
         val name = when {
             id == QuickBrowserActivity.BROWSER_ID -> "Browser"
@@ -290,7 +336,7 @@ class UsageActivity : CosmicActivity() {
             }
         }, LinearLayout.LayoutParams(dp(8), dp(8)).apply { marginEnd = dp(6) })
         time.addView(TextView(this).apply {
-            text = UsageStore.format(millis)
+            text = format(value) + if (page == Page.BATTERY) " of battery" else ""
             textSize = 12f
             setTextColor(ContextCompat.getColor(context, R.color.text_muted))
         })
@@ -302,7 +348,7 @@ class UsageActivity : CosmicActivity() {
             marginEnd = dp(12)
         })
 
-        val share = if (total > 0) (100 * millis / total).toInt() else 0
+        val share = if (total > 0) (100 * value / total).toInt() else 0
         row.addView(TextView(this).apply {
             text = if (share < 1) "<1%" else "$share%"
             textSize = 12f
@@ -342,6 +388,15 @@ class UsageActivity : CosmicActivity() {
         return frame
     }
 
+    /** The phone's own battery usage, which counts what every app uses; failing that, its battery settings. */
+    private fun openPhoneBattery() {
+        val screens = listOf(Intent.ACTION_POWER_USAGE_SUMMARY, Settings.ACTION_BATTERY_SAVER_SETTINGS, Settings.ACTION_SETTINGS)
+        val opened = screens.any { action ->
+            runCatching { startActivity(Intent(action)) }.isSuccess
+        }
+        if (!opened) Toast.makeText(this, "Couldn't open your phone's battery settings", Toast.LENGTH_SHORT).show()
+    }
+
     private fun confirmClear() {
         AlertDialog.Builder(this)
             .setTitle("Clear usage?")
@@ -356,14 +411,16 @@ class UsageActivity : CosmicActivity() {
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
-    private companion object {
-        val HOUR: DateTimeFormatter = DateTimeFormatter.ofPattern("h a")
-        const val MENU_WIDTH_DP = 160
+    companion object {
+        /** Which page to open on: TIME or BATTERY. */
+        const val EXTRA_PAGE = "page"
+        private val HOUR: DateTimeFormatter = DateTimeFormatter.ofPattern("h a")
+        private const val MENU_WIDTH_DP = 160
         // Violet, amber, cyan, rose and lime, for the apps after the first, which takes the accent
-        val EXTRA_COLORS = listOf(
+        private val EXTRA_COLORS = listOf(
             Color.parseColor("#8B5CF6"), Color.parseColor("#F59E0B"), Color.parseColor("#06B6D4"),
             Color.parseColor("#F43F5E"), Color.parseColor("#84CC16"), Color.parseColor("#10B981")
         )
-        val OTHER_COLOR = Color.parseColor("#52525B")
+        private val OTHER_COLOR = Color.parseColor("#52525B")
     }
 }

@@ -115,6 +115,7 @@ class QuickBrowserActivity : CosmicActivity() {
 
     private val pageClient = object : WebViewClient() {
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+            (view as? DeckWebView)?.watchRequest(request)
             if (adblock) {
                 adBlockEngine.intercept(request, pageHosts[view], (view as? DeckWebView)?.shieldStats)?.let {
                     adBlockEngine.recordBlockedForApp(BROWSER_ID)
@@ -132,7 +133,10 @@ class QuickBrowserActivity : CosmicActivity() {
                 return true
             }
             val scheme = request.url.scheme?.lowercase()
-            if (scheme == "http" || scheme == "https") return false
+            if (scheme == "http" || scheme == "https") {
+                if (request.isForMainFrame) (view as? DeckWebView)?.beforeNavigation(request.url.toString())
+                return false
+            }
             ExternalLinks.openNative(this@QuickBrowserActivity, request.url)
             return true
         }
@@ -144,6 +148,7 @@ class QuickBrowserActivity : CosmicActivity() {
                 view.stopLoading()
                 return
             }
+            (view as? DeckWebView)?.pageStarted(url)
             if (view === current.web) showAddress(url)
             Uri.parse(url).host?.let { pageHosts[view] = it.lowercase() }
             (view as? DeckWebView)?.shieldStats?.enter(Uri.parse(url).host)

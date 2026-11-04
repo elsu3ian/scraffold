@@ -54,9 +54,9 @@ object Updates {
             val repository = Uri.parse(context.getString(R.string.github_repo_url)).path.orEmpty().trim('/')
             val raw = "https://raw.githubusercontent.com/$repository/$BRANCH"
             val build = download("$raw/app/build.gradle.kts") ?: return@withContext Check.Failed
-            val latestCode = VERSION_CODE.find(build)?.groupValues?.get(1)?.toIntOrNull() ?: return@withContext Check.Failed
+            val latestName = VERSION_NAME.find(build)?.groupValues?.get(1) ?: return@withContext Check.Failed
+            val latestCode = versionCodeOf(latestName) ?: return@withContext Check.Failed
             if (latestCode <= BuildConfig.VERSION_CODE) return@withContext Check.Current
-            val latestName = VERSION_NAME.find(build)?.groupValues?.get(1) ?: latestCode.toString()
             val link = download("$raw/README.md")?.let { DOWNLOAD_BUTTON.find(it)?.groupValues?.get(1) }
                 ?: context.getString(R.string.github_repo_url)
             val notes = download("$raw/CHANGELOG.md")?.let { releaseNotes(it, latestName) }
@@ -244,6 +244,18 @@ object Updates {
         }
     }
 
+    /**
+     * The version code a version name stands for, worked out as the build file does: x.y.z gives
+     * (x * 10000 + y * 100 + z) * 10, and a final release 9 more than its betas. Null for a name that
+     * doesn't fit.
+     */
+    fun versionCodeOf(name: String): Int? {
+        val parts = name.substringBefore('-').split('.').map { it.toIntOrNull() ?: return null }
+        if (parts.size != 3 || parts[1] >= 100 || parts[2] >= 100) return null
+        val final = if (name.contains('-')) 0 else 9
+        return (parts[0] * 10000 + parts[1] * 100 + parts[2]) * 10 + final
+    }
+
     private const val BRANCH = "main"
     private const val APK_TYPE = "application/vnd.android.package-archive"
     private const val PREFS = "updates"
@@ -253,7 +265,6 @@ object Updates {
     private const val NOTES_SHARE = 0.4f
     private const val CARD_MARGIN_DP = 20
     private val BOLD_NAME = Regex("""\*\*([^*]+)\*\*""")
-    private val VERSION_CODE = Regex("""\bversionCode\s*=\s*(\d+)""")
     private val VERSION_NAME = Regex("""\bversionName\s*=\s*"([^"]+)"""")
     /** The README's Download APK badge: [![Download APK](badge)](link) */
     private val DOWNLOAD_BUTTON = Regex("""\[!\[Download APK]\([^)]*\)]\(([^)\s]+)\)""")

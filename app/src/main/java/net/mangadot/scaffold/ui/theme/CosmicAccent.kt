@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ProgressBar
@@ -119,6 +120,21 @@ abstract class CosmicActivity : AppCompatActivity() {
             }
         })
         super.onCreate(savedInstanceState)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        HighRefresh.apply(this)
+    }
+
+    // For the Adaptive refresh rate: fast at once on a touch, slow again once the screen has been still
+    private val settle = Runnable { HighRefresh.settle(this) }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        val decor = window.decorView
+        decor.removeCallbacks(settle)
+        if (HighRefresh.onTouch(this, event)) decor.postDelayed(settle, HighRefresh.SETTLE_MS)
+        return super.dispatchTouchEvent(event)
     }
 
     private companion object {

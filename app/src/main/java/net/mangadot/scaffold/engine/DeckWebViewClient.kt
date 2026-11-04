@@ -54,6 +54,7 @@ class DeckWebViewClient(
         request: WebResourceRequest
     ): WebResourceResponse? {
         val uri = request.url
+        (view as? DeckWebView)?.watchRequest(request)
 
         // 1. Ad and tracker blocking
         if (settings.adblock) {
@@ -86,6 +87,7 @@ class DeckWebViewClient(
     ): Boolean {
         val uri = request.url
         val scheme = uri.scheme?.lowercase() ?: ""
+        if (request.isForMainFrame) (view as? DeckWebView)?.beforeNavigation(uri.toString())
 
         // Userscript links open the install prompt, as Tampermonkey does
         if (request.isForMainFrame && uri.path?.endsWith(".user.js", ignoreCase = true) == true && onUserscriptLink != null) {
@@ -137,6 +139,7 @@ class DeckWebViewClient(
 
     override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
         super.onPageStarted(view, url, favicon)
+        (view as? DeckWebView)?.pageStarted(url)
         pageHost = normalizeHost(Uri.parse(url).host)
         (view as? DeckWebView)?.shieldStats?.enter(pageHost)
     }
