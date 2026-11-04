@@ -22,7 +22,9 @@
 
 Scraffold is a native Android container for web apps. Add a site once and it gets its own place on your shelf and its own task in Recents. It opens without browser bars and comes back exactly where you left it.
 
-An ad blocker, a Tampermonkey-style userscript engine, background playback with proper media controls, and a tabbed browser are all included. There are no accounts and no analytics.
+It's like installing a site as a PWA, but it works for any site, including ones that don't offer a PWA, and each app can keep its own login. An ad blocker, a Tampermonkey-style userscript engine, background playback with proper media controls, and a tabbed browser are all included. There are no accounts and no analytics.
+
+If you've used Hermit or Native Alpha, Scraffold does the same job, with ad blocking and userscripts built in.
 
 > [!NOTE]
 > Scraffold is in **beta**. Expect rough edges, and please [report what you find](https://github.com/elsu3ian/scraffold/issues).
@@ -100,6 +102,8 @@ Requires **Android 8.0 (API 26)** or newer.
 1. Download `Scraffold-app-release-beta.apk` from the newest release on the [releases page](https://github.com/elsu3ian/scraffold/releases).
 2. Open the file and allow installs from that source if Android asks.
 3. Tap **+** on the shelf and add your first site.
+
+To get updates straight from GitHub, add `https://github.com/elsu3ian/scraffold` to [Obtainium](https://github.com/ImranR98/Obtainium) and turn on its pre-release option, since Scraffold's releases are betas for now. Scraffold also tells you about new versions by itself.
 
 > [!IMPORTANT]
 > **Coming from 1.0.3-beta or older?** Those builds were signed with a temporary key, so the new version can't install over them. Export a backup in **Settings**, uninstall, install the new version, and import the backup. You'll need to sign in to your sites again. This happens only once: from 1.1.0-beta on, every update installs over the last.
