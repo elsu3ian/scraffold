@@ -81,6 +81,18 @@ class AppAdapter(
             is GridViewHolder -> holder.bind(app)
             is ListViewHolder -> holder.bind(app)
         }
+        if (app.id == DEMO_ID) showDemoIcon(holder.itemView)
+    }
+
+    /** The guide's demo app wears Scraffold's own logo. */
+    private fun showDemoIcon(item: View) {
+        val icon = listOf(R.id.iv_app_icon, R.id.grid_iv_app_icon, R.id.list_iv_app_icon)
+            .firstNotNullOfOrNull { item.findViewById<ImageView>(it) } ?: return
+        val monogram = listOf(R.id.tv_icon_monogram, R.id.grid_tv_icon_monogram, R.id.list_tv_icon_monogram)
+            .firstNotNullOfOrNull { item.findViewById<View>(it) }
+        icon.setImageResource(R.mipmap.ic_launcher)
+        icon.visibility = View.VISIBLE
+        monogram?.visibility = View.GONE
     }
 
     private fun cleanDomain(url: String): String {
@@ -195,6 +207,11 @@ class AppAdapter(
     }
 
     companion object {
+        /** The app the guide shows on an empty shelf, which is never saved. */
+        const val DEMO_ID = "scraffold-guide-demo"
+
+        val DEMO_APP = WebAppEntity(id = DEMO_ID, name = "Demo app", url = "https://example.com")
+
         private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<WebAppEntity>() {
             override fun areItemsTheSame(oldItem: WebAppEntity, newItem: WebAppEntity) = oldItem.id == newItem.id
             override fun areContentsTheSame(oldItem: WebAppEntity, newItem: WebAppEntity) = oldItem == newItem

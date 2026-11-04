@@ -17,7 +17,7 @@
 
         <ImageButton
             android:id="@+id/browser_btn_close"
-            android:layout_width="40dp"
+            android:layout_width="36dp"
             android:layout_height="40dp"
             android:padding="8dp"
             android:scaleType="fitCenter"
@@ -25,23 +25,61 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Browser home" />
 
-        <EditText
-            android:id="@+id/browser_et_address"
+        <ImageButton
+            android:id="@+id/browser_btn_back"
+            android:layout_width="34dp"
+            android:layout_height="40dp"
+            android:padding="9dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_arrow_back"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Back" />
+
+        <ImageButton
+            android:id="@+id/browser_btn_forward"
+            android:layout_width="34dp"
+            android:layout_height="40dp"
+            android:padding="9dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_arrow_forward"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Forward" />
+
+        <!-- The address, with reload at its end the way phone browsers keep it -->
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="40dp"
             android:layout_weight="1"
-            android:layout_marginHorizontal="4dp"
-            android:paddingHorizontal="12dp"
-            android:background="@drawable/bg_card"
-            android:hint="Search or enter address"
-            android:textColorHint="@color/text_muted"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp"
-            android:maxLines="1"
-            android:inputType="textUri"
-            android:imeOptions="actionGo"
-            android:selectAllOnFocus="true"
-            android:importantForAutofill="no" />
+            android:layout_marginHorizontal="4dp">
+
+            <EditText
+                android:id="@+id/browser_et_address"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="38dp"
+                android:background="@drawable/bg_card"
+                android:hint="Search or enter address"
+                android:textColorHint="@color/text_muted"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:inputType="textUri"
+                android:imeOptions="actionGo"
+                android:selectAllOnFocus="true"
+                android:importantForAutofill="no" />
+
+            <ImageButton
+                android:id="@+id/browser_btn_reload"
+                android:layout_width="36dp"
+                android:layout_height="40dp"
+                android:layout_gravity="end|center_vertical"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_refresh"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Reload" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/browser_btn_tabs"
@@ -58,18 +96,8 @@
             android:contentDescription="Tabs" />
 
         <ImageButton
-            android:id="@+id/browser_btn_reload"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:padding="9dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/ic_refresh"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Reload" />
-
-        <ImageButton
             android:id="@+id/browser_btn_menu"
-            android:layout_width="40dp"
+            android:layout_width="36dp"
             android:layout_height="40dp"
             android:padding="9dp"
             android:scaleType="fitCenter"
@@ -120,7 +148,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:gravity="center"
-                    android:text="Ad-free look-ups. Logins stay on this phone."
+                    android:text="Browse any site. Your sign-ins stay on this phone."
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
 

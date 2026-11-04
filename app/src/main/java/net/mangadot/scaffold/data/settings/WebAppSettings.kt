@@ -14,7 +14,8 @@ data class WebAppSettings(
     val allowMic: Boolean = false,
     val acceptCookies: Boolean = true,
     val thirdPartyCookies: Boolean = false,
-    val adblock: Boolean = true,
+    // Off until it is turned on in Settings
+    val adblock: Boolean = false,
     val fullscreen: Boolean = true,
     val pinchZoom: Boolean = true,
     val desktop: Boolean = false,

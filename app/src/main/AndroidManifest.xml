@@ -97,6 +97,11 @@
             android:name=".ui.settings.WebAppSettingsActivity"
             android:exported="false" />
 
+        <!-- Daily usage -->
+        <activity
+            android:name=".ui.usage.UsageActivity"
+            android:exported="false" />
+
         <!-- About & Open Source Licenses Activity -->
         <activity
             android:name=".ui.about.AboutActivity"

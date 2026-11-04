@@ -37,7 +37,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Shield"
+                android:text="Ad blocking"
                 android:textColor="@color/text_primary"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -46,11 +46,26 @@
                 android:id="@+id/dialog_tv_blocked_count"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Shield: 0 requests blocked"
+                android:text="0 blocked so far"
                 android:textColor="@color/accent_emerald"
                 android:textSize="11sp"
                 android:fontFamily="monospace" />
         </LinearLayout>
+
+        <!-- Shown while blocking is on; turning it on goes through the notice below -->
+        <TextView
+            android:id="@+id/btn_turn_off_adblock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:text="Turn off"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_card"
+            android:clickable="true"
+            android:focusable="true" />
     </LinearLayout>
 
     <View
@@ -58,6 +73,112 @@
         android:layout_height="1dp"
         android:background="@color/border_primary"
         android:layout_marginVertical="12dp" />
+
+    <!-- While off: what it does, a fair warning, and a tick before it can be turned on -->
+    <LinearLayout
+        android:id="@+id/dialog_off_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ad blocking is turned off"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="When it's on, Scraffold stops ads, trackers and pop-ups in your apps and the browser, using well-known public block lists that update by themselves. Pages load faster and use less data."
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:lineSpacingExtra="2dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:padding="10dp"
+            android:background="@drawable/bg_card">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Before you turn it on"
+                android:textColor="@color/accent_orange"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Many sites are paid for by their ads. Some don't allow ad blockers, and a few may stop working or ask you to turn it off. If a site breaks, you can turn blocking off for just that site from the shield on the side ball."
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:lineSpacingExtra="2dp" />
+        </LinearLayout>
+
+        <CheckBox
+            android:id="@+id/dialog_check_understand"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="I understand"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            android:buttonTint="@color/accent_emerald" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="end"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btn_close_off"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:text="Close"
+                android:textColor="@color/accent_emerald"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_card"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/btn_turn_on_adblock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:text="Turn on"
+                android:textColor="@color/accent_emerald"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_card"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- While on: what each part does, and the lists -->
+    <LinearLayout
+        android:id="@+id/dialog_on_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
 
     <!-- Feature 1: EasyList & Network Filters -->
     <LinearLayout
@@ -70,7 +191,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Network Interception"
+            android:text="Blocking"
             android:textColor="@color/text_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -79,7 +200,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Blocks ads, trackers and pop-ups with Brave's adblock-rust engine, using EasyList, EasyPrivacy, uBlock filters, Peter Lowe and AdGuard Mobile. Lists update by themselves every few days."
+            android:text="Stops ads, trackers and pop-ups using well-known public block lists, which update by themselves every few days."
             android:textColor="@color/text_muted"
             android:textSize="10sp" />
     </LinearLayout>
@@ -96,7 +217,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Element Hiding"
+            android:text="Hiding"
             android:textColor="@color/text_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -105,7 +226,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Hides ad boxes from the moment a page opens, using each site's rules and common ad names."
+            android:text="Hides the empty boxes ads leave behind, as soon as a page opens."
             android:textColor="@color/text_muted"
             android:textSize="10sp" />
     </LinearLayout>
@@ -122,7 +243,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Scriptlets"
+            android:text="Page fixes"
             android:textColor="@color/text_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -131,7 +252,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Runs the small fixes the lists call for, like removing ads built into pages and getting past ad-blocker walls. Fetched from uBlock Origin (GPLv3) and Brave with the lists."
+            android:text="Removes ads built into pages and gets past 'turn off your ad blocker' walls. Downloaded with the lists."
             android:textColor="@color/text_muted"
             android:textSize="10sp" />
     </LinearLayout>
@@ -155,7 +276,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Stand-ins on every site"
+                android:text="Keep pages working"
                 android:textColor="@color/text_primary"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -172,7 +293,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Some blocked analytics and ad scripts get a harmless stand-in, so pages that call them keep working, as in uBlock Origin. Sites the lists name always get theirs; this adds the ones meant for every site. Off, those are just blocked, which ad-blocker tests score higher."
+            android:text="Gives some blocked scripts a harmless replacement, so pages that expect them don't break. Off, they're simply blocked, which ad-blocker test sites score higher."
             android:textColor="@color/text_muted"
             android:textSize="10sp" />
     </LinearLayout>
@@ -215,7 +336,7 @@
             android:layout_marginEnd="8dp"
             android:paddingHorizontal="14dp"
             android:paddingVertical="6dp"
-            android:text="Update lists"
+            android:text="Update now"
             android:textColor="@color/accent_emerald"
             android:textSize="12sp"
             android:textStyle="bold"
@@ -236,6 +357,7 @@
             android:background="@drawable/bg_card"
             android:clickable="true"
             android:focusable="true" />
+    </LinearLayout>
     </LinearLayout>
 
 </LinearLayout>

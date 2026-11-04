@@ -3,15 +3,15 @@
     <!-- The styled name, for titles only. Everything else, including the installed app name, uses app_name -->
     <string name="brand_name">ֆ𝖈𝖗𝖆𝖋𝖋𝖔𝖑𝖉</string>
     <string name="shelf_title">ֆ𝖈𝖗𝖆𝖋𝖋𝖔𝖑𝖉</string>
-    <string name="search_hint">Search apps or domains...</string>
+    <string name="search_hint">Search your apps</string>
     <string name="view_icons">Icons</string>
     <string name="view_grid">Grid</string>
     <string name="view_list">List</string>
-    <string name="add_web_app">Add WebApp</string>
-    <string name="save_to_shelf">Save to Shelf</string>
+    <string name="add_web_app">Add an app</string>
+    <string name="save_to_shelf">Add to shelf</string>
     <string name="script_editor">Script Editor</string>
-    <string name="global_settings">Global Settings</string>
-    <string name="cache_clear_confirm">Clear cached data?</string>
+    <string name="global_settings">Settings</string>
+    <string name="cache_clear_confirm">Clear temporary files?</string>
 
     <!-- Home screen folder -->
     <string name="folder_widget_name">App folder</string>
@@ -22,18 +22,18 @@
     
     <!-- About & Licenses -->
     <string name="about_title">About ֆ𝖈𝖗𝖆𝖋𝖋𝖔𝖑𝖉</string>
-    <string name="about_tagline">High-Density Multi-PWA Container &amp; Userscript Engine</string>
-    <string name="check_for_updates">Check for Updates</string>
+    <string name="about_tagline">Your favorite websites, as apps of their own</string>
+    <string name="check_for_updates">Check for updates</string>
     <string name="checking_updates">Checking for updates...</string>
     <string name="release_stage">Beta</string>
-    <string name="up_to_date">You are running the latest version (%s)</string>
-    <string name="update_available">New update available (%s)</string>
-    <string name="github_repository">GitHub Repository</string>
+    <string name="up_to_date">You\'re up to date (%s)</string>
+    <string name="update_available">Update available (%s)</string>
+    <string name="github_repository">Scraffold on GitHub</string>
     <string name="github_repo_url">https://github.com/elsu3ian/scraffold</string>
-    <string name="report_issue">Report an Issue</string>
+    <string name="report_issue">Report a problem</string>
     <string name="report_issue_url">https://github.com/elsu3ian/scraffold/issues</string>
-    <string name="badge_zero_telemetry">Zero Telemetry</string>
-    <string name="disclaimer_warranty">DISCLAIMER: PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. USE AT YOUR OWN RISK.</string>
+    <string name="badge_zero_telemetry">No tracking</string>
+    <string name="disclaimer_warranty">Scraffold comes as it is, with no warranty of any kind. Use it at your own risk.</string>
     <string name="open_source_licenses">Open Source Licenses</string>
     <string name="license_noncommercial">Noncommercial</string>
     <string name="license_mpl">Mozilla Public License 2.0</string>

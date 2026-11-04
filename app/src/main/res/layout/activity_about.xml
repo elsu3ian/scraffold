@@ -136,7 +136,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="DISTRIBUTION &amp; UPDATES"
+                android:text="UPDATES"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -161,7 +161,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="App Updates"
+                        android:text="Updates"
                         android:textColor="@color/text_primary"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -274,7 +274,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Bug reports &amp; feature requests"
+                        android:text="Something broken, or an idea?"
                         android:textColor="@color/text_muted"
                         android:textSize="10sp" />
                 </LinearLayout>
@@ -291,7 +291,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="ENGINE SPECIFICATIONS"
+                android:text="WHAT'S INSIDE"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -317,14 +317,14 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Core Runtime"
+                        android:text="Pages"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Android System WebView (Chromium)"
+                        android:text="Android's built-in Chrome"
                         android:textColor="@color/text_primary"
                         android:textSize="11sp"
                         android:fontFamily="monospace" />
@@ -347,14 +347,14 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Adblock Engine"
+                        android:text="Ad blocking"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Brave adblock-rust + filter lists"
+                        android:text="Brave's blocker, public lists"
                         android:textColor="@color/accent_emerald"
                         android:textSize="11sp"
                         android:fontFamily="monospace" />
@@ -377,14 +377,14 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Cosmetic Filtering"
+                        android:text="Ad hiding"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Per-site CSS element hiding"
+                        android:text="Hides leftover ad boxes"
                         android:textColor="@color/accent_emerald"
                         android:textSize="11sp"
                         android:fontFamily="monospace" />
@@ -407,14 +407,14 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Script Execution"
+                        android:text="Userscripts"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Pre-DOM addDocumentStartJavaScript"
+                        android:text="Run before a page loads"
                         android:textColor="@color/accent_purple_bright"
                         android:textSize="11sp"
                         android:fontFamily="monospace" />
@@ -437,14 +437,14 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Background Playback"
+                        android:text="Background play"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Media notification + controls"
+                        android:text="With lock screen controls"
                         android:textColor="@color/text_primary"
                         android:textSize="11sp"
                         android:fontFamily="monospace" />
@@ -474,7 +474,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Tabs + shared logins"
+                        android:text="Tabs, shared sign-ins"
                         android:textColor="@color/text_primary"
                         android:textSize="11sp"
                         android:fontFamily="monospace" />
@@ -497,14 +497,14 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Cache Auto-Purge"
+                        android:text="Storage"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="500 MB auto-clear"
+                        android:text="Cleans itself at 500 MB"
                         android:textColor="@color/text_primary"
                         android:textSize="11sp"
                         android:fontFamily="monospace" />
@@ -646,7 +646,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Open source libraries"
+                        android:text="Libraries Scraffold uses"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -689,7 +689,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="ֆ𝖈𝖗𝖆𝖋𝖋𝖔𝖑𝖉 • Built for speed, privacy, and full user sovereignty."
+                android:text="ֆ𝖈𝖗𝖆𝖋𝖋𝖔𝖑𝖉 • Made for speed and privacy."
                 android:textColor="@color/text_secondary"
                 android:textSize="10sp"
                 android:gravity="center"

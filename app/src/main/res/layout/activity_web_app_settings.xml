@@ -84,7 +84,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="Label"
+                    android:text="Name"
                     android:textColor="@color/text_muted"
                     android:textSize="10sp" />
 
@@ -116,7 +116,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Override global settings"
+                    android:text="Use its own settings"
                     android:textColor="@color/text_primary"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -133,7 +133,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="SECURITY &amp; PRIVACY"
+                android:text="PRIVACY &amp; PERMISSIONS"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -173,7 +173,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="DISPLAY &amp; CANVAS"
+                android:text="DISPLAY"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"

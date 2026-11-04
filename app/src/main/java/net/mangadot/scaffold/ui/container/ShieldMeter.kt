@@ -31,7 +31,7 @@ object ShieldMeter {
             view.tvShieldTotal.text = when {
                 !shieldOn -> "The shield is off here, so nothing is being blocked"
                 !siteOn -> "Turned off for this site, so nothing is being blocked"
-                else -> "All sites: ${engine.totalBlockedRequests} blocked · ${engine.ruleCount} rules"
+                else -> "All sites: ${engine.totalBlockedRequests} blocked"
             }
         }
 
@@ -41,7 +41,7 @@ object ShieldMeter {
         view.tvShieldSiteNote.text = when {
             !shieldOn -> "The shield is off for all of this app"
             site.isEmpty() -> "Open a page first"
-            else -> "Blocking, hiding and scriptlets on $site"
+            else -> "Blocking ads on $site"
         }
         view.switchShieldSite.setOnCheckedChangeListener { _, isChecked ->
             ShieldSites.setOff(activity, site, !isChecked)

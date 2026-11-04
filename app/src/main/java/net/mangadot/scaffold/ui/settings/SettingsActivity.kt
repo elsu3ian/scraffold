@@ -6,9 +6,11 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
@@ -16,19 +18,23 @@ import kotlinx.coroutines.launch
 import net.mangadot.scaffold.BuildConfig
 import net.mangadot.scaffold.R
 import net.mangadot.scaffold.data.backup.BackupManager
+import net.mangadot.scaffold.data.settings.GlobalWebSettingsStore
 import net.mangadot.scaffold.engine.FilterLists
 import net.mangadot.scaffold.databinding.ActivitySettingsBinding
 import net.mangadot.scaffold.databinding.DialogAdblockSettingsBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
 import net.mangadot.scaffold.engine.cache.CacheManager
+import net.mangadot.scaffold.data.usage.UsageStore
 import net.mangadot.scaffold.ui.about.AboutActivity
 import net.mangadot.scaffold.ui.shelf.MainActivity
 import net.mangadot.scaffold.ui.theme.CosmicActivity
 import net.mangadot.scaffold.ui.theme.CosmicThemeStore
 import net.mangadot.scaffold.ui.theme.applyDialogSurface
 import net.mangadot.scaffold.ui.theme.applyHeader
+import net.mangadot.scaffold.ui.usage.UsageActivity
 import net.mangadot.scaffold.ui.userscript.UserscriptsActivity
 import net.mangadot.scaffold.ui.theme.showCosmic
+import java.time.LocalDate
 
 class SettingsActivity : CosmicActivity() {
 
@@ -113,6 +119,13 @@ class SettingsActivity : CosmicActivity() {
         updateCacheDisplay()
 
         binding.settingsTvAboutVersion.text = "${getString(R.string.release_stage)} →"
+    }
+
+    // Default app settings can switch ad blocking too, so it's read again on the way back
+    override fun onResume() {
+        super.onResume()
+        showAdblockState()
+        binding.settingsTvUsageToday.text = "Today ${UsageStore.format(UsageStore.totalFor(this, LocalDate.now()))}"
     }
 
     private fun setupWindowInsets() {
@@ -208,13 +221,13 @@ class SettingsActivity : CosmicActivity() {
         // Clear Cache
         binding.settingsBtnClearCache.setOnClickListener {
             AlertDialog.Builder(this)
-                .setTitle("Clear Cache")
-                .setMessage("Clear cached web media and temporary files? Logins and cookies will be preserved.")
+                .setTitle("Clear temporary files?")
+                .setMessage("Pages may open a little slower the first time after this. You'll stay signed in.")
                 .setPositiveButton("Clear") { _, _ ->
                     lifecycleScope.launch {
                         CacheManager.purgeTemporaryHttpCache(this@SettingsActivity)
                         updateCacheDisplay()
-                        Toast.makeText(this@SettingsActivity, "Cache cleared successfully", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SettingsActivity, "Cleared", Toast.LENGTH_SHORT).show()
                     }
                 }
                 .setNegativeButton(android.R.string.cancel, null)
@@ -231,6 +244,10 @@ class SettingsActivity : CosmicActivity() {
             importBackup.launch(arrayOf("application/json", "application/octet-stream", "text/*"))
         }
 
+        binding.settingsRowUsage.setOnClickListener {
+            startActivity(Intent(this, UsageActivity::class.java))
+        }
+
         // About Row
         binding.settingsRowAbout.setOnClickListener {
             startActivity(Intent(this, AboutActivity::class.java))
@@ -239,24 +256,53 @@ class SettingsActivity : CosmicActivity() {
 
     private fun showAdblockDialog() {
         val dialogBinding = DialogAdblockSettingsBinding.inflate(LayoutInflater.from(this))
-        dialogBinding.dialogTvBlockedCount.text = "Shield: ${adBlockEngine.totalBlockedRequests} requests blocked"
+        dialogBinding.dialogTvBlockedCount.text = "${adBlockEngine.totalBlockedRequests} blocked so far"
 
         fun showFilterStatus() {
-            val updated = FilterLists.lastUpdated(this)
-            val date = if (updated == 0L) "not downloaded yet" else "updated ${DateUtils.getRelativeTimeSpanString(updated)}"
-            dialogBinding.dialogTvFilterStatus.text = "${adBlockEngine.ruleCount} rules, $date"
+            dialogBinding.dialogTvFilterStatus.text = filterStatus()
         }
         showFilterStatus()
+
+        // Off, it only explains itself; turning it on asks for the tick first
+        fun showPanels() {
+            val on = GlobalWebSettingsStore.adblock(this)
+            dialogBinding.dialogOnPanel.visibility = if (on) View.VISIBLE else View.GONE
+            dialogBinding.dialogOffPanel.visibility = if (on) View.GONE else View.VISIBLE
+            dialogBinding.btnTurnOffAdblock.visibility = if (on) View.VISIBLE else View.GONE
+            dialogBinding.dialogTvBlockedCount.text =
+                if (on) "${adBlockEngine.totalBlockedRequests} blocked so far" else "Off"
+            dialogBinding.dialogTvBlockedCount.setTextColor(ContextCompat.getColor(this, if (on) R.color.accent_emerald else R.color.text_muted))
+            showFilterStatus()
+        }
+        fun setAdblock(on: Boolean) {
+            GlobalWebSettingsStore.save(this, GlobalWebSettingsStore.load(this).copy(adblock = on))
+            if (on) adBlockEngine.updateListsIfDue()
+            showAdblockState()
+            showPanels()
+        }
+        showPanels()
+        fun showTurnOn(ticked: Boolean) {
+            dialogBinding.btnTurnOnAdblock.isEnabled = ticked
+            dialogBinding.btnTurnOnAdblock.alpha = if (ticked) 1f else 0.4f
+        }
+        dialogBinding.dialogCheckUnderstand.isChecked = false
+        showTurnOn(false)
+        dialogBinding.dialogCheckUnderstand.setOnCheckedChangeListener { _, ticked -> showTurnOn(ticked) }
+        dialogBinding.btnTurnOnAdblock.setOnClickListener { setAdblock(true) }
+        dialogBinding.btnTurnOffAdblock.setOnClickListener {
+            dialogBinding.dialogCheckUnderstand.isChecked = false
+            setAdblock(false)
+        }
         dialogBinding.dialogSwitchGenericStandIns.isChecked = adBlockEngine.genericStandIns
         dialogBinding.dialogSwitchGenericStandIns.setOnCheckedChangeListener { _, checked -> adBlockEngine.genericStandIns = checked }
         dialogBinding.btnUpdateFilters.setOnClickListener {
             dialogBinding.btnUpdateFilters.isEnabled = false
-            dialogBinding.dialogTvFilterStatus.text = "Downloading lists..."
+            dialogBinding.dialogTvFilterStatus.text = "Downloading the block lists..."
             lifecycleScope.launch {
                 val arrived = adBlockEngine.updateListsNow()
                 dialogBinding.btnUpdateFilters.isEnabled = true
                 showFilterStatus()
-                if (arrived == 0) Toast.makeText(this@SettingsActivity, "Couldn't download the lists", Toast.LENGTH_SHORT).show()
+                if (arrived == 0) Toast.makeText(this@SettingsActivity, "Couldn't download the block lists", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -268,17 +314,38 @@ class SettingsActivity : CosmicActivity() {
 
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         CosmicThemeStore.load(this).applyDialogSurface(dialog.window, dialogBinding.root, R.drawable.bg_card_solid)
-        dialogBinding.btnCloseAdblock.setOnClickListener {
-            dialog.dismiss()
-        }
+        dialogBinding.btnCloseAdblock.setOnClickListener { dialog.dismiss() }
+        dialogBinding.btnCloseOff.setOnClickListener { dialog.dismiss() }
         dialog.show()
+    }
+
+    /** How many block lists there are, how many rules they hold, and when they last came. */
+    private fun filterStatus(): String {
+        val updated = FilterLists.lastUpdated(this)
+        val lists = FilterLists.downloadedCount(this)
+        if (updated == 0L || lists == 0) return "Block lists not downloaded yet"
+        val rules = adBlockEngine.ruleCount
+        val age = if (System.currentTimeMillis() - updated < DateUtils.MINUTE_IN_MILLIS) "just now"
+            else DateUtils.getRelativeTimeSpanString(updated).toString().lowercase()
+        // Some lists can fail to download; they're tried again later
+        val all = FilterLists.listCount
+        val listed = if (lists < all) "$lists of $all block lists" else "$lists block lists"
+        val count = if (rules > 0) "$listed, ${"%,d".format(rules)} rules" else listed
+        return "$count${System.lineSeparator()}Updated $age"
+    }
+
+    /** Whether ads are blocked in the browsers and the apps that use the default settings. */
+    private fun showAdblockState() {
+        val on = GlobalWebSettingsStore.adblock(this)
+        binding.settingsTvAdblockState.text = if (on) "On" else "Off"
+        binding.settingsTvAdblockState.setTextColor(ContextCompat.getColor(this, if (on) R.color.accent_emerald else R.color.text_muted))
     }
 
     private fun updateCacheDisplay() {
         lifecycleScope.launch {
             val formatted = CacheManager.getFormattedCacheSize(this@SettingsActivity)
             val auto = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_PURGE, true)
-            binding.settingsTvCacheSize.text = if (auto) "$formatted (500 MB auto-purge threshold)" else "$formatted (auto-purge off)"
+            binding.settingsTvCacheSize.text = if (auto) "$formatted, cleared by itself at 500 MB" else "$formatted"
         }
     }
 

@@ -25,7 +25,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Running Web Apps"
+            android:text="Open apps"
             android:textColor="@color/text_primary"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -34,7 +34,7 @@
             android:id="@+id/tv_switcher_count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Fast Switch"
+            android:text="Switch apps"
             android:textColor="@color/accent_emerald"
             android:textSize="11sp"
             android:fontFamily="monospace" />

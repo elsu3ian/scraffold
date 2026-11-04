@@ -37,7 +37,7 @@ class DeckWebView @JvmOverloads constructor(
             if (!value) super.onVisibilityChanged(this, visibility)
         }
 
-    /** Desktop sites get a Windows Chrome user agent, and client hints that say the same. */
+    /** Desktop sites get the user agent Chrome on a phone sends for them, and client hints that say the same. */
     var desktopMode = false
         set(value) {
             field = value
@@ -114,8 +114,13 @@ class DeckWebView @JvmOverloads constructor(
         fun mobileUserAgent(context: Context): String =
             "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajor(context)}.0.0.0 Mobile Safari/537.36"
 
+        /**
+         * What Chrome on a phone sends when asked for the desktop site: Linux, which is what the page
+         * itself finds in navigator.platform. Claiming Windows instead had Cloudflare's check see a
+         * mismatch and ask again and again.
+         */
         fun desktopUserAgent(context: Context): String =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajor(context)}.0.0.0 Safari/537.36"
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajor(context)}.0.0.0 Safari/537.36"
 
         // Chrome's own reduced user agent, which carries only the major version of the engine underneath
         private fun chromeMajor(context: Context): String {
@@ -170,7 +175,7 @@ class DeckWebView @JvmOverloads constructor(
                 .setMobile(!desktop)
                 .setFormFactors(listOf(if (desktop) "Desktop" else "Mobile"))
             if (desktop) {
-                builder.setPlatform("Windows").setPlatformVersion("10.0.0").setArchitecture("x86")
+                builder.setPlatform("Linux").setPlatformVersion("").setArchitecture("x86")
                     .setBitness(64).setWow64(false).setModel("")
             } else {
                 builder.setPlatform("Android")
@@ -192,14 +197,14 @@ class DeckWebView @JvmOverloads constructor(
         }
 
         // Where a page asks for brands in script, WebView names itself; Chrome names itself instead.
-        // Desktop sites carry a Windows user agent, so the platform follows whichever is in use.
+        // Desktop sites carry a Linux user agent with no Android in it, so the platform follows whichever is in use.
         private const val BRANDS_SCRIPT = """
 (function () {
   var proto = window.NavigatorUAData && NavigatorUAData.prototype;
   if (!proto) return;
   var brands = @BRANDS@, fullBrands = @FULL_BRANDS@;
   var copy = function (list) { return list.map(function (b) { return { brand: b.brand, version: b.version }; }); };
-  var desktop = function () { return navigator.userAgent.indexOf('Windows') >= 0; };
+  var desktop = function () { return navigator.userAgent.indexOf('Android') < 0; };
   var platform = Object.getOwnPropertyDescriptor(proto, 'platform');
   var define = function (name, get) {
     var own = Object.getOwnPropertyDescriptor(proto, name);
@@ -207,7 +212,7 @@ class DeckWebView @JvmOverloads constructor(
   };
   define('brands', function () { return copy(brands); });
   define('mobile', function () { return !desktop(); });
-  define('platform', function () { return desktop() ? 'Windows' : platform.get.call(this); });
+  define('platform', function () { return desktop() ? 'Linux' : platform.get.call(this); });
   var high = proto.getHighEntropyValues;
   if (high) {
     proto.getHighEntropyValues = function () {
@@ -217,9 +222,9 @@ class DeckWebView @JvmOverloads constructor(
           if (values.fullVersionList) values.fullVersionList = copy(fullBrands);
           if ('mobile' in values) values.mobile = !desktop();
           if (desktop()) {
-            if ('platform' in values) values.platform = 'Windows';
+            if ('platform' in values) values.platform = 'Linux';
             if ('formFactors' in values) values.formFactors = ['Desktop'];
-            if ('platformVersion' in values) values.platformVersion = '10.0.0';
+            if ('platformVersion' in values) values.platformVersion = '';
             if ('architecture' in values) values.architecture = 'x86';
             if ('bitness' in values) values.bitness = '64';
             if ('model' in values) values.model = '';
@@ -236,7 +241,7 @@ class DeckWebView @JvmOverloads constructor(
       if (values) {
         if (values.brands) values.brands = copy(brands);
         if ('mobile' in values) values.mobile = !desktop();
-        if (desktop() && 'platform' in values) values.platform = 'Windows';
+        if (desktop() && 'platform' in values) values.platform = 'Linux';
       }
       return values;
     };

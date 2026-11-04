@@ -10,8 +10,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
-import android.util.Patterns
-import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -31,17 +29,13 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.ListAdapter
-import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
@@ -54,6 +48,7 @@ import net.mangadot.scaffold.data.db.entity.BrowserHistoryEntity
 import net.mangadot.scaffold.data.repository.ScriptRepository
 import net.mangadot.scaffold.data.repository.WebAppRepository
 import net.mangadot.scaffold.data.settings.GlobalWebSettingsStore
+import net.mangadot.scaffold.data.usage.UsageStore
 import net.mangadot.scaffold.databinding.ActivityQuickBrowserBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
 import net.mangadot.scaffold.engine.AppProfiles
@@ -65,7 +60,12 @@ import net.mangadot.scaffold.engine.TappedLink
 import net.mangadot.scaffold.engine.WebDownloads
 import net.mangadot.scaffold.ui.container.AppSwitcherBottomSheetDialog
 import net.mangadot.scaffold.ui.container.AppTasks
+import net.mangadot.scaffold.ui.browser.BrowserAddress.addressFor
+import net.mangadot.scaffold.ui.browser.BrowserAddress.isSignIn
+import net.mangadot.scaffold.ui.browser.BrowserAddress.isWebPage
 import net.mangadot.scaffold.ui.container.AssistiveBall
+import net.mangadot.scaffold.ui.container.FileChooser
+import net.mangadot.scaffold.ui.container.FullscreenVideo
 import net.mangadot.scaffold.ui.container.ElementPicker
 import net.mangadot.scaffold.ui.container.PageTools
 import net.mangadot.scaffold.ui.container.ShieldMeter
@@ -75,8 +75,6 @@ import net.mangadot.scaffold.ui.theme.CosmicActivity
 import net.mangadot.scaffold.ui.theme.CosmicTheme
 import net.mangadot.scaffold.ui.theme.CosmicThemeStore
 import net.mangadot.scaffold.ui.theme.showCosmic
-import org.json.JSONArray
-import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -86,12 +84,14 @@ import java.util.concurrent.ConcurrentHashMap
 class QuickBrowserActivity : CosmicActivity() {
 
     private lateinit var binding: ActivityQuickBrowserBinding
+    // Time on screen, for daily usage
+    private val usage = UsageStore.Timer(this) { BROWSER_ID }
     private lateinit var adBlockEngine: AdBlockEngine
     private lateinit var scripts: ScriptRepository
     private lateinit var cookies: CookieManager
     private lateinit var history: BrowserHistoryDao
-    private val historyAdapter = HistoryAdapter(onClick = { open(it.url) })
-    private val allHistoryAdapter = HistoryAdapter(
+    private val historyAdapter = BrowserHistoryAdapter(onClick = { open(it.url) })
+    private val allHistoryAdapter = BrowserHistoryAdapter(
         onClick = { open(it.url) },
         onRemove = { visit -> lifecycleScope.launch { history.delete(visit.url) } }
     )
@@ -100,42 +100,18 @@ class QuickBrowserActivity : CosmicActivity() {
     private var appliedTheme: CosmicTheme? = null
     private var adblock = true
 
-    private val tabs = mutableListOf<Tab>()
-    private lateinit var current: Tab
+    private val tabs = mutableListOf<BrowserTab>()
+    private lateinit var current: BrowserTab
 
     // Read on the network thread, where a WebView itself can't be asked
     private val pageHosts = ConcurrentHashMap<WebView, String>()
     private var rendererGone = false
     private var appliedScripts: List<Pair<String, Long>>? = null
-    private var pendingFiles: ValueCallback<Array<Uri>>? = null
-    private var fullscreenVideo: View? = null
-    private var fullscreenVideoCallback: WebChromeClient.CustomViewCallback? = null
-
-    /**
-     * Created without a page until it's first shown, so reopening with many tabs stays quick.
-     * [url] is where it stands, kept to what's safe to store: null on the start page, and empty for a
-     * window its opener is still filling in.
-     */
-    private class Tab(var url: String?, var title: String) {
-        var web: DeckWebView? = null
-        var scriptEngine: ScriptEngine? = null
-        var opener: Tab? = null
-        var desktop = false
-        var pageZoom: PageZoom? = null
-        var appliedPageZoom = PageZoom.DEFAULT_PERCENT
-        // Set while a new window waits out of sight for its first address
-        var heldPopup: TappedLink? = null
-        // Script setup still under way, which must not reach a page that has since closed
-        var setup: Job? = null
-    }
+    private val files = FileChooser(this)
+    private val fullscreenVideo = FullscreenVideo(this)
 
     private val atStart: Boolean
         get() = current.url == null
-
-    private val filePicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        pendingFiles?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data))
-        pendingFiles = null
-    }
 
     private val pageClient = object : WebViewClient() {
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
@@ -175,11 +151,15 @@ class QuickBrowserActivity : CosmicActivity() {
 
         override fun onPageFinished(view: WebView, url: String) {
             cookies.flush()
+            if (view === current.web) showArrows()
             tabFor(view)?.scriptEngine?.onPageFinished(view)
         }
 
         override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
-            if (view === current.web) showAddress(url)
+            if (view === current.web) {
+                showAddress(url)
+                showArrows()
+            }
             if (!isWebPage(url) || isSignIn(url)) return
             tabFor(view)?.url = url
             saveTabs()
@@ -235,7 +215,7 @@ class QuickBrowserActivity : CosmicActivity() {
     private fun tabFor(view: WebView) = tabs.firstOrNull { it.web === view }
 
     /** The page for [tab], set up the first time it's needed. Scripts apply to what it loads next. */
-    private fun webFor(tab: Tab, state: Bundle? = null): DeckWebView {
+    private fun webFor(tab: BrowserTab, state: Bundle? = null): DeckWebView {
         tab.web?.let { return it }
         val web = DeckWebView(this)
         AppProfiles.attach(web, BROWSER_ID)
@@ -267,7 +247,7 @@ class QuickBrowserActivity : CosmicActivity() {
         return web
     }
 
-    private fun select(tab: Tab, state: Bundle? = null) {
+    private fun select(tab: BrowserTab, state: Bundle? = null) {
         hideHistory()
         current = tab
         tab.heldPopup = null
@@ -287,11 +267,12 @@ class QuickBrowserActivity : CosmicActivity() {
         binding.browserEtAddress.setText(tab.url.orEmpty())
         if (!atStart) web.requestFocus()
         showTabCount()
+        showArrows()
         saveTabs()
     }
 
     /** Page and font size apply to the whole browser, so a tab catches up when it's shown. */
-    private fun applySizes(tab: Tab, web: DeckWebView) {
+    private fun applySizes(tab: BrowserTab, web: DeckWebView) {
         web.settings.textZoom = PageTools.savedTextZoom(this, BROWSER_ID)
         val zoom = PageTools.savedPageZoom(this, BROWSER_ID)
         if (zoom != tab.appliedPageZoom) {
@@ -304,14 +285,14 @@ class QuickBrowserActivity : CosmicActivity() {
         binding.browserBtnTabs.text = tabs.size.toString()
     }
 
-    private fun newTab(url: String? = null, opener: Tab? = null): Tab {
-        val tab = Tab(url, "")
+    private fun newTab(url: String? = null, opener: BrowserTab? = null): BrowserTab {
+        val tab = BrowserTab(url, "")
         tab.opener = opener
         tabs.add(if (opener != null) tabs.indexOf(opener) + 1 else tabs.size, tab)
         return tab
     }
 
-    private fun closeTab(tab: Tab) {
+    private fun closeTab(tab: BrowserTab) {
         val index = tabs.indexOf(tab)
         tabs.remove(tab)
         tabs.forEach { if (it.opener === tab) it.opener = null }
@@ -331,27 +312,12 @@ class QuickBrowserActivity : CosmicActivity() {
         }
     }
 
-    /** What's reopened after the app is ended, which a page's own back history doesn't survive for background tabs. */
-    private fun saveTabs() {
-        val list = JSONArray()
-        tabs.forEach { list.put(JSONObject().put("url", it.url ?: JSONObject.NULL).put("title", it.title).put("desktop", it.desktop)) }
-        getSharedPreferences(TABS_PREFS, MODE_PRIVATE).edit()
-            .putString(KEY_TABS, list.toString())
-            .putInt(KEY_SELECTED, tabs.indexOf(current))
-            .apply()
-    }
+    private fun saveTabs() = BrowserTabStore.save(this, tabs, tabs.indexOf(current))
 
     private fun loadTabs() {
-        val prefs = getSharedPreferences(TABS_PREFS, MODE_PRIVATE)
-        val saved = runCatching { JSONArray(prefs.getString(KEY_TABS, "[]")) }.getOrDefault(JSONArray())
-        for (i in 0 until saved.length()) {
-            val entry = saved.getJSONObject(i)
-            tabs += Tab(entry.optString("url").takeIf { !entry.isNull("url") && isWebPage(it) }, entry.optString("title")).apply {
-                desktop = entry.optBoolean("desktop")
-            }
-        }
-        if (tabs.isEmpty()) tabs += Tab(null, "")
-        current = tabs[prefs.getInt(KEY_SELECTED, 0).coerceIn(0, tabs.size - 1)]
+        val (saved, selected) = BrowserTabStore.load(this)
+        tabs += saved
+        current = tabs[selected]
     }
 
     private fun showTabs() {
@@ -446,6 +412,8 @@ class QuickBrowserActivity : CosmicActivity() {
             hideHistory()
             showStart()
         }
+        binding.browserBtnBack.setOnClickListener { goBack() }
+        binding.browserBtnForward.setOnClickListener { goForward() }
         binding.browserBtnTabs.setOnClickListener { showTabs() }
         binding.browserBtnReload.setOnClickListener { if (!atStart) current.web?.reload() }
         binding.browserPull.page = { current.web?.takeIf { !atStart } }
@@ -607,17 +575,8 @@ class QuickBrowserActivity : CosmicActivity() {
                 when {
                     assistiveBall.isOpen -> assistiveBall.close()
                     binding.browserHistoryPage.visibility == View.VISIBLE -> hideHistory()
-                    fullscreenVideo != null -> {
-                        fullscreenVideoCallback?.onCustomViewHidden()
-                        hideFullscreenVideo()
-                    }
-                    canGoBackToPage() -> {
-                        if (atStart) {
-                            current.url = ""
-                            showPage()
-                        }
-                        current.web?.goBack()
-                    }
+                    fullscreenVideo.isShowing -> fullscreenVideo.exit()
+                    canGoBackToPage() -> goBack()
                     // A tab opened from another page goes back to it, the way a popup closing does
                     current.opener != null -> closeTab(current)
                     atStart && tabs.size > 1 -> closeTab(current)
@@ -629,6 +588,47 @@ class QuickBrowserActivity : CosmicActivity() {
                 }
             }
         })
+    }
+
+    /** One page back, the start page behind the first one. */
+    private fun goBack() {
+        hideHistory()
+        when {
+            canGoBackToPage() -> {
+                if (atStart) {
+                    current.url = ""
+                    showPage()
+                }
+                current.web?.goBack()
+            }
+            !atStart -> showStart()
+        }
+    }
+
+    private fun goForward() {
+        hideHistory()
+        if (!canGoForwardToPage()) return
+        if (atStart) {
+            current.url = ""
+            showPage()
+        }
+        current.web?.goForward()
+    }
+
+    private fun canGoForwardToPage(): Boolean {
+        val list = current.web?.copyBackForwardList() ?: return false
+        val next = list.currentIndex + 1
+        return next < list.size && isWebPage(list.getItemAtIndex(next).url)
+    }
+
+    /** Dims an arrow with nowhere to go. */
+    private fun showArrows() {
+        val back = !atStart || canGoBackToPage()
+        val forward = canGoForwardToPage()
+        binding.browserBtnBack.isEnabled = back
+        binding.browserBtnBack.alpha = if (back) 1f else DIMMED
+        binding.browserBtnForward.isEnabled = forward
+        binding.browserBtnForward.alpha = if (forward) 1f else DIMMED
     }
 
     /** The start page sits on about:blank, which isn't a page to step back onto. */
@@ -667,6 +667,7 @@ class QuickBrowserActivity : CosmicActivity() {
         binding.browserStart.visibility = View.VISIBLE
         binding.browserEtAddress.setText("")
         binding.browserProgress.visibility = View.INVISIBLE
+        showArrows()
         saveTabs()
     }
 
@@ -682,7 +683,6 @@ class QuickBrowserActivity : CosmicActivity() {
     private fun showMenu() {
         val web = webFor(current)
         val actions = mutableListOf<Pair<String, () -> Unit>>("New tab" to { openNewTab() }, "History" to { showHistory() })
-        if (web.canGoForward()) actions += "Forward" to { web.goForward() }
         if (!atStart) actions += "Add to homepage" to {
             // A long page title makes a poor app name; left blank, the sheet names it after the site
             web.url?.let { showAddWebApp(web.title?.takeIf { it.length <= MAX_APP_NAME }.orEmpty(), it) }
@@ -725,7 +725,7 @@ class QuickBrowserActivity : CosmicActivity() {
      * Stays tied to the page that opened it, which sign-in windows need in order to report back. With
      * the shield on, it stays out of sight until its address shows whether anyone asked for it.
      */
-    private fun openWindowTab(opener: Tab, resultMsg: Message, tapped: TappedLink?): Boolean {
+    private fun openWindowTab(opener: BrowserTab, resultMsg: Message, tapped: TappedLink?): Boolean {
         val tab = newTab("", opener)
         val web = webFor(tab)
         if (tapped == null) {
@@ -741,7 +741,7 @@ class QuickBrowserActivity : CosmicActivity() {
     }
 
     /** Settles a held window on its first address. Returns whether it may go on loading. */
-    private fun admitPopup(tab: Tab, uri: Uri): Boolean {
+    private fun admitPopup(tab: BrowserTab, uri: Uri): Boolean {
         val tapped = tab.heldPopup ?: return true
         tab.heldPopup = null
         val openerHost = tab.opener?.web?.let { pageHosts[it] }
@@ -764,7 +764,7 @@ class QuickBrowserActivity : CosmicActivity() {
     }
 
     /** A window the page opened on another site without a link being tapped. Unless asked for, it closes. */
-    private fun offerPopup(tab: Tab, uri: Uri) {
+    private fun offerPopup(tab: BrowserTab, uri: Uri) {
         if (tab !in tabs) return
         var opened = false
         Snackbar.make(binding.browserRoot, "Blocked a popup to ${uri.host ?: uri.scheme}", Snackbar.LENGTH_LONG)
@@ -780,12 +780,6 @@ class QuickBrowserActivity : CosmicActivity() {
                 }
             })
             .show()
-    }
-
-    private fun hideFullscreenVideo() {
-        fullscreenVideo?.let { (window.decorView as ViewGroup).removeView(it) }
-        fullscreenVideo = null
-        fullscreenVideoCallback = null
     }
 
     private inner class PageChromeClient : WebChromeClient() {
@@ -813,27 +807,12 @@ class QuickBrowserActivity : CosmicActivity() {
             tabFor(view)?.let(::closeTab)
         }
 
-        override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
-            pendingFiles?.onReceiveValue(null)
-            pendingFiles = callback
-            return try {
-                filePicker.launch(params.createIntent())
-                true
-            } catch (e: Exception) {
-                pendingFiles = null
-                false
-            }
-        }
+        override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean =
+            files.choose(callback, params)
 
-        override fun onShowCustomView(view: View, callback: CustomViewCallback) {
-            fullscreenVideo = view
-            fullscreenVideoCallback = callback
-            (window.decorView as ViewGroup).addView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        }
+        override fun onShowCustomView(view: View, callback: CustomViewCallback) = fullscreenVideo.show(view, callback)
 
-        override fun onHideCustomView() {
-            hideFullscreenVideo()
-        }
+        override fun onHideCustomView() = fullscreenVideo.hide()
     }
 
     override fun onRestart() {
@@ -846,7 +825,17 @@ class QuickBrowserActivity : CosmicActivity() {
             theme.applyBackground(binding.browserRoot)
             appliedTheme = theme
         }
+        refreshAdblockIfChanged()
         refreshScriptsIfChanged()
+    }
+
+    /** Ad blocking turned on or off in Settings applies here on coming back, without closing the browser. */
+    private fun refreshAdblockIfChanged() {
+        val on = GlobalWebSettingsStore.load(this).adblock
+        if (on == adblock) return
+        adblock = on
+        tabs.forEach { it.web?.shield?.enabled = on }
+        if (!atStart) current.web?.reload()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -858,10 +847,16 @@ class QuickBrowserActivity : CosmicActivity() {
     }
 
     override fun onPause() {
+        usage.stop()
         adBlockEngine.flushStats()
         cookies.flush()
         saveTabs()
         super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        usage.start()
     }
 
     override fun onDestroy() {
@@ -869,67 +864,13 @@ class QuickBrowserActivity : CosmicActivity() {
         super.onDestroy()
     }
 
-    private class HistoryAdapter(
-        private val onClick: (BrowserHistoryEntity) -> Unit,
-        private val onRemove: ((BrowserHistoryEntity) -> Unit)? = null
-    ) : ListAdapter<BrowserHistoryEntity, HistoryAdapter.Row>(DIFF) {
-
-        class Row(view: View) : RecyclerView.ViewHolder(view) {
-            val title: TextView = view.findViewById(R.id.history_tv_title)
-            val url: TextView = view.findViewById(R.id.history_tv_url)
-            val remove: ImageButton = view.findViewById(R.id.history_btn_remove)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Row {
-            return Row(LayoutInflater.from(parent.context).inflate(R.layout.item_browser_history, parent, false))
-        }
-
-        override fun onBindViewHolder(holder: Row, position: Int) {
-            val visit = getItem(position)
-            holder.title.text = visit.title.ifEmpty { Uri.parse(visit.url).host ?: visit.url }
-            holder.url.text = visit.url
-            holder.itemView.setOnClickListener { onClick(visit) }
-            onRemove?.let { remove ->
-                holder.remove.visibility = View.VISIBLE
-                holder.remove.setOnClickListener { remove(visit) }
-            }
-        }
-
-        private companion object {
-            val DIFF = object : DiffUtil.ItemCallback<BrowserHistoryEntity>() {
-                override fun areItemsTheSame(oldItem: BrowserHistoryEntity, newItem: BrowserHistoryEntity) = oldItem.url == newItem.url
-                override fun areContentsTheSame(oldItem: BrowserHistoryEntity, newItem: BrowserHistoryEntity) = oldItem == newItem
-            }
-        }
-    }
-
     companion object {
         const val BROWSER_ID = "browser"
         private const val BLANK_PAGE = "about:blank"
-        private const val SEARCH_URL = "https://www.google.com/search?q="
         private const val HISTORY_SHOWN = 100
         private const val HISTORY_LIMIT = 2000
         private const val MAX_APP_NAME = 24
-        private const val TABS_PREFS = "scraffold_browser_tabs"
-        private const val KEY_TABS = "tabs"
-        private const val KEY_SELECTED = "selected"
+        private const val DIMMED = 0.35f
         private const val KEY_PAGE = "page"
-        private val SIGN_IN_HOST = Regex("^(accounts|login|signin|auth|sso)\\.", RegexOption.IGNORE_CASE)
-        private val SECRET_IN_URL = Regex("[?&#](code|state|token|access_token|id_token|password)=", RegexOption.IGNORE_CASE)
-
-        private fun isWebPage(url: String?) =
-            url != null && (url.startsWith("https://", ignoreCase = true) || url.startsWith("http://", ignoreCase = true))
-
-        /** These carry one-time login codes, which don't belong in history or in a backup file. */
-        fun isSignIn(url: String): Boolean {
-            return SIGN_IN_HOST.containsMatchIn(Uri.parse(url).host.orEmpty()) || SECRET_IN_URL.containsMatchIn(url)
-        }
-
-        /** An address opens as it is, and anything else, javascript: included, is searched for. */
-        fun addressFor(text: String): String = when {
-            isWebPage(text) -> text
-            !text.contains(' ') && !text.contains(':') && Patterns.WEB_URL.matcher(text).matches() -> "https://$text"
-            else -> SEARCH_URL + Uri.encode(text)
-        }
     }
 }

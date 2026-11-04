@@ -72,10 +72,10 @@ private fun FragmentActivity.installFromManifest(repository: WebAppRepository, a
 
 private fun nameFromHost(url: String): String {
     return try {
-        val host = Uri.parse(url).host ?: "WebApp"
+        val host = Uri.parse(url).host ?: "App"
         host.removePrefix("www.").substringBefore(".").replaceFirstChar { it.uppercase() }
     } catch (e: Exception) {
-        "WebApp"
+        "App"
     }
 }
 

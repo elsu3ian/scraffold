@@ -102,7 +102,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Launch WebApp"
+            android:text="Open app"
             android:textColor="@color/text_primary"
             android:textSize="13sp"
             android:textStyle="bold" />
@@ -139,7 +139,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Configure"
+            android:text="Change"
             android:textColor="@color/text_muted"
             android:textSize="12sp" />
     </LinearLayout>
@@ -165,7 +165,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="AdBlock Shield"
+                android:text="Block ads"
                 android:textColor="@color/text_primary"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -173,7 +173,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Block ads, popups &amp; anti-adblock walls"
+                android:text="Ads, pop-ups, and 'turn off your ad blocker' walls"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp" />
         </LinearLayout>
@@ -208,7 +208,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Fullscreen Mode"
+                android:text="Fullscreen"
                 android:textColor="@color/text_primary"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -216,7 +216,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Hide system status bar and navigation area"
+                android:text="Hide the status and navigation bars"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp" />
         </LinearLayout>
@@ -289,7 +289,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
-            android:text="Delete WebApp from Shelf"
+            android:text="Remove from shelf"
             android:textColor="@color/accent_rose"
             android:textSize="13sp"
             android:textStyle="bold" />

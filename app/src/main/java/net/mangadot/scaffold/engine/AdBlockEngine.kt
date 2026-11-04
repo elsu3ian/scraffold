@@ -14,7 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.mangadot.scaffold.ui.browser.QuickBrowserActivity
+import net.mangadot.scaffold.ui.browser.BrowserAddress
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -216,7 +216,7 @@ class AdBlockEngine private constructor(private val context: Context) {
         val sameSite = AdblockNative.check(uri.toString(), siteUrl(openerHost), "other", false) and AdblockNative.THIRD_PARTY == 0
         if (openerHost != null && sameSite) return PopupVerdict.OPEN
         // Signing in through another site happens in a window the page needs to hear back from
-        if (QuickBrowserActivity.isSignIn(uri.toString())) return PopupVerdict.OPEN
+        if (BrowserAddress.isSignIn(uri.toString())) return PopupVerdict.OPEN
         return PopupVerdict.ASK
     }
 

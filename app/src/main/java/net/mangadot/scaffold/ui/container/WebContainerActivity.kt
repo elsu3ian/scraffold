@@ -1,33 +1,18 @@
 package net.mangadot.scaffold.ui.container
 
-import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.res.ColorStateList
-import android.graphics.Bitmap
-import android.app.ActivityManager
-import android.graphics.BitmapFactory
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import net.mangadot.scaffold.data.settings.WebAppSettings
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
-import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.CookieManager
-import android.webkit.GeolocationPermissions
-import android.webkit.PermissionRequest
-import android.webkit.ValueCallback
-import android.webkit.WebChromeClient
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
@@ -36,7 +21,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -47,9 +31,9 @@ import net.mangadot.scaffold.data.repository.ScriptRepository
 import net.mangadot.scaffold.data.repository.WebAppRepository
 import net.mangadot.scaffold.data.settings.effectiveSettings
 import net.mangadot.scaffold.data.settings.withSettings
+import net.mangadot.scaffold.data.usage.UsageStore
 import net.mangadot.scaffold.databinding.ActivityWebContainerBinding
 import net.mangadot.scaffold.engine.*
-import net.mangadot.scaffold.engine.AppIcons
 import net.mangadot.scaffold.engine.gesture.WebGestures
 import net.mangadot.scaffold.engine.userscript.UserscriptMeta
 import net.mangadot.scaffold.ui.browser.ExternalLinks
@@ -57,12 +41,13 @@ import net.mangadot.scaffold.ui.settings.SettingsActivity
 import net.mangadot.scaffold.ui.theme.CosmicActivity
 import net.mangadot.scaffold.ui.theme.CosmicTheme
 import net.mangadot.scaffold.ui.theme.CosmicThemeStore
-import net.mangadot.scaffold.ui.theme.showCosmic
 import net.mangadot.scaffold.ui.userscript.UserscriptInstallPrompt
 
 class WebContainerActivity : CosmicActivity() {
 
     private lateinit var binding: ActivityWebContainerBinding
+    // Time on screen, for daily usage
+    private val usage = UsageStore.Timer(this) { currentApp?.id }
     private lateinit var webAppRepository: WebAppRepository
     private lateinit var scriptRepository: ScriptRepository
     private lateinit var adBlockEngine: AdBlockEngine
@@ -73,18 +58,18 @@ class WebContainerActivity : CosmicActivity() {
     private var currentApp: WebAppEntity? = null
     private lateinit var assistiveBall: AssistiveBall
     private lateinit var appLook: AppLook
-    private var iconLookup: Job? = null
-    private var iconLookups = 0
-    private var manifestReads = 0
+    private lateinit var identity: AppIdentity
     private var isFullscreenEnabled = false
     private var showProgressBar = true
     private var userscriptsOn = true
     private var clearCacheOnExit = false
-    private var pendingLocation: Pair<String, GeolocationPermissions.Callback>? = null
-    private var pendingMedia: Pair<PermissionRequest, List<String>>? = null
-    private var pendingFiles: ValueCallback<Array<Uri>>? = null
-    private var fullscreenVideo: View? = null
-    private var fullscreenVideoCallback: WebChromeClient.CustomViewCallback? = null
+    private val permissions = PagePermissions(this)
+    private val files = FileChooser(this)
+    private val fullscreenVideo = FullscreenVideo(
+        this,
+        onShown = { WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.systemBars()) },
+        onHidden = { configureFullscreen(isFullscreenEnabled) }
+    )
     private var softwareNav = false
     private lateinit var cookies: CookieManager
     private lateinit var pageZoom: PageZoom
@@ -94,24 +79,7 @@ class WebContainerActivity : CosmicActivity() {
     private var appliedSettings: WebAppSettings? = null
     private var appliedScripts: List<Pair<String, Long>> = emptyList()
 
-    private val locationPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
-        pendingLocation?.let { (origin, callback) -> callback.invoke(origin, results.values.any { it }, false) }
-        pendingLocation = null
-    }
-
-    private val mediaPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-        pendingMedia?.let { (request, allowed) -> grantHeld(request, allowed) }
-        pendingMedia = null
-    }
-
-    private val filePicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        pendingFiles?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data))
-        pendingFiles = null
-    }
-
     companion object {
-        private const val MAX_ICON_LOOKUPS = 6
-        private const val RECENTS_ICON_PX = 96
         const val EXTRA_NAVIGATE_URL = "extra_navigate_url"
         const val EXTRA_APP_ID = "extra_app_id"
         const val EXTRA_APP_URL = "extra_app_url"
@@ -154,6 +122,7 @@ class WebContainerActivity : CosmicActivity() {
         cookies = AppProfiles.cookies(this, appId)
         pageZoom = PageZoom(binding.deckWebview)
         appLook = AppLook(this)
+        identity = AppIdentity(this, webAppRepository, binding.deckWebview, current = { currentApp }, update = { currentApp = it })
 
         setupWindowInsets()
         setupWebView(appId, appUrl)
@@ -189,9 +158,12 @@ class WebContainerActivity : CosmicActivity() {
                 // Keeps a fresh login safe even if the app is killed before it next pauses
                 cookies.flush()
                 rememberPage()
-                upgradeIcon()
+                identity.upgradeIcon()
                 appLook.hideSplash()
-                readManifestFromPage()
+                identity.readManifest { merged ->
+                    appliedSettings?.let { webViewClient.updateWebApp(merged, it) }
+                    appLook.apply(merged, showSplash = false)
+                }
             },
             onUserscriptLink = { url -> UserscriptInstallPrompt.fromUrl(this, scriptRepository, url) },
             onRendererGone = {
@@ -214,12 +186,12 @@ class WebContainerActivity : CosmicActivity() {
                 }
             },
             onExternalLinkRequested = { uri -> openWindowLink(uri) },
-            onLocationRequested = { origin, callback -> requestLocation(origin, callback) },
-            onFaviconReceived = { icon -> storeFavicon(icon) },
-            onMediaRequested = { request, allowed -> requestMedia(request, allowed) },
-            onFileChooser = { callback, params -> chooseFiles(callback, params) },
-            onShowFullscreenVideo = { view, callback -> showFullscreenVideo(view, callback) },
-            onHideFullscreenVideo = { hideFullscreenVideo() },
+            onLocationRequested = { origin, callback -> permissions.requestLocation(origin, callback) },
+            onFaviconReceived = { icon -> identity.storeFavicon(icon) },
+            onMediaRequested = { request, allowed -> permissions.requestMedia(request, allowed) },
+            onFileChooser = { callback, params -> files.choose(callback, params) },
+            onShowFullscreenVideo = { view, callback -> fullscreenVideo.show(view, callback) },
+            onHideFullscreenVideo = { fullscreenVideo.hide() },
             onPopupHeld = { uri -> offerPopup(uri) }
         )
 
@@ -358,17 +330,6 @@ class WebContainerActivity : CosmicActivity() {
         }
     }
 
-    private fun showTaskInRecents(app: WebAppEntity) {
-        if (app.name.isEmpty()) return
-        lifecycleScope.launch {
-            val icon = withContext(Dispatchers.IO) {
-                app.iconUrl?.let(BitmapFactory::decodeFile)?.let { Bitmap.createScaledBitmap(it, RECENTS_ICON_PX, RECENTS_ICON_PX, true) }
-            }
-            @Suppress("DEPRECATION")
-            setTaskDescription(ActivityManager.TaskDescription(app.name, icon))
-        }
-    }
-
     private fun showTextSizeDialog() {
         PageTools.showSizeDialog(this, currentApp?.id.orEmpty(), binding.deckWebview.settings, pageZoom)
     }
@@ -459,124 +420,15 @@ class WebContainerActivity : CosmicActivity() {
             .show()
     }
 
-    private fun requestMedia(request: PermissionRequest, allowed: List<String>) {
-        val missing = allowed.mapNotNull(::androidPermissionFor).filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-        if (missing.isEmpty()) {
-            grantHeld(request, allowed)
-        } else {
-            pendingMedia = request to allowed
-            mediaPermission.launch(missing.toTypedArray())
-        }
-    }
-
-    private fun androidPermissionFor(resource: String): String? = when (resource) {
-        PermissionRequest.RESOURCE_VIDEO_CAPTURE -> Manifest.permission.CAMERA
-        PermissionRequest.RESOURCE_AUDIO_CAPTURE -> Manifest.permission.RECORD_AUDIO
-        else -> null
-    }
-
-    /** Grants what Android also allows; DRM needs no Android permission. */
-    private fun grantHeld(request: PermissionRequest, allowed: List<String>) {
-        val held = allowed.filter { resource ->
-            val permission = androidPermissionFor(resource)
-            permission == null || ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-        }
-        if (held.isEmpty()) request.deny() else request.grant(held.toTypedArray())
-    }
-
-    private fun chooseFiles(callback: ValueCallback<Array<Uri>>, params: WebChromeClient.FileChooserParams): Boolean {
-        pendingFiles?.onReceiveValue(null)
-        pendingFiles = callback
-        return try {
-            filePicker.launch(params.createIntent())
-            true
-        } catch (e: Exception) {
-            pendingFiles = null
-            Toast.makeText(this, "No app can choose files on this device", Toast.LENGTH_SHORT).show()
-            false
-        }
-    }
-
-    private fun showFullscreenVideo(view: View, callback: WebChromeClient.CustomViewCallback) {
-        fullscreenVideo = view
-        fullscreenVideoCallback = callback
-        (window.decorView as ViewGroup).addView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.systemBars())
-    }
-
-    private fun hideFullscreenVideo() {
-        fullscreenVideo?.let { (window.decorView as ViewGroup).removeView(it) }
-        fullscreenVideo = null
-        fullscreenVideoCallback = null
-        configureFullscreen(isFullscreenEnabled)
-    }
-
     private fun showScriptMenu() {
         PageTools.showScriptMenu(this, binding.deckWebview.url.orEmpty(), scriptRepository, scriptEngine, userscriptsOn)
-    }
-
-    /** Sites that refuse the shelf's own icon fetch still hand their favicon to the page they load. */
-    private fun storeFavicon(icon: Bitmap) {
-        val app = currentApp?.takeIf { it.iconUrl == null && it.name.isNotEmpty() } ?: return
-        currentApp = app.copy(iconUrl = "")
-        lifecycleScope.launch {
-            webAppRepository.updateIconUrl(app.id, AppIcons.save(this@WebContainerActivity, app.id, icon))
-        }
-    }
-
-    private fun upgradeIcon() {
-        val app = currentApp?.takeIf { it.name.isNotEmpty() } ?: return
-        if (iconLookups >= MAX_ICON_LOOKUPS) return
-        iconLookups++
-        // A newer page replaces the last lookup, which may have been on a security check that navigated away
-        iconLookup?.cancel()
-        iconLookup = lifecycleScope.launch {
-            val icon = AppIcons.betterIconFromPage(this@WebContainerActivity, binding.deckWebview, app)
-            if (icon != null) {
-                val path = AppIcons.save(this@WebContainerActivity, app.id, icon)
-                webAppRepository.updateIconUrl(app.id, path)
-                currentApp = currentApp?.copy(iconUrl = path)
-            }
-        }
-    }
-
-    /** For an app whose site adds its manifest with script, so it couldn't be read when the app was added. */
-    private fun readManifestFromPage() {
-        val app = currentApp?.takeIf { it.name.isNotEmpty() && ManifestInstall.isPending(this, it.id) } ?: return
-        if (manifestReads++ >= MAX_ICON_LOOKUPS) return
-        lifecycleScope.launch {
-            val updated = ManifestInstall.fromPage(this@WebContainerActivity, binding.deckWebview, app) ?: return@launch
-            ManifestInstall.clear(this@WebContainerActivity, app.id)
-            val latest = webAppRepository.getWebAppById(app.id).first() ?: return@launch
-            val merged = latest.copy(
-                name = updated.name, startUrl = updated.startUrl, scope = updated.scope, display = updated.display,
-                themeColor = updated.themeColor, backgroundColor = updated.backgroundColor
-            )
-            webAppRepository.updateWebApp(merged)
-            currentApp = merged
-            appliedSettings?.let { webViewClient.updateWebApp(merged, it) }
-            appLook.apply(merged, showSplash = false)
-        }
-    }
-
-    private fun requestLocation(origin: String, callback: GeolocationPermissions.Callback) {
-        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            callback.invoke(origin, true, false)
-        } else {
-            pendingLocation = origin to callback
-            locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-        }
     }
 
     private fun loadAppData(appId: String, initialUrl: String) {
         lifecycleScope.launch {
             val app = webAppRepository.getWebAppById(appId).first() ?: WebAppEntity(id = appId, name = "", url = initialUrl)
             currentApp = app
-            showTaskInRecents(app)
+            identity.showInRecents(app)
             // Android brought back the page as it was, so there's nothing to wait for behind a splash
             appLook.apply(app, showSplash = restoredState == null)
             val settings = app.effectiveSettings(this@WebContainerActivity)
@@ -661,9 +513,8 @@ class WebContainerActivity : CosmicActivity() {
     private fun setupBackNavigation() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (fullscreenVideo != null) {
-                    fullscreenVideoCallback?.onCustomViewHidden()
-                    hideFullscreenVideo()
+                if (fullscreenVideo.isShowing) {
+                    fullscreenVideo.exit()
                 } else if (assistiveBall.isOpen) {
                     hideQuickMenu()
                 } else if (binding.deckWebview.canGoBack()) {
@@ -678,11 +529,8 @@ class WebContainerActivity : CosmicActivity() {
         })
     }
 
-    private fun dpToPx(dp: Int): Int {
-        return (dp * resources.displayMetrics.density).toInt()
-    }
-
     override fun onPause() {
+        usage.stop()
         adBlockEngine.flushStats()
         // WebView only writes cookies to disk every so often, so a kill could otherwise lose a fresh login
         cookies.flush()
@@ -694,6 +542,7 @@ class WebContainerActivity : CosmicActivity() {
     override fun onResume() {
         super.onResume()
         binding.deckWebview.onResume()
+        usage.start()
     }
 
     override fun onRestart() {

@@ -92,6 +92,13 @@ object FilterLists {
         if (!partial.renameTo(File(folder(context), fileName))) partial.delete()
     }
 
+    /** How many block lists there are to download. */
+    val listCount: Int
+        get() = LISTS.size
+
+    /** How many of the block lists are on the phone. */
+    fun downloadedCount(context: Context): Int = files(context).size
+
     fun lastUpdated(context: Context): Long = prefs(context).getLong(KEY_UPDATED, 0L)
 
     fun isDue(context: Context): Boolean {

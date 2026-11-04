@@ -27,7 +27,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="+ Add New WebApp"
+            android:text="Add an app"
             android:textColor="@color/text_primary"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -51,7 +51,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Website URL"
+        android:text="Website address"
         android:textColor="@color/text_muted"
         android:textSize="11sp"
         android:textStyle="bold" />
@@ -87,7 +87,7 @@
         android:layout_marginTop="4dp"
         android:background="@drawable/bg_card"
         android:paddingHorizontal="12dp"
-        android:hint="Choose a name / Auto-fetch"
+        android:hint="Leave empty to use the site's name"
         android:textColor="@color/text_primary"
         android:textColorHint="@color/text_muted"
         android:textSize="13sp"
@@ -129,14 +129,14 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:text="Auto-fetch from site"
+                android:text="From the site"
                 android:textColor="@color/accent_emerald"
                 android:textSize="12sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Favicon"
+                android:text="Site icon"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:fontFamily="monospace" />
@@ -208,7 +208,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
-                android:text="Pinch-To-Zoom"
+                android:text="Pinch to zoom"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp" />
         </LinearLayout>

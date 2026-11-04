@@ -114,7 +114,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Static background color"
+                android:text="Plain background color"
                 android:textColor="@color/text_primary"
                 android:textSize="13sp" />
 
@@ -144,7 +144,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Radiant background"
+                android:text="Cosmic background"
                 android:textColor="@color/text_primary"
                 android:textSize="13sp" />
 
@@ -173,7 +173,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Edit Cosmic Radiant background"
+                android:text="Edit the Cosmic background"
                 android:textColor="@color/accent_emerald"
                 android:textSize="13sp" />
 
@@ -265,7 +265,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Cosmic styling"
+                    android:text="Glass look"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp" />
 
@@ -288,7 +288,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Dim nebula in chapter reader"
+                    android:text="Dim the background inside apps"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp" />
 
@@ -311,7 +311,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Auto-sync with theme accent"
+                    android:text="Match the accent color"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp" />
 
@@ -351,7 +351,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:text="NEBULA GLOWS &amp; GEOMETRY"
+            android:text="GLOWS"
             android:textColor="@color/accent_emerald"
             android:textSize="10sp"
             android:textStyle="bold"
@@ -368,7 +368,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Glow intensity"
+                android:text="Brightness"
                 android:textColor="@color/text_primary"
                 android:textSize="13sp" />
 
@@ -402,7 +402,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Gradient rotation"
+                android:text="Angle"
                 android:textColor="@color/text_primary"
                 android:textSize="13sp" />
 
@@ -460,7 +460,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Glow 1 (Top-Left)"
+                android:text="Top-left glow"
                 android:textColor="@color/text_primary"
                 android:textSize="13sp" />
 
@@ -501,7 +501,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Glow 2 (Top-Right)"
+                android:text="Top-right glow"
                 android:textColor="@color/text_primary"
                 android:textSize="13sp" />
 
@@ -542,7 +542,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Glow 3 (Bottom)"
+                android:text="Bottom glow"
                 android:textColor="@color/text_primary"
                 android:textSize="13sp" />
 
@@ -586,7 +586,7 @@
                 android:layout_weight="1"
                 android:background="@drawable/bg_cosmic_sync"
                 android:gravity="center"
-                android:text="↻ Sync theme now"
+                android:text="↻ Match the accent now"
                 android:textColor="@color/accent_emerald_bright"
                 android:textSize="11sp"
                 android:fontFamily="monospace"

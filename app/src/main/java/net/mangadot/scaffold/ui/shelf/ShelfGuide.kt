@@ -26,7 +26,8 @@ import net.mangadot.scaffold.ui.theme.CosmicCard
  */
 class ShelfGuide(private val activity: ComponentActivity, private val steps: List<Step>, private val done: () -> Unit) {
 
-    class Step(val target: View?, val title: String, val body: String)
+    /** [sticker], when set, is a small label on the corner of the spotlight, like DEMO. */
+    class Step(val target: View?, val title: String, val body: String, val sticker: String? = null)
 
     private val density = activity.resources.displayMetrics.density
     private val decor = activity.window.decorView as ViewGroup
@@ -103,6 +104,7 @@ class ShelfGuide(private val activity: ComponentActivity, private val steps: Lis
                 where[1] + target.height + grow
             )
         }
+        spotlight.sticker = step.sticker
         spotlight.hole = hole
 
         val margin = (20 * density).toInt()
@@ -140,6 +142,7 @@ class ShelfGuide(private val activity: ComponentActivity, private val steps: Lis
                 field = value
                 invalidate()
             }
+        var sticker: String? = null
 
         private val density = context.resources.displayMetrics.density
         private val dim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(DIM_ALPHA, 0, 0, 0) }
@@ -158,6 +161,33 @@ class ShelfGuide(private val activity: ComponentActivity, private val steps: Lis
             hole?.let { path.addRoundRect(it, radius, radius, Path.Direction.CW) }
             canvas.drawPath(path, dim)
             hole?.let { canvas.drawRoundRect(it, radius, radius, ring) }
+            val label = sticker
+            val around = hole
+            if (label != null && around != null) drawSticker(canvas, label, around)
+        }
+
+        private val stickerFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = CosmicAccent.color }
+        private val stickerText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = 10 * density
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            letterSpacing = 0.08f
+        }
+
+        // A pill over the top right corner of the window, tilted a little like a sticker
+        private fun drawSticker(canvas: Canvas, label: String, around: RectF) {
+            val padX = 7 * density
+            val padY = 3.5f * density
+            val textWidth = stickerText.measureText(label)
+            val w = textWidth + padX * 2
+            val h = stickerText.textSize + padY * 2
+            val cx = (around.right - w / 4).coerceAtMost(width - w / 2 - 2 * density)
+            val cy = around.top
+            canvas.save()
+            canvas.rotate(STICKER_TILT, cx, cy)
+            canvas.drawRoundRect(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2, h / 2, h / 2, stickerFill)
+            canvas.drawText(label, cx - textWidth / 2, cy - (stickerText.ascent() + stickerText.descent()) / 2, stickerText)
+            canvas.restore()
         }
     }
 
@@ -168,5 +198,6 @@ class ShelfGuide(private val activity: ComponentActivity, private val steps: Lis
         const val EDGE_DP = 4
         const val CARD_GAP_DP = 14
         const val FADE_MS = 200L
+        const val STICKER_TILT = 12f
     }
 }

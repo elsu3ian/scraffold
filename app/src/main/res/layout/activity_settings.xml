@@ -39,7 +39,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="System Defaults"
+            android:text=""
             android:textColor="@color/text_muted"
             android:textSize="10sp"
             android:fontFamily="monospace" />
@@ -85,7 +85,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Adblock Settings"
+                    android:text="Ad blocking"
                     android:textColor="@color/text_primary"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -93,7 +93,8 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Active"
+                    android:id="@+id/settings_tv_adblock_state"
+                    android:text="Off"
                     android:textColor="@color/accent_emerald"
                     android:textSize="10sp"
                     android:paddingHorizontal="8dp"
@@ -118,7 +119,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Default Web App Settings"
+                    android:text="Default app settings"
                     android:textColor="@color/text_primary"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -126,7 +127,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Configure"
+                    android:text="Change"
                     android:textColor="@color/text_muted"
                     android:textSize="10sp"
                     android:paddingHorizontal="8dp"
@@ -151,7 +152,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Userscript Engine"
+                    android:text="Userscripts"
                     android:textColor="@color/text_primary"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -199,12 +200,45 @@
                     android:paddingVertical="3dp" />
             </LinearLayout>
 
+            <!-- Row 5: How long each app was used, day by day -->
+            <LinearLayout
+                android:id="@+id/settings_row_usage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_card"
+                android:foreground="?attr/selectableItemBackground"
+                android:padding="12dp"
+                android:layout_marginTop="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Daily usage"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/settings_tv_usage_today"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_muted"
+                    android:textSize="10sp"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp" />
+            </LinearLayout>
+
             <!-- Section 2: Exact Toggles from Prototype (Lines 231-280) -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="PREFERENCES &amp; GESTURES"
+                android:text="GESTURES &amp; DISPLAY"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -229,7 +263,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Clear cache after usage"
+                        android:text="Clear temporary/cache files when leaving an app"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp" />
 
@@ -289,7 +323,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Use two-finger swipe down to reload page"
+                        android:text="Swipe down with two fingers to reload"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp" />
 
@@ -319,7 +353,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Use two-finger swipe left/right for browser navigation"
+                        android:text="Swipe sideways with two fingers to go back or forward"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp" />
 
@@ -349,7 +383,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Use three-finger swipe left/right to switch Web Apps"
+                        android:text="Swipe sideways with three fingers to switch apps"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp" />
 
@@ -379,7 +413,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Show progress bar during page load"
+                        android:text="Show a loading bar while pages open"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp" />
 
@@ -409,7 +443,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Always show software navigation buttons"
+                        android:text="Keep Android's navigation bar in fullscreen"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp" />
 
@@ -429,7 +463,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="STORAGE &amp; CACHE"
+                android:text="STORAGE"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -453,7 +487,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Cached Web Data"
+                        android:text="Temporary files"
                         android:textColor="@color/text_primary"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -463,7 +497,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="1dp"
-                        android:text="Calculating... (500 MB auto-purge threshold)"
+                        android:text="Working it out..."
                         android:textColor="@color/text_muted"
                         android:textSize="10sp"
                         android:fontFamily="monospace" />
@@ -473,7 +507,7 @@
                     android:id="@+id/settings_btn_clear_cache"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Clear Cache"
+                    android:text="Clear"
                     android:textColor="@color/accent_rose"
                     android:textSize="12sp"
                     android:textStyle="bold"
@@ -498,7 +532,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Auto-clear at 500 MB"
+                        android:text="Clear them by themselves at 500 MB"
                         android:textColor="@color/text_primary"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -507,7 +541,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="1dp"
-                        android:text="Logins and cookies are kept"
+                        android:text="You stay signed in"
                         android:textColor="@color/text_muted"
                         android:textSize="10sp" />
                 </LinearLayout>
@@ -525,7 +559,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="BACKUP &amp; PORTABILITY"
+                android:text="BACKUP"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -545,7 +579,7 @@
                     android:background="@drawable/bg_card"
                     android:foreground="?attr/selectableItemBackground"
                     android:gravity="center"
-                    android:text="Export Settings &amp; Web Apps"
+                    android:text="Back up"
                     android:textColor="@color/text_primary"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -561,7 +595,7 @@
                     android:background="@drawable/bg_card"
                     android:foreground="?attr/selectableItemBackground"
                     android:gravity="center"
-                    android:text="Import Settings &amp; Web Apps"
+                    android:text="Restore"
                     android:textColor="@color/text_primary"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -574,7 +608,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="ABOUT &amp; SYSTEM"
+                android:text="ABOUT"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"

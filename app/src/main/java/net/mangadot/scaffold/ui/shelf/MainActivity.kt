@@ -55,6 +55,9 @@ class MainActivity : CosmicActivity() {
     private var allApps: List<WebAppEntity> = emptyList()
     private var reopenCosmicDialog = false
     private var shelfShown = false
+
+    /** While the guide plays on an empty shelf, it has a demo app to point at. */
+    private var demoShown = false
     private var guide: ShelfGuide? = null
     private var cosmicDialog: CosmicThemeDialog? = null
     private lateinit var sort: ShelfSort
@@ -206,8 +209,8 @@ class MainActivity : CosmicActivity() {
 
     private fun setupRecyclerView() {
         adapter = AppAdapter(
-            onAppClick = { app -> launchWebApp(app) },
-            onAppOptionsClick = { app -> showAppActionSheet(app) }
+            onAppClick = { app -> if (app.id != AppAdapter.DEMO_ID) launchWebApp(app) },
+            onAppOptionsClick = { app -> if (app.id != AppAdapter.DEMO_ID) showAppActionSheet(app) }
         )
 
         // Default to Icons View with 3 columns
@@ -358,13 +361,29 @@ class MainActivity : CosmicActivity() {
 
     private fun showGuide() {
         if (guide != null) return
-        binding.rvShelf.scrollToPosition(0)
-        binding.rvShelf.post {
-            guide = ShelfGuide(this, guideSteps()) {
-                guide = null
-                getSharedPreferences(SettingsActivity.PREFS_NAME, MODE_PRIVATE).edit().putBoolean(KEY_GUIDE_SEEN, true).apply()
-                Updates.offerIfDue(this, lifecycleScope)
-            }.also { it.show() }
+        // An empty shelf gets a demo app for the guide to point at, gone again when it ends
+        demoShown = adapter.currentList.isEmpty()
+        val start = {
+            binding.rvShelf.scrollToPosition(0)
+            binding.rvShelf.post {
+                if (guide != null || isFinishing) return@post
+                guide = ShelfGuide(this, guideSteps()) {
+                    guide = null
+                    if (demoShown) {
+                        demoShown = false
+                        filterApps(binding.etSearch.text.toString())
+                    }
+                    getSharedPreferences(SettingsActivity.PREFS_NAME, MODE_PRIVATE).edit().putBoolean(KEY_GUIDE_SEEN, true).apply()
+                    Updates.offerIfDue(this, lifecycleScope)
+                }.also { it.show() }
+            }
+        }
+        if (demoShown) {
+            binding.emptyStateContainer.visibility = View.GONE
+            binding.rvShelf.visibility = View.VISIBLE
+            adapter.submitList(listOf(AppAdapter.DEMO_APP)) { start() }
+        } else {
+            start()
         }
     }
 
@@ -375,11 +394,20 @@ class MainActivity : CosmicActivity() {
                 "and colors, and puts it on your shelf as an app of its own."
         ),
         binding.rvShelf.getChildAt(0)?.let { firstApp ->
-            ShelfGuide.Step(
-                firstApp, "Your apps",
-                "Tap an app to open it. Hold it for its options: its settings, ad blocking, fullscreen, " +
-                    "userscripts, or removing it."
-            )
+            if (demoShown) {
+                ShelfGuide.Step(
+                    firstApp, "Your apps",
+                    "This is a demo. The apps you add show up here. Tap an app to open it, and hold it for " +
+                        "its options: its settings, ad blocking, fullscreen, userscripts, or removing it.",
+                    sticker = "DEMO"
+                )
+            } else {
+                ShelfGuide.Step(
+                    firstApp, "Your apps",
+                    "Tap an app to open it. Hold it for its options: its settings, ad blocking, fullscreen, " +
+                        "userscripts, or removing it."
+                )
+            }
         },
         ShelfGuide.Step(binding.layoutSwitcherContainer, "Three views", "Show your apps as icons, a grid or a list."),
         ShelfGuide.Step(binding.btnToggleSearch, "Search", "Find an app by its name or address."),
@@ -390,13 +418,14 @@ class MainActivity : CosmicActivity() {
         ShelfGuide.Step(binding.btnCustomize, "Customize", "Change the theme and colors, and how your apps are sorted."),
         ShelfGuide.Step(
             binding.btnSettings, "Settings",
-            "Ad blocking, the settings new apps start with, userscripts, gestures and backups. This guide is there too."
+            "Turn on ad blocking here, and set up gestures, userscripts, backups and the settings new apps start with. " +
+                "This guide is there too."
         ),
         ShelfGuide.Step(
             null, "Inside an app",
             "• The ball at the edge of the screen: tap it to reload, go home, see what the shield blocked, run " +
                 "userscripts, change the text size or ask for the desktop site. Hold it to switch apps, and drag " +
-                "it anywhere.\n\n" +
+                "it up and down, or across to the other side.\n\n" +
                 "• Pull down at the top of a page, or swipe down with two fingers, to reload. Swipe sideways " +
                 "with two fingers to go back and forward.\n\n" +
                 "• Add the Scraffold folder widget to your home screen to open your apps from there."
@@ -439,11 +468,12 @@ class MainActivity : CosmicActivity() {
         }
 
         // Moving apps around in a filtered list would have no clear meaning
-        adapter.dragEnabled = sort == ShelfSort.CUSTOM && q.isEmpty()
-        adapter.submitList(filtered)
+        adapter.dragEnabled = sort == ShelfSort.CUSTOM && q.isEmpty() && !demoShown
+        val shown = if (demoShown && filtered.isEmpty()) listOf(AppAdapter.DEMO_APP) else filtered
+        adapter.submitList(shown)
 
         // Empty State Lifecycle
-        val isEmpty = filtered.isEmpty()
+        val isEmpty = shown.isEmpty()
         binding.emptyStateContainer.visibility = if (isEmpty) View.VISIBLE else View.GONE
         binding.rvShelf.visibility = if (isEmpty) View.GONE else View.VISIBLE
     }

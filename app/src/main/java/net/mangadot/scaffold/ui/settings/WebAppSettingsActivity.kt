@@ -74,7 +74,7 @@ class WebAppSettingsActivity : CosmicActivity() {
         val appId = intent.getStringExtra(EXTRA_APP_ID)
         if (appId == null) {
             binding.appSettingsTvUrl.text = "https://*"
-            binding.appSettingsEtLabel.setText("Global Defaults")
+            binding.appSettingsEtLabel.setText("All apps")
             binding.appSettingsEtLabel.isEnabled = false
             binding.appSettingsRowOverride.visibility = View.GONE
             show(GlobalWebSettingsStore.load(this))
@@ -97,20 +97,20 @@ class WebAppSettingsActivity : CosmicActivity() {
     }
 
     private fun buildToggles() {
-        addToggle(binding.appSettingsGroupSecurity, KEY_JS, "Allow Javascript")
-        addToggle(binding.appSettingsGroupSecurity, KEY_THIRD_PARTY, "Block third-party requests", "Blocks files from other sites. Can break sites that use a CDN.")
-        addToggle(binding.appSettingsGroupSecurity, KEY_HTTP, "Allow HTTP", "Off upgrades links to https")
-        addToggle(binding.appSettingsGroupSecurity, KEY_LOCATION, "Allow location access")
-        addToggle(binding.appSettingsGroupSecurity, KEY_DRM, "Allow DRM content")
+        addToggle(binding.appSettingsGroupSecurity, KEY_JS, "Run JavaScript")
+        addToggle(binding.appSettingsGroupSecurity, KEY_THIRD_PARTY, "Block files from other sites", "Can break sites that load their images or videos from elsewhere")
+        addToggle(binding.appSettingsGroupSecurity, KEY_HTTP, "Allow insecure pages", "When off, links open the secure version")
+        addToggle(binding.appSettingsGroupSecurity, KEY_LOCATION, "Allow location")
+        addToggle(binding.appSettingsGroupSecurity, KEY_DRM, "Allow protected video", "Needed by some streaming sites")
         addToggle(binding.appSettingsGroupSecurity, KEY_CAMERA, "Allow camera", "Android asks for permission the first time")
         addToggle(binding.appSettingsGroupSecurity, KEY_MIC, "Allow microphone", "Android asks for permission the first time")
         addToggle(binding.appSettingsGroupCookies, KEY_COOKIES, "Accept cookies")
-        addToggle(binding.appSettingsGroupCookies, KEY_THIRD_COOKIES, "Accept third-party cookies")
-        addToggle(binding.appSettingsGroupCookies, KEY_ADBLOCK, "Enable adblock")
-        addToggle(binding.appSettingsGroupDisplay, KEY_FULLSCREEN, "True Fullscreen Mode", "Hide Android status & navigation bars")
-        addToggle(binding.appSettingsGroupDisplay, KEY_ZOOM, "Enable Pinch-To-Zoom")
-        addToggle(binding.appSettingsGroupDisplay, KEY_DESKTOP, "Request desktop version")
-        addToggle(binding.appSettingsGroupDisplay, KEY_DATA_SAVER, "Do not load images (Data Saver)")
+        addToggle(binding.appSettingsGroupCookies, KEY_THIRD_COOKIES, "Accept cookies from other sites")
+        addToggle(binding.appSettingsGroupCookies, KEY_ADBLOCK, "Block ads")
+        addToggle(binding.appSettingsGroupDisplay, KEY_FULLSCREEN, "Fullscreen", "Hides the status and navigation bars")
+        addToggle(binding.appSettingsGroupDisplay, KEY_ZOOM, "Pinch to zoom")
+        addToggle(binding.appSettingsGroupDisplay, KEY_DESKTOP, "Ask for the desktop site")
+        addToggle(binding.appSettingsGroupDisplay, KEY_DATA_SAVER, "Don't load images", "Saves data")
     }
 
     private fun addToggle(group: LinearLayout, key: String, title: String, subtitle: String? = null) {
@@ -182,7 +182,7 @@ class WebAppSettingsActivity : CosmicActivity() {
         val existing = app
         if (existing == null) {
             GlobalWebSettingsStore.save(this, current())
-            Toast.makeText(this, "Saved global defaults", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Saved for all apps", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
