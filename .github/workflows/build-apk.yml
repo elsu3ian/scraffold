@@ -97,8 +97,7 @@ jobs:
           fi
           cp app/build/outputs/apk/release/app-release.apk Scraffold-app-release-beta.apk
 
-      # The release page: written notes in .github/releases/<version>.md where there are some, the
-      # changelog's section for the version otherwise, under a title like "Scraffold v1.1.0 Beta"
+      # The release page: the changelog's section for the version, under a title like "Scraffold v1.1.0 Beta"
       - name: Release Title and Notes
         id: notes
         if: startsWith(github.ref, 'refs/tags/v')
@@ -110,13 +109,9 @@ jobs:
           title="Scraffold v$number"
           if [ -n "$stage" ]; then title="$title ${stage^}"; fi
           echo "title=$title" >> "$GITHUB_OUTPUT"
-          if [ -f ".github/releases/$version.md" ]; then
-            cp ".github/releases/$version.md" release-notes.md
-          else
-            awk -v head="## [$version]" 'index($0, head) == 1 { on = 1; next } on && /^## \[/ { exit } on' CHANGELOG.md | sed -e '/^---$/d' > release-notes.md
-          fi
+          awk -v head="## [$version]" 'index($0, head) == 1 { on = 1; next } on && /^## \[/ { exit } on' CHANGELOG.md | sed -e '/^---$/d' > release-notes.md
           if [ ! -s release-notes.md ]; then
-            echo "::error::Neither .github/releases/$version.md nor a CHANGELOG.md section for $version."
+            echo "::error::CHANGELOG.md has no section for $version."
             exit 1
           fi
 
