@@ -26,7 +26,7 @@ object AppProfiles {
     val supported: Boolean
         get() = WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)
 
-    private fun profileName(appId: String) = "app_$appId"
+    fun profileName(appId: String) = "app_$appId"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 

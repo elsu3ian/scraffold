@@ -28,4 +28,25 @@ object UserRules {
         save(context, if (current.isBlank()) rule else current.trimEnd() + "\n" + rule)
         return true
     }
+
+    /** The elements hidden on [site], which the element picker saves as `site##selector`. */
+    fun hiddenOn(context: Context, site: String): List<String> {
+        return load(context).lineSequence().map { it.trim() }.filter { hidesOn(it, site) }.toList()
+    }
+
+    /** Lets [site] show everything it hid again. Returns how many filters went. */
+    fun unhide(context: Context, site: String): Int {
+        val lines = load(context).lines()
+        val kept = lines.filterNot { hidesOn(it.trim(), site) }
+        if (kept.size != lines.size) save(context, kept.joinToString("\n"))
+        return lines.size - kept.size
+    }
+
+    // A rule for example.com covers www.example.com, and one for www.example.com covers example.com
+    private fun hidesOn(rule: String, site: String): Boolean {
+        if (site.isEmpty() || !rule.contains("##")) return false
+        val domains = rule.substringBefore("##").split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() && !it.startsWith("~") }
+        val host = site.lowercase().removePrefix("www.")
+        return domains.any { val d = it.removePrefix("www."); host == d || host.endsWith(".$d") }
+    }
 }

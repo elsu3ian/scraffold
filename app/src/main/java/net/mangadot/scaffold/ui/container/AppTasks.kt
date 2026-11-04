@@ -73,9 +73,14 @@ object AppTasks {
 
     /** For a removed app: its page must not outlive it. */
     fun close(context: Context, appId: String) {
+        restart(context, appId)
+        ManifestInstall.clear(context, appId)
+    }
+
+    /** Closes its open page, and it opens next time at its start page. */
+    fun restart(context: Context, appId: String) {
         find(context, appId)?.finishAndRemoveTask()
         forgetLastPage(context, appId)
-        ManifestInstall.clear(context, appId)
     }
 
     private fun find(context: Context, appId: String) = findByUri(context, taskUri(appId))

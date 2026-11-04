@@ -3,7 +3,9 @@ package net.mangadot.scaffold.ui.theme
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.InsetDrawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
@@ -23,12 +25,23 @@ import androidx.core.view.LayoutInflaterCompat
 import com.google.android.material.materialswitch.MaterialSwitch
 import net.mangadot.scaffold.R
 
-/** Dialogs have their own inflater, so their buttons need the accent set after showing. */
+/**
+ * Shows a dialog on the same surface as the theme's own windows: Cosmic glass while Cosmic styling
+ * is on, the plain card otherwise. Dialogs have their own inflater, so their buttons need the
+ * accent set after showing too.
+ */
 fun AlertDialog.Builder.showCosmic(): AlertDialog = show().also { dialog ->
     listOf(AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE, AlertDialog.BUTTON_NEUTRAL).forEach {
         dialog.getButton(it)?.setTextColor(CosmicAccent.color)
     }
+    val panel = dialog.findViewById<View>(androidx.appcompat.R.id.parentPanel) ?: return@also
+    val margin = (DIALOG_MARGIN_DP * dialog.context.resources.displayMetrics.density).toInt()
+    // Material's own surface goes, keeping its distance from the screen's sides
+    dialog.window?.setBackgroundDrawable(InsetDrawable(ColorDrawable(Color.TRANSPARENT), margin, 0, margin, 0))
+    CosmicThemeStore.load(dialog.context).applyDialogSurface(dialog.window, panel, R.drawable.bg_card_solid)
 }
+
+private const val DIALOG_MARGIN_DP = 24
 
 /** Gives an input in a dialog the same side margins as the dialog's title. */
 fun dialogField(input: View): View = FrameLayout(input.context).apply {

@@ -191,7 +191,7 @@ class ElementPicker private constructor(private val activity: AppCompatActivity,
             val selector = saved?.optString("selector").orEmpty()
             if (site.isEmpty() || selector.isEmpty()) return@call
             if (UserRules.add(activity, "$site##$selector")) AdBlockEngine.getInstance(activity).userRulesChanged()
-            Toast.makeText(activity, "Hidden on $site. It's in Shield settings, under My filters.", Toast.LENGTH_LONG).show()
+            Toast.makeText(activity, "Hidden on $site. Bring it back from the shield, or remove it in Settings, Ad blocking, My filters.", Toast.LENGTH_LONG).show()
         }
     }
 

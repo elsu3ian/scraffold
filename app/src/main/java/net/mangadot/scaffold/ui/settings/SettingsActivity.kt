@@ -27,6 +27,7 @@ import net.mangadot.scaffold.engine.cache.CacheManager
 import net.mangadot.scaffold.data.usage.UsageStore
 import net.mangadot.scaffold.ui.about.AboutActivity
 import net.mangadot.scaffold.ui.shelf.MainActivity
+import net.mangadot.scaffold.ui.theme.CosmicAccent
 import net.mangadot.scaffold.ui.theme.CosmicActivity
 import net.mangadot.scaffold.ui.theme.CosmicThemeStore
 import net.mangadot.scaffold.ui.theme.applyDialogSurface
@@ -79,6 +80,7 @@ class SettingsActivity : CosmicActivity() {
 
     private fun restore(manager: BackupManager, backup: BackupManager.BackupFile) {
         lifecycleScope.launch {
+            val before = CosmicThemeStore.load(this@SettingsActivity)
             val message = try {
                 val restored = manager.restore(backup)
                 loadPreferences()
@@ -87,6 +89,12 @@ class SettingsActivity : CosmicActivity() {
                 "Import failed: ${e.message}"
             }
             Toast.makeText(this@SettingsActivity, message, Toast.LENGTH_LONG).show()
+            // The backup's theme shows straight away, here and on every screen opened from now on
+            val after = CosmicThemeStore.load(this@SettingsActivity)
+            if (after != before) {
+                CosmicAccent.color = after.accent
+                recreate()
+            }
         }
     }
 
@@ -118,7 +126,7 @@ class SettingsActivity : CosmicActivity() {
         setupListeners()
         updateCacheDisplay()
 
-        binding.settingsTvAboutVersion.text = "${getString(R.string.release_stage)} →"
+        binding.settingsTvAboutVersion.text = getString(R.string.release_stage)
     }
 
     // Default app settings can switch ad blocking too, so it's read again on the way back

@@ -1,16 +1,20 @@
 package net.mangadot.scaffold.ui.container
 
+import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import net.mangadot.scaffold.databinding.LayoutDialogShieldBinding
 import net.mangadot.scaffold.engine.AdBlockEngine
 import net.mangadot.scaffold.engine.DeckWebView
 import net.mangadot.scaffold.engine.ShieldSites
+import net.mangadot.scaffold.engine.UserRules
 import net.mangadot.scaffold.ui.theme.showCosmic
 
 /**
  * What the shield has stopped on the site on screen, kept up to date while it's open. From here
- * the shield can be turned off for just that site, and the element picker started.
+ * the shield can be turned off for just that site, the element picker started, and what it hid
+ * shown again.
  */
 object ShieldMeter {
 
@@ -48,6 +52,21 @@ object ShieldMeter {
             web.shield?.sitesChanged()
             web.reload()
             refresh()
+        }
+
+        fun showHidden() {
+            val hidden = UserRules.hiddenOn(activity, site).size
+            view.tvShieldUnhide.visibility = if (hidden > 0) View.VISIBLE else View.GONE
+            view.tvShieldUnhideNote.visibility = view.tvShieldUnhide.visibility
+            view.tvShieldUnhide.text = if (hidden == 1) "Show the 1 item you hid here" else "Show the $hidden items you hid here"
+        }
+        showHidden()
+        view.tvShieldUnhide.setOnClickListener {
+            if (UserRules.unhide(activity, site) == 0) return@setOnClickListener
+            showHidden()
+            // The page reloads once the rules are rebuilt without them
+            engine.userRulesChanged { web.reload() }
+            Toast.makeText(activity, "They're back after the page reloads", Toast.LENGTH_SHORT).show()
         }
 
         val ticker = object : Runnable {

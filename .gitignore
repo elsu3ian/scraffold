@@ -20,6 +20,8 @@
 # Keystore files
 *.jks
 *.keystore
+keystore.properties
+scraffold-signing/
 
 # Google Services / Sensitive
 google-services.json

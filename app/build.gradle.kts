@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +8,28 @@ plugins {
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+/**
+ * The permanent release key, so every release installs over the last. GitHub's builder passes it in
+ * the environment; on the developer's machine it comes from a properties file kept outside this
+ * repository. Without either, release builds use the debug key, so the code still builds anywhere.
+ */
+val releaseKey: Map<String, String>? = run {
+    val env = System.getenv()
+    env["SCRAFFOLD_KEYSTORE"]?.takeIf { it.isNotEmpty() }?.let { store ->
+        return@run mapOf(
+            "storeFile" to store,
+            "storePassword" to env.getValue("SCRAFFOLD_KEYSTORE_PASSWORD"),
+            "keyAlias" to env.getValue("SCRAFFOLD_KEY_ALIAS"),
+            "keyPassword" to env.getValue("SCRAFFOLD_KEY_PASSWORD")
+        )
+    }
+    val file = env["SCRAFFOLD_SIGNING_PROPERTIES"]?.let(::File)
+        ?: rootProject.file("../scraffold-signing/keystore.properties")
+    if (!file.exists()) return@run null
+    val props = Properties().apply { file.inputStream().use { load(it) } }
+    props.stringPropertyNames().associateWith { props.getProperty(it) }
 }
 
 android {
@@ -26,6 +50,17 @@ android {
         }
     }
 
+    signingConfigs {
+        releaseKey?.let { key ->
+            create("release") {
+                storeFile = file(key.getValue("storeFile"))
+                storePassword = key.getValue("storePassword")
+                keyAlias = key.getValue("keyAlias")
+                keyPassword = key.getValue("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -34,7 +69,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
         debug {
             applicationIdSuffix = ".debug"

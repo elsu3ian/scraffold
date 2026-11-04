@@ -142,4 +142,25 @@
         android:layout_marginTop="12dp"
         android:textColor="@color/text_muted"
         android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/tv_shield_unhide"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="?attr/selectableItemBackground"
+        android:paddingVertical="8dp"
+        android:textColor="@color/accent_purple_bright"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tv_shield_unhide_note"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="You can also remove them one by one in Settings, Ad blocking, My filters."
+        android:textColor="@color/text_muted"
+        android:textSize="11sp"
+        android:visibility="gone" />
 </LinearLayout>

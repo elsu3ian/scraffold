@@ -6,6 +6,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import net.mangadot.scaffold.ui.theme.CosmicBottomSheet
 import net.mangadot.scaffold.R
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
@@ -13,7 +15,10 @@ import net.mangadot.scaffold.data.settings.WebAppSettings
 import net.mangadot.scaffold.data.settings.effectiveSettings
 import net.mangadot.scaffold.data.settings.withSettings
 import net.mangadot.scaffold.databinding.LayoutBottomSheetAppActionsBinding
+import net.mangadot.scaffold.engine.AppData
 import net.mangadot.scaffold.engine.AppIcons
+import net.mangadot.scaffold.engine.AppProfiles
+import net.mangadot.scaffold.ui.theme.showCosmic
 import net.mangadot.scaffold.ui.settings.WebAppSettingsActivity
 import net.mangadot.scaffold.ui.userscript.UserscriptsActivity
 
@@ -87,6 +92,30 @@ class AppActionBottomSheetDialog(
                 putExtra(UserscriptsActivity.EXTRA_FILTER_DOMAIN, Uri.parse(app.url).host ?: "")
             }
             startActivity(intent)
+        }
+
+        binding.sheetBtnClearCache.setOnClickListener {
+            val context = requireContext().applicationContext
+            AppData.clearCache(context, app)
+            Toast.makeText(context, "Cache cleared for ${app.name}", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.sheetBtnClearData.setOnClickListener {
+            val context = requireContext()
+            dismiss()
+            val sharesLogin = !AppProfiles.keepsOwnLogin(context, app.id)
+            val message = "${app.name} will be signed out, and what its site saved on this phone is erased. " +
+                "It stays on your shelf with its settings." +
+                if (sharesLogin) " Apps that share sign-ins stay signed in to their own sites." else ""
+            AlertDialog.Builder(context)
+                .setTitle("Clear ${app.name}'s data?")
+                .setMessage(message)
+                .setPositiveButton("Clear data") { _, _ ->
+                    AppData.clearData(context.applicationContext, app)
+                    Toast.makeText(context, "${app.name}'s data cleared", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("Cancel", null)
+                .showCosmic()
         }
 
         // Action 4: Delete

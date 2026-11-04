@@ -26,8 +26,11 @@ import net.mangadot.scaffold.ui.theme.CosmicCard
  */
 class ShelfGuide(private val activity: ComponentActivity, private val steps: List<Step>, private val done: () -> Unit) {
 
-    /** [sticker], when set, is a small label on the corner of the spotlight, like DEMO. */
-    class Step(val target: View?, val title: String, val body: String, val sticker: String? = null)
+    /**
+     * [sticker], when set, is a small label on the corner of the spotlight, like DEMO. A target that is
+     * [onlyHere] stays out of sight on every other step.
+     */
+    class Step(val target: View?, val title: String, val body: String, val sticker: String? = null, val onlyHere: Boolean = false)
 
     private val density = activity.resources.displayMetrics.density
     private val decor = activity.window.decorView as ViewGroup
@@ -37,6 +40,7 @@ class ShelfGuide(private val activity: ComponentActivity, private val steps: Lis
     private val body = CosmicCard.body(activity)
     private val count = TextView(activity)
     private val next = CosmicCard.button(activity, "Next", main = true) { advance() }
+    private val skip = CosmicCard.button(activity, "Skip", main = false) { finish() }
     private val overlay = FrameLayout(activity)
     private var index = 0
     private val back = object : OnBackPressedCallback(true) {
@@ -53,7 +57,6 @@ class ShelfGuide(private val activity: ComponentActivity, private val steps: Lis
         body.setPadding(0, (6 * density).toInt(), 0, (8 * density).toInt())
         count.setTextColor(ContextCompat.getColor(activity, R.color.text_muted))
         count.textSize = 11f
-        val skip = CosmicCard.button(activity, "Skip", main = false) { finish() }
         val buttons = LinearLayout(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
             addView(count, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -72,6 +75,7 @@ class ShelfGuide(private val activity: ComponentActivity, private val steps: Lis
         overlay.alpha = 0f
         decor.addView(overlay, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         activity.onBackPressedDispatcher.addCallback(activity, back)
+        steps.forEach { if (it.onlyHere) it.target?.alpha = 0f }
         overlay.post {
             showStep()
             overlay.animate().alpha(1f).setDuration(FADE_MS).start()
@@ -91,6 +95,11 @@ class ShelfGuide(private val activity: ComponentActivity, private val steps: Lis
         body.text = step.body
         count.text = "${index + 1} of ${steps.size}"
         next.text = if (index == steps.lastIndex) "Done" else "Next"
+        // Nothing is left to skip on the last step
+        skip.visibility = if (index == steps.lastIndex) View.GONE else View.VISIBLE
+        steps.forEach { other ->
+            if (other.onlyHere) other.target?.animate()?.alpha(if (other === step) 1f else 0f)?.setDuration(FADE_MS)?.start()
+        }
 
         val hole = step.target?.takeIf { it.isShown && it.width > 0 }?.let { target ->
             val where = IntArray(2).also { target.getLocationInWindow(it) }

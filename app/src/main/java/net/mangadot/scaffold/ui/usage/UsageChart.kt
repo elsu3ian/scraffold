@@ -13,7 +13,7 @@ import androidx.core.graphics.ColorUtils
 import net.mangadot.scaffold.R
 import net.mangadot.scaffold.ui.theme.CosmicAccent
 
-/** One bar a day, the chosen day in the accent. Tapping a bar chooses its day. */
+/** One bar a day, or a month, the chosen one in the accent, or all of them when none is. Tapping a bar chooses it. */
 class UsageChart @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -54,19 +54,21 @@ class UsageChart @JvmOverloads constructor(
         val top = 4 * density
         val floor = height - labelSpace
         val most = days.maxOf { it.millis }.coerceAtLeast(1L)
-        val radius = 6 * density
+        val radius = minOf(6 * density, barWidth / 2)
         val baseline = height - 4 * density
         days.forEachIndexed { index, day ->
             val center = slot * index + slot / 2
-            val chosen = index == selected
+            val chosen = index == selected || selected < 0
             // Even an empty day keeps a sliver, so every day has somewhere to tap
             val barHeight = maxOf((floor - top) * day.millis / most, 3 * density)
             rect.set(center - barWidth / 2, floor - barHeight, center + barWidth / 2, floor)
             bar.color = if (chosen) CosmicAccent.color else ColorUtils.setAlphaComponent(CosmicAccent.color, 70)
             canvas.drawRoundRect(rect, radius, radius, bar)
-            label.color = if (chosen) primary else muted
-            label.isFakeBoldText = chosen
-            canvas.drawText(day.label, center, baseline, label)
+            label.color = if (index == selected) primary else muted
+            label.isFakeBoldText = index == selected
+            // A label wider than its bar's slot stays inside the chart at either end
+            val half = label.measureText(day.label) / 2
+            canvas.drawText(day.label, center.coerceIn(half, maxOf(half, width - half)), baseline, label)
         }
     }
 

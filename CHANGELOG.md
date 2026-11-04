@@ -7,8 +7,10 @@ What changed in each version of Scraffold.
 ## [Unreleased]
 
 ### Added
-- **A guide for your first visit**: The first time you open Scraffold, a short guide shows you where everything is, with a demo app if your shelf is still empty. You can watch it again from Settings, under How to use Scraffold.
-- **Daily usage**: See how long you spent in each app and the browser, day by day for the last week, in Settings. Only the time is kept, on your phone, for 30 days.
+- **A guide for your first visit**: The first time you open Scraffold, a short guide shows you where everything is, with a demo app on the step about your apps if your shelf is still empty. You can watch it again from Settings, under How to use Scraffold.
+- **Usage**: See how long you spent in each app and the browser, in Settings. A ring shows each app's share with the total in the middle, and you can look at a day hour by hour, or the last week, 14 days, month or year. Tap a bar to see just that hour, day or month. Only the time is kept, on your phone: each day for a year, and hour by hour for a month.
+- **Clear cache and Clear data for each app**: Hold an app on the shelf to clear its cache, or its data, which signs it out and erases what its site saved, like a phone does for a real app. It stays on your shelf with its settings, and your other apps stay signed in.
+- **Bring back what you hid**: The shield now shows how many things you hid on the site you're on, and one tap shows them again. You can also remove them one by one in Settings, under Ad blocking, My filters.
 - **Back and forward buttons in the browser**, next to the address bar, like a regular browser.
 - **The side ball goes either side**: Drag it to the left or right edge of the screen and it stays there.
 - **Update notices**: When a new version is out, the home screen tells you what's new and can install it for you. You can also check from About.
@@ -31,7 +33,10 @@ What changed in each version of Scraffold.
 ### Fixed
 - The home screen folder no longer shows its apps on top of its title when they don't all fit.
 - Settings, app settings and About now scroll all the way to the bottom.
-- Sites asking "Are you human?" in desktop mode no longer ask again and again.
+- Sites asking "Are you human?" in desktop mode no longer ask again and again. Desktop mode now names your phone's own processor, which Cloudflare's check compares with what the page sees.
+- Pop-up windows, like the one when importing a backup, now match your theme.
+- After importing a backup, its theme and Cosmic background show straight away.
+- Removing a filter under My filters takes effect when you reload the page, and tapping outside the window no longer throws away what you typed.
 - Turning ad blocking on or off now reaches a browser that was already open.
 - Security check pages no longer fill up your browser history.
 

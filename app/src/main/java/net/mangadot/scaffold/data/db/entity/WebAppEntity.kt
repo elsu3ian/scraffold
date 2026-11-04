@@ -26,7 +26,7 @@ data class WebAppEntity(
     val allowDrm: Boolean = false,
     val acceptCookies: Boolean = true,
     val thirdPartyCookies: Boolean = false,
-    val adblockEnabled: Boolean = true,
+    val adblockEnabled: Boolean = false,
     val pinchZoom: Boolean = true,
     val userscriptsEnabled: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),

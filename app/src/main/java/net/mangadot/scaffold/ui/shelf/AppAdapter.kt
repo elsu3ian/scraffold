@@ -69,6 +69,8 @@ class AppAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val app = getItem(position)
+        // The guide fades the demo tile, and its view may come back for a real app
+        holder.itemView.alpha = 1f
         holder.itemView.setOnClickListener { onAppClick(app) }
         holder.itemView.setOnLongClickListener {
             if (dragEnabled) return@setOnLongClickListener false

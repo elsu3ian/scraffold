@@ -29,9 +29,23 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="12dp"
-            android:text="Daily usage"
+            android:text="Usage"
             android:textColor="@color/text_primary"
             android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/usage_range"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:paddingHorizontal="14dp"
+            android:background="@drawable/bg_card"
+            android:clickable="true"
+            android:focusable="true"
+            android:text="Day"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -47,46 +61,83 @@
             android:orientation="vertical"
             android:paddingBottom="24dp">
 
-            <TextView
-                android:id="@+id/usage_tv_day"
-                android:layout_width="wrap_content"
+            <!-- Each app's share, with the total in the middle -->
+            <net.mangadot.scaffold.ui.usage.UsageRing
+                android:id="@+id/usage_ring"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="TODAY"
-                android:textColor="@color/text_muted"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.08" />
+                android:layout_marginTop="16dp" />
 
-            <TextView
-                android:id="@+id/usage_tv_total"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textColor="@color/text_primary"
-                android:textSize="28sp"
-                android:textStyle="bold" />
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ImageButton
+                    android:id="@+id/usage_day_back"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_arrow_back"
+                    android:scaleType="centerInside"
+                    android:padding="10dp"
+                    android:contentDescription="Day before" />
+
+                <TextView
+                    android:id="@+id/usage_tv_day"
+                    android:layout_width="160dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="Today"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <ImageButton
+                    android:id="@+id/usage_day_forward"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_arrow_forward"
+                    android:scaleType="centerInside"
+                    android:padding="10dp"
+                    android:contentDescription="Day after" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/usage_tv_average"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
+                android:gravity="center"
                 android:textColor="@color/text_muted"
                 android:textSize="12sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="20dp"
                 android:orientation="vertical"
                 android:background="@drawable/bg_card"
                 android:padding="12dp">
 
+                <TextView
+                    android:id="@+id/usage_chart_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:text="HOUR BY HOUR"
+                    android:textColor="@color/text_muted"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08" />
+
                 <net.mangadot.scaffold.ui.usage.UsageChart
                     android:id="@+id/usage_chart"
                     android:layout_width="match_parent"
-                    android:layout_height="160dp" />
+                    android:layout_height="140dp" />
             </LinearLayout>
 
             <TextView
@@ -104,6 +155,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:background="@drawable/bg_card"
                 android:orientation="vertical" />
 
             <TextView
@@ -114,7 +166,7 @@
                 android:padding="16dp"
                 android:background="@drawable/bg_card"
                 android:gravity="center"
-                android:text="Nothing for this day. Time spent in your apps and the browser shows up here."
+                android:text="Nothing here yet. Time spent in your apps and the browser shows up here."
                 android:textColor="@color/text_muted"
                 android:textSize="12sp"
                 android:visibility="gone" />
@@ -123,7 +175,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Counted while an app is on your screen. Only the time is kept, on this phone, for 30 days."
+                android:text="Counted while an app is on your screen. Only the time is kept, on this phone: each day for a year, and hour by hour for a month. Tap a bar to see just that time."
                 android:textColor="@color/text_muted"
                 android:textSize="11sp" />
 

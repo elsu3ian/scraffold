@@ -32,9 +32,11 @@ object MyFilters {
                 if (text.trim() == saved.trim()) return@setPositiveButton
                 UserRules.save(activity, text)
                 AdBlockEngine.getInstance(activity).userRulesChanged()
-                Toast.makeText(activity, "Saved. Pages use them from their next load.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(activity, "Saved. Reload a page to see the change.", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton(android.R.string.cancel, null)
             .showCosmic()
+            // A stray tap outside would throw away what was typed
+            .setCanceledOnTouchOutside(false)
     }
 }

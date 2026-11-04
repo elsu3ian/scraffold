@@ -56,6 +56,8 @@ class MainActivity : CosmicActivity() {
     private var reopenCosmicDialog = false
     private var shelfShown = false
 
+    private var appliedTheme: CosmicTheme? = null
+
     /** While the guide plays on an empty shelf, it has a demo app to point at. */
     private var demoShown = false
     private var guide: ShelfGuide? = null
@@ -167,6 +169,18 @@ class MainActivity : CosmicActivity() {
     override fun onDestroy() {
         cosmicDialog?.dismiss()
         super.onDestroy()
+    }
+
+    /** A theme changed elsewhere, by restoring a backup say, shows on coming back. */
+    override fun onRestart() {
+        super.onRestart()
+        val theme = CosmicThemeStore.load(this)
+        if (theme.accent != CosmicAccent.color) {
+            CosmicAccent.color = theme.accent
+            recreate()
+        } else if (theme != appliedTheme) {
+            applyTheme(theme)
+        }
     }
 
     override fun onResume() {
@@ -398,14 +412,15 @@ class MainActivity : CosmicActivity() {
                 ShelfGuide.Step(
                     firstApp, "Your apps",
                     "This is a demo. The apps you add show up here. Tap an app to open it, and hold it for " +
-                        "its options: its settings, ad blocking, fullscreen, userscripts, or removing it.",
-                    sticker = "DEMO"
+                        "its options: its settings, ad blocking, fullscreen, userscripts, clearing its data, or removing it.",
+                    sticker = "DEMO",
+                    onlyHere = true
                 )
             } else {
                 ShelfGuide.Step(
                     firstApp, "Your apps",
                     "Tap an app to open it. Hold it for its options: its settings, ad blocking, fullscreen, " +
-                        "userscripts, or removing it."
+                        "userscripts, clearing its data, or removing it."
                 )
             }
         },
@@ -505,6 +520,7 @@ class MainActivity : CosmicActivity() {
     }
 
     private fun applyTheme(theme: CosmicTheme) {
+        appliedTheme = theme
         theme.applyBackground(binding.mainRootLayout)
         theme.applyHeader(binding.shelfTopBar, binding.rvShelf, laidOutUnder = true)
     }

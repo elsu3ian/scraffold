@@ -95,10 +95,11 @@ class AdBlockEngine private constructor(private val context: Context) {
     }
 
     /** Builds again with the person's own filters, once they've changed. */
-    fun userRulesChanged() {
+    fun userRulesChanged(then: (() -> Unit)? = null) {
         scope.launch {
             firstLoad.await()
             loadLists(rebuild = true)
+            then?.let { withContext(Dispatchers.Main) { it() } }
         }
     }
 

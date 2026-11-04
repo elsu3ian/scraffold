@@ -2,6 +2,8 @@ package net.mangadot.scaffold.engine
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
+import android.os.Process
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -115,12 +117,29 @@ class DeckWebView @JvmOverloads constructor(
             "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajor(context)}.0.0.0 Mobile Safari/537.36"
 
         /**
-         * What Chrome on a phone sends when asked for the desktop site: Linux, which is what the page
-         * itself finds in navigator.platform. Claiming Windows instead had Cloudflare's check see a
-         * mismatch and ask again and again.
+         * Chrome on Linux, on this phone's own processor, so it reads the same as what the page itself
+         * finds in navigator.platform. Claiming Windows, or an Intel chip on an ARM phone, had
+         * Cloudflare's check see the mismatch and ask again and again.
          */
         fun desktopUserAgent(context: Context): String =
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajor(context)}.0.0.0 Safari/537.36"
+            "Mozilla/5.0 (X11; Linux ${cpu.machine}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajor(context)}.0.0.0 Safari/537.36"
+
+        /** How Linux names the processor ([machine]) and how client hints do ([architecture], [bitness]). */
+        private class Cpu(val machine: String, val architecture: String, val bitness: String)
+
+        // Pages run in a process as wide as this app's, which is what navigator.platform reports
+        private val cpu: Cpu by lazy {
+            val wide = Process.is64Bit()
+            val abi = (if (wide) Build.SUPPORTED_64_BIT_ABIS else Build.SUPPORTED_32_BIT_ABIS).firstOrNull().orEmpty()
+            when {
+                abi.startsWith("arm64") -> Cpu("aarch64", "arm", "64")
+                // A 32-bit app on a 64-bit ARM chip
+                abi.startsWith("armeabi") && Build.SUPPORTED_64_BIT_ABIS.isNotEmpty() -> Cpu("armv8l", "arm", "32")
+                abi.startsWith("armeabi") -> Cpu("armv7l", "arm", "32")
+                abi == "x86" -> Cpu("i686", "x86", "32")
+                else -> Cpu("x86_64", "x86", "64")
+            }
+        }
 
         // Chrome's own reduced user agent, which carries only the major version of the engine underneath
         private fun chromeMajor(context: Context): String {
@@ -175,8 +194,8 @@ class DeckWebView @JvmOverloads constructor(
                 .setMobile(!desktop)
                 .setFormFactors(listOf(if (desktop) "Desktop" else "Mobile"))
             if (desktop) {
-                builder.setPlatform("Linux").setPlatformVersion("").setArchitecture("x86")
-                    .setBitness(64).setWow64(false).setModel("")
+                builder.setPlatform("Linux").setPlatformVersion("").setArchitecture(cpu.architecture)
+                    .setBitness(cpu.bitness.toInt()).setWow64(false).setModel("")
             } else {
                 builder.setPlatform("Android")
             }
@@ -192,6 +211,8 @@ class DeckWebView @JvmOverloads constructor(
         private fun brandsScript(context: Context): String {
             val brands = chromeBrands(context)
             return BRANDS_SCRIPT
+                .replace("@ARCH@", cpu.architecture)
+                .replace("@BITNESS@", cpu.bitness)
                 .replace("@BRANDS@", brandsJson(brands, full = false))
                 .replace("@FULL_BRANDS@", brandsJson(brands, full = true))
         }
@@ -225,8 +246,8 @@ class DeckWebView @JvmOverloads constructor(
             if ('platform' in values) values.platform = 'Linux';
             if ('formFactors' in values) values.formFactors = ['Desktop'];
             if ('platformVersion' in values) values.platformVersion = '';
-            if ('architecture' in values) values.architecture = 'x86';
-            if ('bitness' in values) values.bitness = '64';
+            if ('architecture' in values) values.architecture = '@ARCH@';
+            if ('bitness' in values) values.bitness = '@BITNESS@';
             if ('model' in values) values.model = '';
           }
         }
