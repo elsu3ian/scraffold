@@ -59,7 +59,7 @@ android {
         minSdk = 26
         targetSdk = 35
         // The one line to change for a release
-        versionName = "1.0.3-beta"
+        versionName = "1.1.0-beta"
         versionCode = versionCodeOf(versionName!!)
         // Scraffold 1.0.3-beta and the builds before it read a written-out number here to tell that a
         // newer version is out, and anything above their 4 does: versionCode = 5
