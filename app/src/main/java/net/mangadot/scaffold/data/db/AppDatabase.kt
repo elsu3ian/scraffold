@@ -7,10 +7,12 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import net.mangadot.scaffold.data.db.dao.BrowserHistoryDao
+import net.mangadot.scaffold.data.db.dao.DownloadDao
 import net.mangadot.scaffold.data.db.dao.ScriptDao
 import net.mangadot.scaffold.data.db.dao.ScriptStorageDao
 import net.mangadot.scaffold.data.db.dao.WebAppDao
 import net.mangadot.scaffold.data.db.entity.BrowserHistoryEntity
+import net.mangadot.scaffold.data.db.entity.DownloadEntity
 import net.mangadot.scaffold.data.db.entity.ScriptEntity
 import net.mangadot.scaffold.data.db.entity.ScriptStorageEntity
 import net.mangadot.scaffold.data.db.entity.WebAppEntity
@@ -20,9 +22,10 @@ import net.mangadot.scaffold.data.db.entity.WebAppEntity
         WebAppEntity::class,
         ScriptEntity::class,
         ScriptStorageEntity::class,
-        BrowserHistoryEntity::class
+        BrowserHistoryEntity::class,
+        DownloadEntity::class
     ],
-    version = 7,
+    version = 9,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -31,6 +34,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun scriptDao(): ScriptDao
     abstract fun scriptStorageDao(): ScriptStorageDao
     abstract fun browserHistoryDao(): BrowserHistoryDao
+    abstract fun downloadDao(): DownloadDao
 
     companion object {
         /** Adds the Web App Settings columns and keeps the user's shelf. */
@@ -90,7 +94,29 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        internal val MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        /** The Downloads page's list. */
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `downloads` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`name` TEXT NOT NULL, `mimeType` TEXT NOT NULL, `site` TEXT NOT NULL, `url` TEXT NOT NULL, " +
+                        "`createdAt` INTEGER NOT NULL, `systemId` INTEGER NOT NULL, `fileUri` TEXT, " +
+                        "`size` INTEGER NOT NULL, `written` INTEGER NOT NULL, `state` INTEGER NOT NULL)"
+                )
+            }
+        }
+
+        /** The app a download came from, so trying it again signs in the same way. */
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE downloads ADD COLUMN appId TEXT")
+            }
+        }
+
+        internal val MIGRATIONS = arrayOf(
+            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
+            MIGRATION_8_9
+        )
 
         @Volatile
         private var INSTANCE: AppDatabase? = null

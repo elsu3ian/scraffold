@@ -88,6 +88,6 @@ class AppDatabaseMigrationTest {
 
     private companion object {
         const val TEST_DB = "migration-test"
-        const val CURRENT_VERSION = 7
+        const val CURRENT_VERSION = 9
     }
 }

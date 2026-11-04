@@ -4,6 +4,20 @@ What changed in each version of Scraffold.
 
 ---
 
+## [Unreleased]
+
+### Added
+- **A Downloads page**: Open it from the browser menu, or from the button that shows when a download starts. It lists everything you downloaded in your apps and the browser, newest first and by day, with each file's size and site, a picture of photos and videos, and how much room downloads take. Filter by videos, images, audio or PDFs, or search by name. A file still coming in shows how far along it is, and can be cancelled. Tap a file to open it, or use its menu to share it, copy its link or delete it. A download that failed can be tried again, signed in the same way as the app it came from.
+- **Download images and links**: Hold an image or a link in the browser to download it, like in Chrome.
+
+### Fixed
+- **Downloads a page puts together itself now save**: Some sites build a file in the page, like a video joined from its stream, then hand it over to save. Scraffold used to say these "can't be saved directly". They now go to Downloads with the name the site gave them, in your apps and in the browser. Sites that write a file as it comes in, the way desktop Chrome lets them, write it straight to Downloads, so a long video no longer has to fit in the page's own storage first, and the screen stays on until it's done.
+- **Downloads from sites that check where you came from**: Downloads now tell the site which page they started on, as browsers do, so sites that only hand files to their own pages let them through.
+- **A file's address typed into the browser downloads once**: The tab stays on the page you were on, instead of downloading the file again each time the browser opens.
+- **Downloads on Android 9 and older**: Scraffold now asks for storage access the first time it saves a file, instead of failing to start the download.
+
+---
+
 ## [1.1.0-beta] - 2026-11-04
 
 > **Coming from 1.0.3-beta or older?** Those builds were signed with a temporary key, so this one can't install over them. Back up your apps in Settings, uninstall Scraffold, install this version, then restore the backup. You'll need to sign in to your sites again. This happens only once: from now on, every update installs over the last.

@@ -74,6 +74,12 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- What was downloaded in apps and the browser -->
+        <activity
+            android:name=".ui.downloads.DownloadsActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- In-App Userscript Editor Activity -->
         <activity
             android:name=".ui.editor.ScriptEditorActivity"

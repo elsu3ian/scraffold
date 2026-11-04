@@ -198,9 +198,7 @@ class WebContainerActivity : CosmicActivity() {
         binding.deckWebview.webViewClient = webViewClient
         binding.deckWebview.webChromeClient = webChromeClient
         scriptEngine.attach(binding.deckWebview, appId)
-        binding.deckWebview.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
-            WebDownloads.start(this, url, cookies, null, contentDisposition, mimeType, userAgent)
-        }
+        WebDownloads.listen(this, binding.deckWebview, cookies)
 
         val prefs = getSharedPreferences(SettingsActivity.PREFS_NAME, MODE_PRIVATE)
         binding.deckWebview.setOnTouchListener(

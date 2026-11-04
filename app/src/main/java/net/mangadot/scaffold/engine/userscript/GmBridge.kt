@@ -24,6 +24,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.mangadot.scaffold.data.db.entity.ScriptEntity
 import net.mangadot.scaffold.data.repository.ScriptRepository
+import net.mangadot.scaffold.engine.DeckWebView
 import net.mangadot.scaffold.engine.WebDownloads
 import net.mangadot.scaffold.ui.browser.ExternalLinks
 import net.mangadot.scaffold.ui.browser.LinkOwner
@@ -165,7 +166,7 @@ class GmBridge(
     }
 
     private fun download(url: String, name: String) {
-        mainHandler.post { WebDownloads.start(context, url, cookies, fileName = name) }
+        mainHandler.post { WebDownloads.start(context, url, cookies, fileName = name, page = webView as? DeckWebView) }
     }
 
     private fun connectAllowed(meta: UserscriptMeta, url: String): Boolean {

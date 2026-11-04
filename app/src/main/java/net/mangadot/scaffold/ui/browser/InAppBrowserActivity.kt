@@ -205,9 +205,7 @@ class InAppBrowserActivity : CosmicActivity() {
                 binding.browserTvTitle.text = title
             }
         }
-        binding.browserWebview.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
-            WebDownloads.start(this, url, cookies, null, contentDisposition, mimeType, userAgent)
-        }
+        WebDownloads.listen(this, binding.browserWebview, cookies)
 
         binding.browserBtnClose.setOnClickListener { finish() }
         binding.browserBtnShield.setOnClickListener { ShieldMeter.show(this, binding.browserWebview, adblock) }

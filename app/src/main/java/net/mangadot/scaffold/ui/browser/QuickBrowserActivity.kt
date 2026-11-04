@@ -59,6 +59,7 @@ import net.mangadot.scaffold.engine.ScriptEngine
 import net.mangadot.scaffold.engine.TappedLink
 import net.mangadot.scaffold.engine.WebDownloads
 import net.mangadot.scaffold.ui.container.AppSwitcherBottomSheetDialog
+import net.mangadot.scaffold.ui.downloads.DownloadFiles
 import net.mangadot.scaffold.ui.container.AppTasks
 import net.mangadot.scaffold.ui.browser.BrowserAddress.addressFor
 import net.mangadot.scaffold.ui.browser.BrowserAddress.isSignIn
@@ -231,9 +232,7 @@ class QuickBrowserActivity : CosmicActivity() {
         tab.pageZoom = PageZoom(web)
         if (tab.desktop) web.desktopMode = true
         web.webChromeClient = PageChromeClient()
-        web.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
-            WebDownloads.start(this, url, cookies, null, contentDisposition, mimeType, userAgent)
-        }
+        WebDownloads.listen(this, web, cookies) { url -> stayOnPage(web, url) }
         web.setOnLongClickListener { showLinkMenu(web) }
         binding.browserPages.addView(web, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         tab.web = web
@@ -250,6 +249,23 @@ class QuickBrowserActivity : CosmicActivity() {
             if (!start.isNullOrEmpty() && web.url == null) web.loadUrl(start)
         }
         return web
+    }
+
+    /**
+     * An address typed or opened that turned out to be a file leaves the tab where it was, as in
+     * Chrome. Kept as the tab's page, it would download again each time the browser opens.
+     */
+    private fun stayOnPage(web: DeckWebView, url: String) {
+        val tab = tabFor(web) ?: return
+        if (tab.url != url) return
+        val shown = web.copyBackForwardList().currentItem?.url?.takeIf { isWebPage(it) && it != url }
+        if (shown == null) {
+            if (tab === current) showStart() else tab.url = null
+        } else {
+            tab.url = shown
+            if (tab === current && !binding.browserEtAddress.hasFocus()) binding.browserEtAddress.setText(shown)
+        }
+        saveTabs()
     }
 
     private fun select(tab: BrowserTab, state: Bundle? = null) {
@@ -358,39 +374,55 @@ class QuickBrowserActivity : CosmicActivity() {
         getSystemService(InputMethodManager::class.java).showSoftInput(binding.browserEtAddress, 0)
     }
 
-    private fun showLinkMenu(web: WebView): Boolean {
+    private fun showLinkMenu(web: DeckWebView): Boolean {
         val hit = web.hitTestResult
         when (hit.type) {
-            WebView.HitTestResult.SRC_ANCHOR_TYPE -> hit.extra?.let(::showLinkOptions)
+            WebView.HitTestResult.SRC_ANCHOR_TYPE -> hit.extra?.let { showLinkOptions(web, it, null) }
+            WebView.HitTestResult.IMAGE_TYPE -> hit.extra?.let { showLinkOptions(web, null, it) }
             // The hit only names the image here, so the link has to be asked for
-            WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE -> web.requestFocusNodeHref(
-                Handler(Looper.getMainLooper()) { message ->
-                    message.data.getString("url")?.let(::showLinkOptions)
-                    true
-                }.obtainMessage()
-            )
+            WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE -> {
+                val image = hit.extra
+                web.requestFocusNodeHref(
+                    Handler(Looper.getMainLooper()) { message ->
+                        showLinkOptions(web, message.data.getString("url"), image)
+                        true
+                    }.obtainMessage()
+                )
+            }
             else -> return false
         }
         return true
     }
 
-    private fun showLinkOptions(url: String) {
-        if (!isWebPage(url)) return
-        AlertDialog.Builder(this)
-            .setTitle(url)
-            .setItems(arrayOf("Open in new tab", "Copy link")) { _, which ->
-                if (which == 0) {
-                    val tab = newTab(url, current)
-                    webFor(tab).visibility = View.GONE
-                    tab.web?.onPause()
-                    showTabCount()
-                    saveTabs()
-                    Toast.makeText(this, "Opened in a new tab", Toast.LENGTH_SHORT).show()
-                } else {
-                    getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Link", url))
-                }
+    /** What a long press on a link, an image, or an image that's a link offers, as in Chrome. */
+    private fun showLinkOptions(web: DeckWebView, link: String?, image: String?) {
+        val page = link?.takeIf(::isWebPage)
+        val actions = mutableListOf<Pair<String, () -> Unit>>()
+        if (page != null) {
+            actions += "Open in new tab" to { openInBackgroundTab(page) }
+            actions += "Copy link" to {
+                getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Link", page))
             }
+            actions += "Download link" to { WebDownloads.start(this, page, cookies, page = web) }
+        }
+        if (image != null) {
+            actions += "Download image" to { WebDownloads.start(this, image, cookies, page = web) }
+        }
+        if (actions.isEmpty()) return
+        AlertDialog.Builder(this)
+            // A picture written into the page can be pages of text
+            .setTitle((page ?: image.orEmpty()).take(MAX_TITLE))
+            .setItems(actions.map { it.first }.toTypedArray()) { _, which -> actions[which].second() }
             .showCosmic()
+    }
+
+    private fun openInBackgroundTab(url: String) {
+        val tab = newTab(url, current)
+        webFor(tab).visibility = View.GONE
+        tab.web?.onPause()
+        showTabCount()
+        saveTabs()
+        Toast.makeText(this, "Opened in a new tab", Toast.LENGTH_SHORT).show()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -687,7 +719,8 @@ class QuickBrowserActivity : CosmicActivity() {
 
     private fun showMenu() {
         val web = webFor(current)
-        val actions = mutableListOf<Pair<String, () -> Unit>>("New tab" to { openNewTab() }, "History" to { showHistory() })
+        val actions = mutableListOf<Pair<String, () -> Unit>>("New tab" to { openNewTab() }, "History" to { showHistory() },
+            "Downloads" to { DownloadFiles.showPage(this) })
         if (!atStart) actions += "Add to homepage" to {
             // A long page title makes a poor app name; left blank, the sheet names it after the site
             web.url?.let { showAddWebApp(web.title?.takeIf { it.length <= MAX_APP_NAME }.orEmpty(), it) }
@@ -875,6 +908,7 @@ class QuickBrowserActivity : CosmicActivity() {
         private const val HISTORY_SHOWN = 100
         private const val HISTORY_LIMIT = 2000
         private const val MAX_APP_NAME = 24
+        private const val MAX_TITLE = 200
         private const val DIMMED = 0.35f
         private const val KEY_PAGE = "page"
     }

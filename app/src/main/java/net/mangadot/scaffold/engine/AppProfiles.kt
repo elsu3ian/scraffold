@@ -48,6 +48,7 @@ object AppProfiles {
 
     /** Must run before the WebView loads anything or has a JavaScript interface added. */
     fun attach(webView: WebView, appId: String?) {
+        (webView as? DeckWebView)?.appId = appId
         val name = ownProfile(webView.context, appId) ?: return
         val profile = ProfileStore.getInstance().getOrCreateProfile(name)
         WebViewCompat.setProfile(webView, name)

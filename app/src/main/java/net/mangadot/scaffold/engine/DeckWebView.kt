@@ -27,6 +27,11 @@ class DeckWebView @JvmOverloads constructor(
 
     var media: BackgroundMedia? = null
     var shield: PageShield? = null
+    /** The app this page belongs to, whose login its downloads use again when tried once more. */
+    var appId: String? = null
+    /** Saves the files a page makes itself, which only it can read out. */
+    var files: PageFiles? = null
+        private set
     val shieldStats = ShieldStats()
 
     /** While on, leaving the app doesn't suspend this page, so what it's playing carries on. */
@@ -82,6 +87,7 @@ class DeckWebView @JvmOverloads constructor(
      * without [beforeNavigation]; one that started with the wrong identity loads again with the right one.
      */
     fun pageStarted(url: String) {
+        files?.pageStarted()
         if (beforeNavigation(url)) {
             stopLoading()
             reload()
@@ -409,7 +415,7 @@ class DeckWebView @JvmOverloads constructor(
     }
 
     /**
-     * Has scripts on the page see Chrome too, and puts the shield's page side in place. Call after
+     * Has scripts on the page see Chrome too, and puts the shield's and downloads' page sides in place. Call after
      * [AppProfiles.attach], which a page script would block.
      */
     @SuppressLint("RequiresFeature")
@@ -421,6 +427,7 @@ class DeckWebView @JvmOverloads constructor(
             WebViewCompat.addDocumentStartJavaScript(this, brandsScript(context), setOf("*"))
         }
         PageShield.attach(this)
+        files = PageFiles.attach(this)
     }
 
     override fun loadUrl(url: String) {
@@ -467,6 +474,8 @@ class DeckWebView @JvmOverloads constructor(
     }
 
     override fun destroy() {
+        // A file the page was still writing can't be finished now
+        files?.pageStarted()
         media?.let(MediaPlaybackService::onEnded)
         stopLoading()
         clearHistory()
