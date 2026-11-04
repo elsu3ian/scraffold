@@ -186,6 +186,10 @@ Copyright (c) 2026 elsu3ian. Scraffold's own code is licensed under the [PolyFor
 
 In short: you may use, study, change, and share Scraffold for personal and other noncommercial purposes, as long as you keep the license and its copyright notice with it. You may not sell it or use it commercially. This is a summary; the [LICENSE](LICENSE) file is what applies.
 
+### The name
+
+"Scraffold" and its icon are the name and mark of this project. Building it for yourself is fine as it is. If you share a changed version, please give it a different name, icon, and app ID (`applicationId`), so people can tell it apart from the official app and don't bring its problems here.
+
 ### Third-party code
 
 Scraffold includes code from other projects, which stays under its own license:
