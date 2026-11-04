@@ -21,7 +21,8 @@ data class CosmicTheme(
     val glow3: Int = DEFAULT_PALETTE.glow3,
     val glowIntensity: Int = 100,
     val gradientRotation: Int = 160,
-    val radiantBackground: Boolean = true,
+    // Obsidian black until someone turns the nebula on
+    val radiantBackground: Boolean = false,
     val cosmicStyling: Boolean = true,
     val dimInReader: Boolean = true,
     val autoSync: Boolean = false,

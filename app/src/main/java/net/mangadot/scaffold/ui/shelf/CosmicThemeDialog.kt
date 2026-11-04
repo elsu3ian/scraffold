@@ -222,7 +222,7 @@ class CosmicThemeDialog(
     }
 
     private fun resetTheme() {
-        val defaults = CosmicTheme(radiantBackground = false)
+        val defaults = CosmicTheme()
         if (defaults.accent != theme.accent) {
             CosmicThemeStore.save(context, defaults)
             CosmicAccent.color = defaults.accent
