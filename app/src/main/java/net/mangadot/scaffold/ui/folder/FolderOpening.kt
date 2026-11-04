@@ -132,6 +132,9 @@ internal class FolderOpening(
         }) {
             drawBackdrop(1f)
             flights.forEach { drawFlight(it, 1f) }
+            // Landed, so a long folder's grid is cut at its edges again and can scroll without its
+            // icons drawing over the title. A view's clipping cuts its children, so it's the panel's
+            (panel as? ViewGroup)?.clipChildren = true
         }
     }
 
@@ -143,6 +146,7 @@ internal class FolderOpening(
         }
         if (closing) return
         closing = true
+        (panel as? ViewGroup)?.clipChildren = false
         // Each piece heads home from wherever the opening left it
         val backdropFrom = backdropProgress
         val flightsFrom = flights.map { it.progress }
